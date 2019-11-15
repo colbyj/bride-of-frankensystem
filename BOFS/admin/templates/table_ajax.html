@@ -1,0 +1,35 @@
+<table class="table table-striped">
+    <thead>
+    <tr>
+        {% for c in columns %}
+            {% if c.type in ['integer', 'float'] %}
+                <th scope="col" style="text-align: right;">{{ c.name }}</th>
+            {% elif c.type == 'boolean' %}
+                <th scope="col" style="text-align: center;">{{ c.name }}</th>
+            {% else %}
+                <th scope="col">{{ c.name }}</th>
+            {% endif %}
+        {% endfor %}
+    </tr>
+    </thead>
+    <tbody>
+    {% for r in rows %}
+        <tr>
+            {% for c in columns %}
+                {% if r[loop.index0] == None %}
+                    <td></td>
+                {% elif c.type in ['integer', 'float'] %}
+                    <td style="text-align: right;">{{ r[loop.index0] }}</td>
+                {% elif c.type == 'datetime' %}
+                    <td>{{ r[loop.index0].strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                {% elif c.type == 'boolean' %}
+                    <td style="text-align: center;"><input type="checkbox" disabled
+                                                           readonly {{ 'checked' if r[loop.index0] }}></td>
+                {% else %}
+                    <td>{{ r[loop.index0] }}</td>
+                {% endif %}
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

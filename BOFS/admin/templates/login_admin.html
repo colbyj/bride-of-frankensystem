@@ -1,0 +1,32 @@
+{% extends "template.html" %}
+
+{% block head %}
+    <script>
+        $(document).ready(function () {
+            $("#password").jqxPasswordInput({ height: 25, width: 200, placeHolder: ""});
+            $("#submit").jqxButton({ width: 60, height: 25 });
+        });
+    </script>
+{% endblock %}
+{% block content %}
+
+    <form method="post">
+
+        {% if message %}
+            <i>{{ message }}</i>
+        {% endif %}
+
+        <div class="question">
+            <div class="padding">
+                <table style="margin: 0 auto;">
+                    <tr>
+                        <td style="padding-right: 10px;">Password:</td>
+                        <td><input style="width: 200px;" type="password" name="password" id="password" /></td>
+                        <td><input type="submit" id="submit" value="Login" /></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </form>
+
+{% endblock %}

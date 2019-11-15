@@ -1,0 +1,23 @@
+{% extends "template_admin.html" %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+    <div class="question padding table-responsive">
+        {% include("progress_ajax.html") %}
+    </div>
+
+    <script>
+    setInterval(function() {
+        $.ajax({
+            url: "{{ url_for('admin.route_progress_ajax') }}",
+            dataType: "html",
+            success: function(data) {
+                $("table").html(data);
+            }
+        });
+    }, 15000);
+    </script>
+
+{% endblock %}

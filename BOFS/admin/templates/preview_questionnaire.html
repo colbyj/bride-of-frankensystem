@@ -1,0 +1,26 @@
+{% extends "template_admin.html" %}
+{% from "questionnaire_macro.html" import createQuestionnaire with context %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+    {% if (errors | length) > 0 %}
+        <div class="error-box">
+            <b>Errors were found</b>
+            <ul>
+                {% for e in errors %}
+                <li>{{ e | safe }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+
+    <form id="form">
+
+    {{ createQuestionnaire(q) }}
+
+    </form>
+
+{% endblock %}

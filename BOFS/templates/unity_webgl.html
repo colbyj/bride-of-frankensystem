@@ -1,0 +1,62 @@
+{% extends "template.html" %}
+{% block head %}
+    <style>
+        #loading {
+            background-image: url('{{ url_for('BOFS_static', filename='loading.gif') }}');
+            background-repeat: no-repeat;
+            background-position: top center;
+            height: 120px;
+            position: fixed;
+            top: 250px;
+            left: 50%;
+            text-align: center;
+            padding-top: 80px;
+            display: inline;
+            transform: translate(-50%, 0%);
+        }
+
+        .template-wrap {
+            position: absolute;
+            left: 50%;
+            margin-left: -{{ width / 2}}px;
+            z-index: -1;
+        }
+    </style>
+    <script src="{{ unityloader_path }}"></script>
+    <script>
+        function UnityProgress (gameInstance, progress) {
+            this.loading = document.getElementById("loading");
+
+            if (progress != 1) {
+                progressPercent = Math.round(progress * 100);
+                this.loading.innerHTML = "Downloading... (" + progressPercent + "%)";
+            }
+            else {
+                this.loading.innerHTML = "Loading WebGL Game...";
+            }
+        }
+
+        function EndGame() {
+            window.location.href = "/redirect_next_page";
+        }
+
+        var gameInstance = UnityLoader.instantiate("gameContainer", "{{ json_path }}", {onProgress: UnityProgress});
+    </script>
+
+
+{% endblock %}
+
+{% block content %}
+    <div class="template-wrap clear">
+        <div id="loading">Loading...</div>
+        <div id="gameContainer" style="width: {{ width }}px; height: {{ height }}px"></div>
+    </div>
+
+    {% block content_extra %}
+    {% endblock %}
+
+{% endblock %}
+
+
+{% block bottom %}
+{% endblock %}

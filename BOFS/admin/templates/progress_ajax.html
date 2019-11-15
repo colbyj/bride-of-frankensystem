@@ -1,0 +1,36 @@
+<table class="table table-striped">
+    <thead>
+    <tr>
+        <th scope="col" style="text-align: right; width: 50px;">PID</th>
+        <th scope="col" style="text-align: left; width: 100px;">MTurk ID</th>
+        <th scope="col" style="text-align: right; width: 70px;">Condition</th>
+        <th scope="col" style="text-align: center; width: 110px;">Started On</th>
+        {% for page in pages %}
+            <th scope="col" style="text-align: center; width: 110px;">{{ page['path'].replace("/", " ").replace("_", " ") }}</th>
+        {% endfor %}
+        <th scope="col" style="text-align: center; width:50px;">Finished</th>
+        <th scope="col" style="text-align: center; width:70px;">Time Taken</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for r in progress %}
+        <tr>
+            <td style="text-align: right">{{ r.Participant.participantID }}</td>
+            <td style="text-align: left">{{ r.Participant.mTurkID }}</td>
+            <td style="text-align: right">{{ r.Participant.condition }}</td>
+            <td style="text-align: center">{{ r.Participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            {% for page in pages %}
+                <td style="text-align: center">
+                    {% if r[page['path']] %}
+                        {{ r[page['path']].display_duration() }}
+                    {% endif %}
+                </td>
+            {% endfor %}
+            <td style="text-align: center;">
+                <input type="checkbox" disabled readonly {{ 'checked' if r.Participant.finished }}>
+            </td>
+            <td style="text-align: center;">{{ r.Participant.display_duration() }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

@@ -1,0 +1,26 @@
+{% extends "template.html" %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+        <form id="form" method="post">
+
+            <i>Welcome! Please fill out the following information to begin.</i><br>
+
+            <div class="question" style="">
+                <div class="padding">
+                    <h3>Please enter your MTurk ID</h3>
+                    <div>
+                        <input class="form-control" type="text" name="mTurkID" id="mTurkID" style="width: 300px;" placeholder="" required />
+                        <div class="invalid-feedback">
+                            Please enter your MTurk Worker ID. You can find this on your MTurk dashboard.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        {{ btnContinue() }}
+
+        </form>
+{% endblock %}

@@ -1,0 +1,121 @@
+body {
+    padding: 0;
+    margin: 0;
+    font-family: 'segoe ui', arial, sans-serif;
+    font-size: 12pt;
+}
+.questions {
+    /*border: 1px solid #4e4e4e;*/
+}
+
+.question {
+    margin-top: 15px;
+    border: 1px solid #EEEEEE;
+    background-color: #F7F7F7;
+    border-radius: 8px;
+    /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
+}
+
+.question-tabs {
+    margin-top: 15px;
+    border-radius: 3px;
+    /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
+}
+
+.question-tabs-inner {
+    background-color: #F7F7F7;
+}
+
+.jqx-tabs-title-selected-top {
+    background-color: #F7F7F7 !important;
+    border-bottom: 1px solid #F7F7F7 !important;
+}
+
+.navigation {
+    margin-top: 15px;
+    border: 1px solid #ccc;
+    background-color: #ccc;
+    border-radius: 8px;
+    /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
+    margin-bottom: 30px;
+}
+
+.padding {
+    padding: 12px 16px;
+}
+
+#map img {
+    position: relative;
+}
+
+h1 {
+    font-size: 18pt;
+    margin: 0;
+}
+
+h3 {
+    font-weight: bold;
+    font-size: 13pt;
+    margin: 0 0 10px 0;
+}
+
+p {
+    margin-bottom: 0;
+}
+
+.title-bar {
+    background-color: #8CB737;
+    box-shadow: 0 5px 10px rgb(238, 238, 238);
+    color: white;
+    margin: 0;
+    padding: 5px;
+    text-shadow: 1px 1px #333333;
+}
+
+.title-text {
+    width: 967px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 18pt;
+    height: 42px;
+}
+
+.error-box {
+    padding: 5px;
+    margin: 5px;
+    border: 1px solid rgba(0, 0, 0, 0.33);
+    background-color: rgba(255, 0, 0, 0.05);
+}
+
+
+.debug-session pre {
+    display: block; margin: 0;
+}
+
+.debug-session ul {
+    padding: 0 0 0 12px; margin: 0; list-style-type: none;
+}
+
+.debug-menu {
+    padding: 10px;
+}
+
+.debug-menu button, a {
+    font-size: 10pt !important;
+}
+
+/*a, a:visited { text-decoration: none; color: #1144cc; }
+a:hover { text-decoration: underline; }*/
+
+table { border-spacing: 0; }
+th { padding: 6px; position: sticky; top: 0; background-color: #F7F7F7; border-bottom: 1px solid #EEEEEE; z-index: 1; }
+.evenRow { background-color: #EFEFEF; }
+.evenRow td { padding: 4px; }
+.oddRow td { padding: 4px; }
+.evenRow:hover { background-color: #F4F2DC; }
+.oddRow:hover { background-color: #FEFFE8; }
+
+.form-check { padding: 6px 22px; }
+.form-check input {  }
+
+ul li { padding-bottom: 4px;  }

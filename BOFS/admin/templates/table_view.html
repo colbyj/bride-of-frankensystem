@@ -1,0 +1,43 @@
+{% extends "template_admin.html" %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+    {% if (errors | length) > 0 %}
+
+    <br>
+    <div class="error-box">
+        <b>Errors were found</b>
+        <ul>
+            {% for e in errors %}
+            <li>{{ e }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    {% else %}
+
+    <div class="question padding table-responsive">
+        {% include "table_ajax.html" %}
+    </div>
+
+    <div class="padding">
+        <a href="{{ url_for('admin.route_table_csv', tableName=tableName) }}" class="btn btn-dark" role="button">Export as CSV <i class="fas fa-file-csv"></i></a>
+    </div>
+
+    {% endif %}
+
+    <script>
+    setInterval(function() {
+        $.ajax({
+            url: "{{ url_for('admin.route_table_ajax', tableName=tableName) }}",
+            dataType: "html",
+            success: function(data) {
+                $("table").html(data);
+            }
+        });
+    }, 15000);
+    </script>
+
+{% endblock %}

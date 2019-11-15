@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{{ config['TITLE'] }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='style.css') }}" type="text/css" />
+    {% block head %}{% endblock %}
+    <style>
+        #loading {
+            background-image: url('{{ url_for('BOFS_static', filename='loading.gif') }}');
+            background-repeat: no-repeat;
+            background-position: top center;
+            height: 120px;
+            position: fixed;
+            top: 250px;
+            left: 50%;
+            text-align: center;
+            padding-top: 80px;
+            display: inline;
+            transform: translate(-50%, 0%);
+        }
+
+        #gameContainer { width: 100%; height: 100%; position: absolute; }
+    </style>
+    <script src="{{ unityloader_path }}"></script>
+    <script>
+        function UnityProgress (gameInstance, progress) {
+            this.loading = document.getElementById("loading");
+
+            if (progress != 1) {
+                progressPercent = Math.round(progress * 100);
+                this.loading.innerHTML = "Downloading... (" + progressPercent + "%)";
+            }
+            else {
+                this.loading.innerHTML = "Loading WebGL Game...";
+            }
+        }
+
+        function EndGame() {
+            window.location.href = "/redirect_next_page";
+        }
+
+        var gameInstance = UnityLoader.instantiate("gameContainer", "{{ json_path }}", {onProgress: UnityProgress});
+    </script>
+</head>
+<body>
+
+{% block content %}
+    <div id="loading">Loading...</div>
+    <div id="gameContainer"></div>
+{% endblock %}
+
+{% block content_extra %}
+{% endblock %}
+
+{% block bottom %}
+{% endblock %}
+
+
+<script type="text/javascript">
+    {% if 'currentUrl' in session and session['currentUrl'] %}
+    // Redirect user to the correct page if they are on the wrong page.
+    window.onload = function() {
+
+        if (window.location.pathname.includes("admin")) {
+            return;
+        }
+
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                if (window.location.pathname.substr(1) != this.responseText)  {
+                    window.location.href = "/" + this.responseText;
+                }
+            }
+        };
+        xhttp.open("GET", "/current_url", true);
+        xhttp.send();
+    };
+    window.onunload = function(){};
+    {% endif %}
+</script>
+
+</body>
+</html>

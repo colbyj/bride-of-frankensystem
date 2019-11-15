@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{{ config['TITLE'] }} &mdash; Administration{% endblock %}</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.min.css" integrity="sha256-UzFD2WYH2U1dQpKDjjZK72VtPeWP50NoJjd26rnAdUI=" crossorigin="anonymous" />
+    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='style.css') }}" type="text/css" />
+
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    {% block head %}{% endblock %}
+    <style>
+        .table td, .table th {
+            padding: .25rem;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body style="padding: 70px 20px 20px 20px;">
+
+    <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
+        <a class="navbar-brand" href="/">{{ config['TITLE'] }}</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+            <ul class="navbar-nav">
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.route_progress') }}">Progress</a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">Export</a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" href="{{ url_for('admin.route_export') }}">Questionnaire Data</a>
+                        <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Grid Timing Data</a>
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">Preview Questionnaires</a>
+                    <div class="dropdown-menu">
+                        <h6 class="dropdown-header">In Use</h6>
+                        {% for q in questionnairesLiveUntagged %}
+                        <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
+                        {% endfor %}
+                        <div class="dropdown-divider"></div>
+                        <h6 class="dropdown-header">In the System</h6>
+                        {% for q in questionnairesSystem %}
+                        <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
+                        {% endfor %}
+                    </div>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">Database Tables</a>
+                    <div class="dropdown-menu">
+                        {% for t in tableNames %}
+                        <a class="dropdown-item" href="{{ url_for('admin.route_table_view', tableName=t) }}">{{ t }}</a>
+                        {% endfor %}
+                    </div>
+                </li>
+                <!--li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">Questionnaire Results</a>
+                    <div class="dropdown-menu">
+                        {% for q in questionnairesLive %}
+                        <a class="dropdown-item" href="{{ url_for('admin.route_analyze_questionnaire', questionnaireName=q) }}">{{ q }}</a>
+                        {% endfor %}
+                    </div>
+                </li-->
+                {% if additionalAdminPages %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">Custom Pages</a>
+                    <div class="dropdown-menu">
+                        {% for page in additionalAdminPages %}
+                        <a class="dropdown-item" href="{{ url_for(page['route']) }}">{{ page['title'] }}</a>
+                        {% endfor %}
+                    </div>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+
+{% block content %}
+{% endblock %}
+
+</body>
+</html>

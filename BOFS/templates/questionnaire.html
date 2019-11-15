@@ -1,0 +1,18 @@
+{% extends "template.html" %}
+{% from "questionnaire_macro.html" import createQuestionnaire with context %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+    <form id="form" method="post">
+
+        {{ createQuestionnaire(q) }}
+
+        {{ btnContinue() }}
+
+    </form>
+
+    <br>
+
+{% endblock %}

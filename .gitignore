@@ -1,0 +1,5 @@
+*.pyc
+/.idea/*
+*.db
+*___jb_old___
+*.directory

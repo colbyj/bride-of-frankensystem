@@ -1,0 +1,16 @@
+{% extends "template.html" %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+    <form id="form" method="post">
+        <div class="question">
+            <div class="padding">
+                {{ instructions | safe }}
+            </div>
+        </div>
+        {{ btnContinue(includeDiv=true) }}
+    </form>
+
+{% endblock %}

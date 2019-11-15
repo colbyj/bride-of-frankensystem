@@ -1,0 +1,80 @@
+{% extends "template_admin.html" %}
+{% block head %}
+        <script type="text/javascript" language="javascript" src="{{ url_for('BOFS_static', filename='js/plotly-latest.min.js') }}"></script>
+        <script type="text/javascript">
+        $(document).ready(function () {
+
+
+            //$('#tabRadioGrid').jqxTabs({ width: '930', height: 734, position: 'top'});
+
+            // This dict is created in python and converted using json dumps.
+            {% for key, gpd in gridPlotData.iteritems() %}
+            var gpd_{{ key }} = {{ gpd | safe }};
+            {% endfor %}
+
+            var data = {{ gridPlotJSVars | safe }};
+
+            var chartLayout = {barmode: 'group'};
+
+            Plotly.newPlot('chartRadioGrid', data, chartLayout);
+
+        });
+        </script>
+{% endblock %}
+
+{% block content %}
+
+    <div class="question">
+        <div class="padding" style="overflow: auto; font-size: 9pt;">
+
+            <b style="font-size: 12pt">{{ questionnaireName }} {{ " - " + tag if tag != 0 }}</b>
+
+            <div id="tabRadioGrid">
+
+                <div>
+                    <div style="padding: 10px;">
+                        <br>
+                        <table style="width: 100%; border: 1px solid black; border-collapse: collapse;" border="1">
+                            <tr>
+                                <td><b>Subscale</b></td>
+                                <td><b>Condition</b></td>
+                                <td><b>N</b></td>
+                                <td><b>Min.</b></td>
+                                <td><b>Max.</b></td>
+                                <td><b>Mean</b></td>
+                                <td><b>Std. Dev.</b></td>
+                                <td><b>Std. Err.</b></td>
+                            </tr>
+                            {% for field in numericResults.get_field_or_prefix_list() %}
+                                {% for condition in range(0,conditionCount+1) %}
+                                {% if condition in numericResults.dataDescriptive %}
+
+                                <tr>
+                                    <td>{% if lastField and field == lastField %}{% else %}{{ field }}{% endif %}</td>
+                                    <td>{{ condition }}</td>
+                                    <td>{{ numericResults.dataDescriptive[condition][field].length }}</td>
+                                    <td>{{ numericResults.dataDescriptive[condition][field].min | round(3) }}</td>
+                                    <td>{{ numericResults.dataDescriptive[condition][field].max | round(3) }}</td>
+                                    <td>{{ numericResults.dataDescriptive[condition][field].mean | round(3) }}</td>
+                                    <td>{{ numericResults.dataDescriptive[condition][field].std | round(3) }}</td>
+                                    <td>{{ numericResults.dataDescriptive[condition][field].sem | round(3) }}</td>
+                                </tr>
+
+                                {% set lastField = field %}
+
+                                {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </table>
+                    </div>
+                </div>
+
+                <div>
+                    <div id="chartRadioGrid" style="width: 930px; height: 700px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+{% endblock %}

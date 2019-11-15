@@ -1,0 +1,17 @@
+{% extends "template.html" %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+        <b>Thanks for participating!</b>
+
+        {% if code and (code != '0') %}
+        <div class="question" style="background-color: #F8FFF7; width: 500px; margin-left: auto; margin-right: auto;">
+            <div class="padding" style="text-align: center">
+                Please copy and paste this code into the MTurk form:
+                <br>
+                <input type="text" value="{{ code }}" id="code" name="code" readonly style="text-align: center; margin-top: 5px;">
+            </div>
+        </div>
+        {% endif %}
+{% endblock %}

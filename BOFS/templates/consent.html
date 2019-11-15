@@ -1,0 +1,86 @@
+{% extends "template.html" %}
+{% block head %}
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            function dppx() {
+                // devicePixelRatio: Webkit (Chrome/Android/Safari), Opera (Presto 2.8+), FF 18+
+                return typeof window == 'undefined' ? 0 : +window.devicePixelRatio || ie() || 0
+            }
+
+            $("#screenWidth").val(window.screen.width);
+            $("#screenHeight").val(window.screen.height);
+            $("#innerWidth").val(window.innerWidth);
+            $("#innerHeight").val(window.innerHeight);
+            $("#dppx").val(dppx())
+
+        });
+    </script>
+{% endblock %}
+
+{% block content %}
+
+    <form id="form" class="needs-validation" method="post" novalidate>
+
+        <input type="hidden" id="dppx" name="dppx">
+        <input type="hidden" id="screenWidth" name="screenWidth">
+        <input type="hidden" id="screenHeight" name="screenHeight">
+        <input type="hidden" id="innerWidth" name="innerWidth">
+        <input type="hidden" id="innerHeight" name="innerHeight">
+
+        <i>Before proceeding, please read the following. You must give your consent to continue.</i>
+
+        <div class="question">
+            <div class="padding">
+                {% if config['CONSENT_TEXT'] and config['CONSENT_TEXT'] != '' %}
+                    {{ config['CONSENT_TEXT'] | safe }}
+                {% else %}
+                Please set the <pre>CONSENT_TEXT</pre> variable in the config file!
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="question">
+            <div class="padding">
+                <b>Do you give your consent?</b>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="consent" id="consentYes" value="1" required>
+                    <label class="form-check-label" for="consentYes">I give my consent</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="consent" id="consentNo" value="0" required>
+                    <label class="form-check-label" for="consentNo">I do not give my consent</label>
+                </div>
+                <div class="invalid-feedback">
+                    You must provide your consent to continue.
+                </div>
+            </div>
+        </div>
+
+        {{ btnContinue() }}
+
+        <br>
+    </form>
+
+    <script>
+        // Example starter JavaScript for disabling form submissions if there are invalid fields
+        (function () {
+            'use strict';
+            window.addEventListener('load', function () {
+                // Fetch all the forms we want to apply custom Bootstrap validation styles to
+                var form = document.getElementById('form');
+                var consentYes = document.getElementById('consentYes');
+
+                form.addEventListener('submit', function (event) {
+                    if (consentYes.checked !== true) {
+                        document.getElementsByClassName('invalid-feedback').item(0).style.display = 'block';
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                }, false);
+
+            }, false);
+        })();
+    </script>
+
+{% endblock %}
