@@ -4,6 +4,9 @@ Bride of Frankensystem (BOF or BOFS) is intended to be used by developers to dep
 
 BOF is built using [Flask](https://flask.palletsprojects.com/) and is intended to be used as a Python library. Because it is built with Flask, all Flask extensions and features are supported, and it is relatively straightforward to extend the project with your own custom web pages and tasks.
 
+If you use this for your research, please cite it!
+[![DOI](https://zenodo.org/badge/220541237.svg)](https://zenodo.org/badge/latestdoi/220541237)
+
 
 Features
 ========
