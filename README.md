@@ -39,6 +39,8 @@ The preferred method of installation is to download the zip file and run:
 from directory in which the file is located.
 This should also install all required packages using `pip`. 
 
-----------------
+Further Help
+============
 
-[Visit the Wiki for further help and details.](https://github.com/colbyj/bride-of-frankensystem/wiki)
+* [Example Projects](https://github.com/colbyj/bride-of-frankensystem-examples)
+* [Wiki](https://github.com/colbyj/bride-of-frankensystem/wiki)
