@@ -266,6 +266,16 @@ def route_restart():
     return redirect("/")
 
 
+@default.route("/submit", methods=['POST'])
+def submit():
+    """
+    Use this if you simply need to submit a form that redirects to the next page without doing anything with
+    the form data.
+    :return:
+    """
+    return redirect("/redirect_next_page")
+
+
 # Handy routes to save development time...
 
 
