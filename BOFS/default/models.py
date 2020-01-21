@@ -84,7 +84,7 @@ def create(db):
 
                     printText += "{}, ".format(pCount[condition-1])
 
-                self.condition = pCount.index(lowest)
+                self.condition = pCount.index(lowest) + 1
 
                 printText += "User put in condition {}.".format(self.condition)
                 print(printText)
