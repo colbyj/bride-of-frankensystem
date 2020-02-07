@@ -73,6 +73,7 @@ class BOFSFlask(Flask):
 
     # Overriding this ensures compatibility with existing run.py files regardless of whether socketio is used or not
     def run(self, host=None, port=None, **options):
+        print("Running on http://{}:{}".format(host if not host is None else '127.0.0.1', port if port is not None else 5000))
         if self.debug:
             self.debug = True
 

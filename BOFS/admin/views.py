@@ -279,7 +279,7 @@ def route_preview_questionnaire(questionnaireName):
     try:
         f = open(current_app.root_path + '/questionnaires/' + questionnaireName + ".json", 'r')
         jsonData = f.read()
-        json.loads(jsonData)
+        jsonData = json.loads(jsonData)
     except Exception as e:
         errors = list(e.args)
 
@@ -297,26 +297,27 @@ def route_preview_questionnaire(questionnaireName):
                 errors.append("Click <a href=\"?fix_errors\">here</a> if you would like to try to automatically create "
                               "this table. Alternatively, you can restart the server and it will be created.")
 
-    if 'fix_errors' in request.args:
-        # Figure out what column it is by parsing errors.
-        for e in errors:
-            if "(OperationalError) no such column:" in e:
-                e = e.split(tableName + ".")
-                columnName = e[len(e)-1]
-                dataType = db.metadata.tables[tableName].columns[columnName].type
+        if 'fix_errors' in request.args:
+            # Figure out what column it is by parsing errors.
+            for e in errors:
+                if "(OperationalError) no such column:" in e:
+                    e = e.split(tableName + ".")
+                    columnName = e[len(e)-1]
+                    dataType = db.metadata.tables[tableName].columns[columnName].type
+    
+                    addColumn = db.DDL(str.format("ALTER TABLE {} ADD COLUMN {} {}", tableName, columnName, dataType))
+                    db.engine.execute(addColumn)
+    
+                    errors.append(str.format(u"{} {} was added to {}. "
+                                             u"This error should be gone when you refresh.", columnName, dataType, tableName))
+    
+                if "(OperationalError) no such table:" in e:
+                    db.create_all()
+                    errors.append(str.format(u"The error should be gone if you refresh."))
 
-                addColumn = db.DDL(str.format("ALTER TABLE {} ADD COLUMN {} {}", tableName, columnName, dataType))
-                db.engine.execute(addColumn)
-
-                errors.append(str.format(u"{} {} was added to {}. "
-                                         u"This error should be gone when you refresh.", columnName, dataType, tableName))
-
-            if "(OperationalError) no such table:" in e:
-                db.create_all()
-                errors.append(str.format(u"The error should be gone if you refresh."))
 
     return render_template("preview_questionnaire.html",
-                           q=questionnaires[questionnaireName].jsonData,
+                           q=jsonData,
                            errors=errors)
 
 
