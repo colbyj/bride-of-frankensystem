@@ -9,12 +9,25 @@ from .globals import db
 from flask import current_app, request, session, config
 import pprint
 
+enable_export_calculations = True
+
+try:
+    from numpy import mean, std, var, mode, median  # Python has built in min and max.
+except:
+    try:
+        from statistics import mean, stdev, variance, mode, median
+        std = stdev
+        var = variance
+    except:
+        print("Warning: Unable to import either numpy or Python 3's statistics library! Exporting calculated values will be disabled.")
+        enable_calculations = False
+
 
 class QuestionnaireField(object):
     def __init__(self, id, dataType, reversed=False, labels=[]):
         self.id = id
         self.dataType = dataType
-        self.reversed = reversed
+        self.reversed = reversed  # TODO: This is basically depricated now.
         self.labels = labels
 
     def __repr__(self):
@@ -36,6 +49,7 @@ class JSONQuestionnaire(object):
             self.jsonData = None
 
         self.fields = []
+        self.calcFields = []
         self.dbClass = None
         self.fieldCount = 0
 
@@ -80,6 +94,9 @@ class JSONQuestionnaire(object):
         if not self.fields:  # If list is empty
             self.fetch_fields()
 
+        if not self.calcFields:
+            self.calcFields = []
+
         tableName = str.format(u"questionnaire_{}", self.fileName)
 
         tableAttr = {
@@ -100,9 +117,23 @@ class JSONQuestionnaire(object):
             else:
                 tableAttr[field.id] = db.Column(db.Text, nullable=False, default="")
 
+        if "participant_calculations" in self.jsonData:
+            for field_name, calculation in self.jsonData["participant_calculations"].items():
+                self.calcFields.append(field_name)
+                calculation = self.preprocess_calculation_string(calculation)
+
+                tableAttr[field_name] = lambda self, calculation=calculation: (eval(calculation))
+
         #pprint.pprint(tableAttr)
 
         self.dbClass = type(self.fileName, (db.Model,), tableAttr)
+
+    # Replace field_name with self.field_name
+    def preprocess_calculation_string(self, calculationString):
+        for field in self.fields:
+            calculationString = calculationString.replace("{}".format(field.id), "self.{}".format(field.id))
+
+        return calculationString
 
     def create_blank(self):
         blank = self.dbClass()

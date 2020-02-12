@@ -3,6 +3,7 @@ from builtins import str
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response
 from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count
+from BOFS.JSONQuestionnaire import enable_export_calculations
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag
 import json
 from .questionnaireResults import *
@@ -174,9 +175,14 @@ def route_export():
         "finished"
     ]
 
+    calculatedColumns = dict()
+
     # First loop constructs the query and fetches the column names
     for qNameAndTag in qList:
         qName, qTag = questionnaire_name_and_tag(qNameAndTag)
+
+        # The python class that describes the questionnaire
+        questionnaire = questionnaires[qName]
 
         # Add the questionnaire's table/class to the query...
         qDBC = db.aliased(questionnaires[qName].dbClass, name=qNameAndTag)
@@ -187,26 +193,26 @@ def route_export():
                                   qDBC.tag == qTag
                               )).add_entity(qDBC)
 
-        attributes = questionnaires[qName].dbClass.__dict__
-        keys = sorted(attributes.keys())
+        #attributes = questionnaires[qName].dbClass.__dict__
+        #keys = sorted(attributes.keys())
 
         columns[qNameAndTag] = []
+        calculatedColumns[qNameAndTag] = []
 
         # Make a list of the columns to later construct the CSV header row
-        for k in keys:
-            if k.startswith("_") \
-                    or k.startswith("time") \
-                    or k.startswith("participant") \
-                    or k == "tag" \
-                    or k == str.format(u"{}ID", qName):
-                continue
-            if not type(attributes[k]) is InstrumentedAttribute:
-                continue
+        # This could also be done with questionnaire.fields
+        for column in questionnaire.fields:
+            columns[qNameAndTag].append(column.id)
 
-            columns[qNameAndTag].append(k)
+        # Similarly, make a list of calculated columns to later be part of the CSV header row.
+        if enable_export_calculations:  # only do this if numpy or Python 3's statistics library are imported.
+            for column in questionnaire.calcFields:
+                calculatedColumns[qNameAndTag].append(column)
 
     if not includeUnfinished:
         data = data.filter(db.Participant.finished == True)
+
+    data = data.group_by(db.Participant.participantID)
 
     rows = data.all()
 
@@ -234,6 +240,12 @@ def route_export():
         else:
             column_list.append(str.format(u"{}_duration", qName))
 
+        for calcCol in calculatedColumns[qNameAndTag]:
+            if qTag != "":
+                column_list.append(str.format(u"{}_{}_{}", qName, qTag, calcCol))
+            else:
+                column_list.append(str.format(u"{}_{}", qName, calcCol))
+
     # Finally construct the CSV string.
     csvString = ",".join(column_list) + "\n"  # CSV Header
 
@@ -254,10 +266,17 @@ def route_export():
                 else:
                     csvString += ","
 
-            if not qData:  # Special case for duration
+            if not qData:
                 csvString += ","
             else:
-                csvString += str.format(u",{}", qData.duration())
+                csvString += str.format(u",{}", qData.duration())  # Special case for duration
+
+            # See if there are any calculations to include in the export.
+            for col in calculatedColumns[qNameAndTag]:
+                if qData:
+                    csvString += "," + escape_csv(getattr(qData, col)())
+                else:
+                    csvString += ","
 
         csvString += "\n"
 

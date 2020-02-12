@@ -245,7 +245,10 @@ def route_user_active():
 
 @default.route("/current_url")
 def route_current_url():
-    return session['currentUrl']
+    if "currentUrl" in session:
+        return session['currentUrl']
+    else:
+        return "/"
 
 
 @default.route("/restart")
