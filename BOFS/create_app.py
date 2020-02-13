@@ -51,6 +51,9 @@ def create_app(path, config_name='default.cfg', debug=False):
     if not 'USE_LOGO' in app.config:
         app.config['USE_LOGO'] = True
 
+    if not 'LOG_GRID_CLICKS' in app.config:
+        app.config['LOG_GRID_CLICKS'] = False
+
     with app.app_context():
         app.load_questionnaires()
 

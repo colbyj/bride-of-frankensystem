@@ -16,11 +16,32 @@
         </div>
     {% endif %}
 
-
     <form id="form">
 
     {{ createQuestionnaire(q) }}
 
     </form>
+
+    <br>
+
+    <div class="question padding">
+        <h3>{{ q.title if q.title else "Questionnaire Metadata"}}</h3>
+
+        <ul>
+            <li><b>Reference:</b> {{ q.reference if q.reference }}</li>
+            <li><b>DOI: </b> {{ ('<a href="{0}">{0}</a>'.format(q.doi) | safe if q.doi.startswith("http") else '<a href="https://doi.org/{0}">https://doi.org/{0}</a>'.format(q.doi) | safe) if q.doi }}</li>
+        </ul>
+    </div>
+    {% if q.participant_calculations %}
+    <div class="question padding">
+        <h3>Per-Response Calculations</h3>
+
+        <ul>
+            {% for name, calc in q.participant_calculations.items() %}
+            <li><b>{{ name }}</b>: <pre>{{ calc }}</pre></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
 {% endblock %}

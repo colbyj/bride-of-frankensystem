@@ -49,7 +49,8 @@ def inject_template_vars():
         tableNames=tableNames,
         questionnairesLive=questionnairesLive,
         questionnairesLiveUntagged=questionnairesLiveUntagged,
-        questionnairesSystem=questionnairesSystem
+        questionnairesSystem=questionnairesSystem,
+        logGridClicks=current_app.config['LOG_GRID_CLICKS']
     )
 
 
@@ -287,7 +288,7 @@ def route_export():
                         "Content-disposition": "attachment; filename=%s.csv" % ("export_" + datetime.now().strftime("%Y-%m-%d_%H-%M"))
                     })
     else:
-        return render_template("export.html", data=csvString)
+        return render_template("export.html", data=csvString, enable_export_calculations=enable_export_calculations)
 
 
 @admin.route("/preview_questionnaire/<questionnaireName>")
