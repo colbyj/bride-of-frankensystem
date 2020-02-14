@@ -42,7 +42,7 @@ class PageList(object):
         """
         condition_count = util.fetch_condition_count()
 
-        questionnaires = set()
+        questionnaires = list()
 
         for i in range(0, condition_count):  # iterate through all conditions; we want all possible questionnaires.
             for page in self.flat_page_list(i):
@@ -54,9 +54,10 @@ class PageList(object):
                 if not include_tags:
                     questionnaire_name = questionnaire_name.split("/")[0]
 
-                questionnaires.add(questionnaire_name)
+                if questionnaire_name not in questionnaires:
+                    questionnaires.append(questionnaire_name)
 
-        return list(questionnaires)
+        return questionnaires
 
     def get_index(self, path):
         """

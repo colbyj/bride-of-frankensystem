@@ -160,11 +160,15 @@ def route_export_item_timing():
 @admin.route("/export/download", endpoint="route_export_download")
 @verify_admin
 def route_export():
+    unfinishedCount = db.session.query(db.Participant).filter(db.Participant.finished == False).count()
+    missingCount = 0
+    innerJoins = db.session.query(db.Participant)
+    leftJoins = db.session.query(db.Participant)
+
     includeUnfinished = request.args.get('includeUnfinished', False)
+    includeMissing = request.args.get('includeMissing', False)
 
     qList = page_list.get_questionnaire_list(include_tags=True)
-
-    data = db.session.query(db.Participant)
 
     columns = dict()
 
@@ -188,7 +192,13 @@ def route_export():
         # Add the questionnaire's table/class to the query...
         qDBC = db.aliased(questionnaires[qName].dbClass, name=qNameAndTag)
 
-        data = data.outerjoin(qDBC,
+        leftJoins = leftJoins.outerjoin(qDBC,
+                              db.and_(
+                                  qDBC.participantID == db.Participant.participantID,
+                                  qDBC.tag == qTag
+                              )).add_entity(qDBC)
+
+        innerJoins = innerJoins.join(qDBC,
                               db.and_(
                                   qDBC.participantID == db.Participant.participantID,
                                   qDBC.tag == qTag
@@ -211,11 +221,18 @@ def route_export():
                 calculatedColumns[qNameAndTag].append(column)
 
     if not includeUnfinished:
-        data = data.filter(db.Participant.finished == True)
+        leftJoins = leftJoins.filter(db.Participant.finished == True)
+        innerJoins = innerJoins.filter(db.Participant.finished == True)
 
-    data = data.group_by(db.Participant.participantID)
+    leftJoins = leftJoins.group_by(db.Participant.participantID)
+    innerJoins = innerJoins.group_by(db.Participant.participantID)
 
-    rows = data.all()
+    if includeMissing:
+        rows = leftJoins.all()
+    else:
+        rows = innerJoins.all()
+
+    missingCount = leftJoins.filter(db.Participant.finished == True).count() - innerJoins.count()
 
     # Now that the data is loaded, construct the CSV syntax.
     # Starting with the header row...
@@ -288,7 +305,12 @@ def route_export():
                         "Content-disposition": "attachment; filename=%s.csv" % ("export_" + datetime.now().strftime("%Y-%m-%d_%H-%M"))
                     })
     else:
-        return render_template("export.html", data=csvString, enable_export_calculations=enable_export_calculations)
+        return render_template("export.html",
+                               data=csvString,
+                               enable_export_calculations=enable_export_calculations,
+                               rowCount=len(rows),
+                               unfinishedCount=unfinishedCount,
+                               missingCount=missingCount)
 
 
 @admin.route("/preview_questionnaire/<questionnaireName>")

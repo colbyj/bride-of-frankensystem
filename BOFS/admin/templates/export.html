@@ -6,17 +6,26 @@
 
     <form method="get">
         <div class="question padding">
-            <div class="form-check">
-                <input type="checkbox" class="form-check-input" id="includeUnfinished" name="includeUnfinished" {{ "checked" if request.args.get('includeUnfinished', False) }}>
-                <label for="includeUnfinished">Include participants that did not complete the task</label>
-            </div>
+            <ul class="form-check">
+                <li>
+                    <input type="checkbox" class="form-check-input" id="includeUnfinished" name="includeUnfinished" {{ "checked" if request.args.get('includeUnfinished', False) }}>
+                    <label for="includeUnfinished">Include participants that did not complete the task (N={{unfinishedCount}})</label>
+                </li>
+                <li>
+                    <input type="checkbox" class="form-check-input" id="includeMissing" name="includeMissing" {{ "checked" if request.args.get('includeMissing', False) }}>
+                    <label for="includeMissing">Include participants that completed, but have missing data (N={{missingCount}})</label>
+                </li>
+            </ul>
+
             <button type="submit" class="btn btn-dark">Preview</button>
             <button type="submit" class="btn btn-dark" formaction="{{ url_for('admin.route_export_download') }}">Download CSV <i class="fas fa-file-csv"></i></button>
         </div>
 
         {% if not enable_export_calculations %}
-        <span style="color: #dd0000;"><b>Warning:</b> Unable to export calculated columns. Please install NumPy or upgrade to Python 3.4 or newer.</span>
+        <p style="color: #dd0000;"><b>Warning:</b> Unable to export calculated columns. Please install NumPy or upgrade to Python 3.4 or newer.</p>
         {% endif %}
+
+        <p>Results for {{rowCount}} Participants</p>
 
         <div class="question">
             <div class="padding">
