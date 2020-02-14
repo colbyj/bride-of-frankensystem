@@ -12,6 +12,19 @@ def create_app(path, config_name='default.cfg', debug=False):
     if 'USE_ADMIN' not in app.config or app.config['USE_ADMIN'] is True:
         app.load_blueprint('BOFS.admin', 'admin')
 
+    # Set defaults for some config options
+    if not 'USE_BREADCRUMBS' in app.config:
+        app.config['USE_BREADCRUMBS'] = True
+
+    if not 'USE_LOGO' in app.config:
+        app.config['USE_LOGO'] = True
+
+    if not 'LOG_GRID_CLICKS' in app.config:
+        app.config['LOG_GRID_CLICKS'] = False
+
+    if not 'ADDITIONAL_ADMIN_PAGES' in app.config:
+        app.config['ADDITIONAL_ADMIN_PAGES'] = []
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We definitely don't want these..
             continue
@@ -25,34 +38,8 @@ def create_app(path, config_name='default.cfg', debug=False):
                 if subpath == "models.py":
                     app.load_models("app." + current_path)
 
-
-    """
-    if 'BLUEPRINTS' in app.config:
-        for bp in app.config['BLUEPRINTS']:
-            app.load_blueprint(bp['package'], bp['name'])
-
-            app.load_models(bp['package'])
-
-            app_context = app.app_context()
-            app_context.push()
-
-            app.load_init_functions(bp['package'])
-
-            app_context.pop()
-    """
-
     app.load_blueprint('BOFS.default', 'default')
     app.load_models('BOFS.default')
-
-    # Set defaults for USE_LOGO and USE_BREADCRUMBS
-    if not 'USE_BREADCRUMBS' in app.config:
-        app.config['USE_BREADCRUMBS'] = True
-
-    if not 'USE_LOGO' in app.config:
-        app.config['USE_LOGO'] = True
-
-    if not 'LOG_GRID_CLICKS' in app.config:
-        app.config['LOG_GRID_CLICKS'] = False
 
     with app.app_context():
         app.load_questionnaires()

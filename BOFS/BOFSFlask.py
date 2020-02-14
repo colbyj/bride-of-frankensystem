@@ -96,6 +96,11 @@ class BOFSFlask(Flask):
         blueprint_var = getattr(blueprint, blueprint_name)
         self.register_blueprint(blueprint_var)
 
+        try:
+            self.config['ADDITIONAL_ADMIN_PAGES'] += blueprint.ADDITIONAL_ADMIN_PAGES
+        except:
+            pass  # No Admin pages to add
+
         print("%s: Loaded blueprint!" % blueprint_path)
 
     def load_models(self, blueprint_path):

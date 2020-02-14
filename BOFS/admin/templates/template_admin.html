@@ -71,7 +71,13 @@
                     <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">Custom Pages</a>
                     <div class="dropdown-menu">
                         {% for page in additionalAdminPages %}
-                        <a class="dropdown-item" href="{{ url_for(page['route']) }}">{{ page['title'] }}</a>
+                            {% if 'route' in page %}
+                            <a class="dropdown-item" href="{{ url_for(page['route']) }}">{{ page['title'] }}</a>
+                            {% elif 'url' in page %}
+                            <a class="dropdown-item" href="{{ page['url'] }}">{{ page['title'] }}</a>
+                            {% else %}
+                            <a class="dropdown-item" href="#">{{ page['title'] }}</a>
+                            {% endif %}
                         {% endfor %}
                     </div>
                 </li>
