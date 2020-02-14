@@ -202,6 +202,8 @@ class JSONQuestionnaire(object):
 
                 db.session.add(newLog)
 
+            db.session.commit()
+
         except:
             pass
 
