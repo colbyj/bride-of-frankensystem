@@ -8,23 +8,7 @@ from datetime import datetime
 from .globals import db
 from flask import current_app, request, session, config
 import pprint
-
-enable_export_calculations = True
-
-try:
-    from numpy import mean, std, var, median  # Python has built in min and max.
-
-    stdev = std
-    variance = var
-except Exception as e1:
-    try:
-        from statistics import mean, stdev, variance, median
-        std = stdev
-        var = variance
-    except Exception as e2:
-        print("Warning: Unable to import either NumPy or Python 3's statistics library! Exporting calculated values will be disabled.")
-        print("The exception was: {} {}".format(e1, e2))
-        enable_export_calculations = False
+from BOFS.util import mean, stdev, std, var, variance, median
 
 
 class QuestionnaireField(object):
@@ -121,7 +105,7 @@ class JSONQuestionnaire(object):
             else:
                 tableAttr[field.id] = db.Column(db.Text, nullable=False, default="")
 
-        if "participant_calculations" in self.jsonData and enable_export_calculations:
+        if "participant_calculations" in self.jsonData:
             for field_name, calculation in self.jsonData["participant_calculations"].items():
                 self.calcFields.append(field_name)
                 calculation = self.preprocess_calculation_string(calculation)

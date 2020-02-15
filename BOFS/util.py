@@ -266,3 +266,59 @@ def int_or_0(value):
     if math.isnan(value):
         return 0
     return value
+
+numpy = False
+py3statistics = False
+
+try:
+    from numpy import mean as npmean
+    from numpy import std as npstd
+    from numpy import var as npvar
+    from numpy import median as npmedian
+    numpy = True
+except Exception as e1:
+    try:
+        from statistics import mean as p3mean
+        from statistics import stdev as p3std
+        from statistics import variance as p3var
+        from statistics import median as p3median
+        py3statistics = True
+    except Exception as e2:
+        print("Warning: Unable to import either NumPy or Python 3's statistics library!")
+
+# Some math functions
+def mean(numbers):
+    if numpy:
+        return npmean(numbers)
+    elif py3statistics:
+        return p3mean(numbers)
+    return float(sum(numbers)) / max(len(numbers), 1)
+
+def variance(numbers):
+    if numpy:
+        return npvar(numbers)
+    elif py3statistics:
+        return p3var(numbers)
+    mn = mean(numbers)
+    variance = old_div(sum([(e - mn) ** 2 for e in numbers]), len(numbers))
+
+def std(numbers):
+    if numpy:
+        return npstd(numbers)
+    elif py3statistics:
+        return p3std(numbers)
+    return math.sqrt(variance(numbers))
+
+def median(numbers):
+    if numpy:
+        return npmedian(numbers)
+    elif py3statistics:
+        return p3median(numbers)
+    quotient, remainder = divmod(len(numbers), 2)
+    if remainder:
+        return sorted(numbers)[quotient]
+    return sum(sorted(numbers)[quotient - 1:quotient + 1]) / 2.
+
+
+stdev = std
+var = variance

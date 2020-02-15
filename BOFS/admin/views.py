@@ -3,7 +3,6 @@ from builtins import str
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response
 from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count
-from BOFS.JSONQuestionnaire import enable_export_calculations
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag
 import json
 from .questionnaireResults import *
@@ -216,9 +215,8 @@ def route_export():
             columns[qNameAndTag].append(column.id)
 
         # Similarly, make a list of calculated columns to later be part of the CSV header row.
-        if enable_export_calculations:  # only do this if numpy or Python 3's statistics library are imported.
-            for column in questionnaire.calcFields:
-                calculatedColumns[qNameAndTag].append(column)
+        for column in questionnaire.calcFields:
+            calculatedColumns[qNameAndTag].append(column)
 
     if not includeUnfinished:
         leftJoins = leftJoins.filter(db.Participant.finished == True)
@@ -307,10 +305,20 @@ def route_export():
     else:
         return render_template("export.html",
                                data=csvString,
-                               enable_export_calculations=enable_export_calculations,
                                rowCount=len(rows),
                                unfinishedCount=unfinishedCount,
                                missingCount=missingCount)
+
+
+@admin.route("/results")
+@verify_admin
+def route_results():
+
+    results = QuestionnaireResults(questionnaires["IMI"], "")
+    results.run_query()
+    results.calc_descriptives()
+
+    return render_template("results.html")
 
 
 @admin.route("/preview_questionnaire/<questionnaireName>")

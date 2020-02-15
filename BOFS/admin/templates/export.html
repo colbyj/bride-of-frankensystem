@@ -21,10 +21,6 @@
             <button type="submit" class="btn btn-dark" formaction="{{ url_for('admin.route_export_download') }}">Download CSV <i class="fas fa-file-csv"></i></button>
         </div>
 
-        {% if not enable_export_calculations %}
-        <p style="color: #dd0000;"><b>Warning:</b> Unable to export calculated columns. Please install NumPy or upgrade to Python 3.4 or newer.</p>
-        {% endif %}
-
         <p>Results for {{rowCount}} Participants</p>
 
         <div class="question">
