@@ -4,21 +4,13 @@ from builtins import object
 from past.utils import old_div
 import math
 from BOFS.globals import db
-from BOFS.util import fetch_condition_count
+from BOFS.util import fetch_condition_count, mean, std, variance
 
 
-def mean(numbers):
-    return float(sum(numbers)) / max(len(numbers), 1)
-
-
-def std(numbers):
-    mn = mean(numbers)
-    variance = old_div(sum([(e-mn)**2 for e in numbers]), len(numbers))
-    return math.sqrt(variance)
-
-
-class DescriptiveStats(object):
+class FieldDescriptives(object):
     def __init__(self):
+        self.field_name = ""
+        self.condition = ""
         self.length = 0
         self.min = 0
         self.max = 0
@@ -37,6 +29,36 @@ class DescriptiveStats(object):
             self.sem = old_div(self.std,math.sqrt(self.length))
 
 
+class QuestionnaireResults(object):
+    def __init__(self, questionniare, tag):
+        self.questionnaire = questionniare
+        self.tag = tag
+
+        self.descriptiveResults = []  # One per calculated column
+        self.rows = None
+        self.query = None
+
+    def run_query(self):
+        self.query = db.session.query(self.questionnaire.dbClass).join(db.Participant).filter(db.Participant.finished)
+        self.rows = self.query.all()
+
+    def calc_descriptives(self):
+        for field in self.questionnaire.calcFields:
+            data = []
+
+            for row in self.rows:
+                data.append(getattr(row, field)())
+
+            newResult = FieldDescriptives()
+            newResult.field_name = field
+            newResult.calc_descriptives(data)
+
+            self.descriptiveResults.append(newResult)
+
+
+
+
+"""
 class NumericResults(object):
     def __init__(self, dbClass, fields, tag):
         self.dbClass = dbClass
@@ -183,3 +205,4 @@ class NumericResults(object):
                 ds.calc_descriptives(val)
 
                 self.dataDescriptive[condition][fieldOrPrefix] = ds
+"""

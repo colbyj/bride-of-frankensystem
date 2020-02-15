@@ -313,12 +313,19 @@ def route_export():
 @admin.route("/results")
 @verify_admin
 def route_results():
+    qList = page_list.get_questionnaire_list(include_tags=True)
+    results = {}
 
-    results = QuestionnaireResults(questionnaires["IMI"], "")
-    results.run_query()
-    results.calc_descriptives()
+    for qNameAndTag in qList:
+        qName, qTag = questionnaire_name_and_tag(qNameAndTag)
 
-    return render_template("results.html")
+        qResults = QuestionnaireResults(questionnaires[qName], qTag)
+        qResults.run_query()
+        qResults.calc_descriptives()
+
+        results[qNameAndTag] = qResults
+
+    return render_template("results.html", results=results)
 
 
 @admin.route("/preview_questionnaire/<questionnaireName>")

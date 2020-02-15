@@ -1,0 +1,43 @@
+{% extends "template_admin.html" %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+
+    <div class="question padding table-responsive">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th scope="col">Questionniare</th>
+                <th scope="col">Field</th>
+                <th scope="col">Condition</th>
+                <th scope="col">N</th>
+                <th scope="col">Min.</th>
+                <th scope="col">Max.</th>
+                <th scope="col">Mean</th>
+                <th scope="col">Std. Dev.</th>
+                <th scope="col">Std. Err.</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for questionnaire, qresults in results.items() %}
+            {% for r in qresults.descriptiveResults %}
+            <tr>
+                <td>{{questionnaire}}</td>
+                <td>{{r.field_name}}</td>
+                <td>{{r.condition}}</td>
+                <td>{{r.length }}</td>
+                <td>{{r.min | round(3)}}</td>
+                <td>{{r.max | round(3)}}</td>
+                <td>{{r.mean | round(3)}}</td>
+                <td>{{r.std | round(3)}}</td>
+                <td>{{r.sem | round(3)}}</td>
+            </tr>
+            {% endfor %}
+            {% endfor %}
+            </tbody>
+        </table>
+
+    </div>
+
+{% endblock %}
