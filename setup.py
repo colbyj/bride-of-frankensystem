@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='bride-of-frankensystem-usask',
+    name='bride-of-frankensystem',
     version='1.0',
     packages=['', 'BOFS', 'BOFS.admin', 'BOFS.default'],
     package_data={

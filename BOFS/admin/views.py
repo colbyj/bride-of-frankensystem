@@ -155,14 +155,41 @@ def route_export_item_timing():
     return render_template("export_csv.html", data=str.format(u"{}\n{}", header, output))
 
 
+# Builds the base query for exporting values in blueprint-defined tables
+# To be used for each entry in the config's EXPORT
+def create_export_base_queries(export_dict):
+    table = getattr(db, export_dict['table'])
+
+    group_by = getattr(table, export_dict['group_by'])
+    order_by = getattr(table, export_dict['order_by'])
+    filter = db.text(export_dict['filter'])
+
+    levels_q = db.session.query(group_by). \
+        group_by(group_by). \
+        order_by(order_by). \
+        filter(filter)
+
+    levels = levels_q.all()
+    # This will determine how many columns to add to the export
+    # TODO: What if there is no grouping column?
+
+    #pk = db.inspect(table).primary_key[0]
+    baseQuery = db.session.query(table). \
+        group_by(getattr(table, 'participantID'), group_by). \
+        order_by(order_by). \
+        filter(filter)
+
+    return levels, baseQuery
+
+
 @admin.route("/export")
 @admin.route("/export/download", endpoint="route_export_download")
 @verify_admin
 def route_export():
-    unfinishedCount = db.session.query(db.Participant).filter(db.Participant.finished == False).count()
+    unfinishedCount = db.session.query(db.Participant).filter(db.Participant.finished == False).count()  # For display only
     missingCount = 0
-    innerJoins = db.session.query(db.Participant)
-    leftJoins = db.session.query(db.Participant)
+    innerJoins = db.session.query(db.Participant)  # Participants with complete data
+    leftJoins = db.session.query(db.Participant)  # Participants with complete or incomplete data
 
     includeUnfinished = request.args.get('includeUnfinished', False)
     includeMissing = request.args.get('includeMissing', False)
@@ -232,10 +259,19 @@ def route_export():
 
     missingCount = leftJoins.filter(db.Participant.finished == True).count() - innerJoins.count()
 
+    # Repeated measures in other tables...
+    customExports = []
+
+    for export in current_app.config['EXPORT']:
+        levels, baseQuery = create_export_base_queries(export)
+        customExports.append({'options': export, 'base_query': baseQuery, 'levels': levels})
+
+
     # Now that the data is loaded, construct the CSV syntax.
     # Starting with the header row...
-    column_list = columns['participant']
+    columnList = columns['participant']
 
+    # Add questionnaire fields to CSV header
     for qNameAndTag in qList:
         qName, qTag = questionnaire_name_and_tag(qNameAndTag)
 
@@ -249,21 +285,29 @@ def route_export():
             else:
                 col = qName + "_" + col
 
-            column_list.append(col)
+            columnList.append(col)
 
         if qTag != "":
-            column_list.append(str.format(u"{}_{}_duration", qName, qTag))
+            columnList.append(str.format(u"{}_{}_duration", qName, qTag))
         else:
-            column_list.append(str.format(u"{}_duration", qName))
+            columnList.append(str.format(u"{}_duration", qName))
 
+        # Add any calculated columns to the CSV header
         for calcCol in calculatedColumns[qNameAndTag]:
             if qTag != "":
-                column_list.append(str.format(u"{}_{}_{}", qName, qTag, calcCol))
+                columnList.append(str.format(u"{}_{}_{}", qName, qTag, calcCol))
             else:
-                column_list.append(str.format(u"{}_{}", qName, calcCol))
+                columnList.append(str.format(u"{}_{}", qName, calcCol))
+
+    # For custom exports, add columns based on levels determined by prior query
+    for export in customExports:
+        for level in export['levels']:
+            for field in export['options']['fields']:
+                columnList.append(str.format(u"{}_{}", level[0].replace(" ", "_"), field))
+
 
     # Finally construct the CSV string.
-    csvString = ",".join(column_list) + "\n"  # CSV Header
+    csvString = ",".join(columnList) + "\n"  # CSV Header
 
     for row in rows:
         csvString += str.format(u"{},{},{},{},{}",
@@ -293,6 +337,30 @@ def route_export():
                     csvString += "," + escape_csv(getattr(qData, col)())
                 else:
                     csvString += ","
+
+        for export in customExports:
+            query = export['base_query']
+            query = query.filter(db.literal_column('participantID') == row.Participant.participantID)
+            customExportData = query.all()  # Running separate queries will get the job done, but be kind of slow with many participants...
+
+            # build dictionary with one row per level...
+            customExportRMs = {}
+
+            for r in customExportData:
+                groupValue = getattr(r, export['options']['group_by'])
+                customExportRMs[groupValue] = r
+
+            for level in export['levels']:
+                for field in export['options']['fields']:
+                    if not level[0] in customExportRMs:
+                        csvString += ","
+                        break  # Missing data!
+
+                    value = getattr(customExportRMs[level[0]], field)
+                    if callable(value):
+                        value = value()
+
+                    csvString += "," + escape_csv(value)
 
         csvString += "\n"
 

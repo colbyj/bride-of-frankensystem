@@ -25,6 +25,9 @@ def create_app(path, config_name='default.cfg', debug=False):
     if not 'ADDITIONAL_ADMIN_PAGES' in app.config:
         app.config['ADDITIONAL_ADMIN_PAGES'] = []
 
+    if not 'EXPORT' in app.config:
+        app.config['EXPORT'] = []
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We definitely don't want these..
             continue

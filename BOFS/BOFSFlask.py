@@ -101,6 +101,11 @@ class BOFSFlask(Flask):
         except:
             pass  # No Admin pages to add
 
+        try:
+            self.config['EXPORT'] += blueprint.EXPORT
+        except:
+            pass  # No exports to add
+
         print("%s: Loaded blueprint!" % blueprint_path)
 
     def load_models(self, blueprint_path):
