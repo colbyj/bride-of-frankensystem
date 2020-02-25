@@ -303,7 +303,7 @@ def route_export():
     for export in customExports:
         for level in export['levels']:
             for field in export['options']['fields']:
-                columnList.append(str.format(u"{}_{}", level[0].replace(" ", "_"), field))
+                columnList.append(str.format(u"{}_{}", field, level[0].replace(" ", "_")))
 
 
     # Finally construct the CSV string.

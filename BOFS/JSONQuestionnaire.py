@@ -119,7 +119,7 @@ class JSONQuestionnaire(object):
     # Replace field_name with self.field_name
     def preprocess_calculation_string(self, calculationString):
         for field in self.fields:
-            calculationString = calculationString.replace("{}".format(field.id), "self.{}".format(field.id))
+            calculationString = calculationString.replace("{}".format(field.id), "getattr(self, '{}')".format(field.id))
 
         return calculationString
 
