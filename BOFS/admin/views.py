@@ -179,6 +179,12 @@ def create_export_base_queries(export_dict):
         order_by(order_by). \
         filter(filter)
 
+    # Add the fields to the basequery
+    for field in export_dict['fields']:
+        if hasattr(table, field) and callable(getattr(table, field)):
+            continue  # We can't include this python property as part of the query
+        baseQuery = baseQuery.add_columns(db.literal_column(field))
+
     return levels, baseQuery
 
 
@@ -303,7 +309,7 @@ def route_export():
     for export in customExports:
         for level in export['levels']:
             for field in export['options']['fields']:
-                columnList.append(str.format(u"{}_{}", field, level[0].replace(" ", "_")))
+                columnList.append(str.format(u"{}_{}", field, str(level[0]).replace(" ", "_")))
 
 
     # Finally construct the CSV string.
@@ -347,7 +353,8 @@ def route_export():
             customExportRMs = {}
 
             for r in customExportData:
-                groupValue = getattr(r, export['options']['group_by'])
+                classValues = getattr(r, export['options']['table'])
+                groupValue = getattr(classValues, export['options']['group_by'])
                 customExportRMs[groupValue] = r
 
             for level in export['levels']:
@@ -356,7 +363,15 @@ def route_export():
                         csvString += ","
                         break  # Missing data!
 
-                    value = getattr(customExportRMs[level[0]], field)
+                    classValues = getattr(customExportRMs[level[0]], export['options']['table'])
+
+                    # The entire table class is added to the query, as well as the individual fields. So try both.
+                    # Try class first due to it also having access to python properties.
+                    if hasattr(classValues, field):
+                        value = getattr(classValues, field)
+                    else:
+                        value = getattr(customExportRMs[level[0]], field)
+
                     if callable(value):
                         value = value()
 
