@@ -24,7 +24,7 @@ def verify_correct_page(f):
 
         # Don't allow users to skip things or go back. Redirect to the correct page if they try.
         if 'currentUrl' in session and currentUrl != session['currentUrl']:
-            return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
+            return redirect(str.format("{}/{}", current_app.config["APPLICATION_ROOT"], str(session['currentUrl'])))
 
         # If user hasn't been here before, set their current URL to the first one in the list.
         if not 'currentUrl' in session:
