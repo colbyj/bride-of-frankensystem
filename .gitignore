@@ -3,3 +3,4 @@
 *.db
 *___jb_old___
 *.directory
+/.project

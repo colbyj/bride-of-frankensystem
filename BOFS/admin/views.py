@@ -160,23 +160,23 @@ def route_export_item_timing():
 def create_export_base_queries(export_dict):
     table = getattr(db, export_dict['table'])
 
-    group_by = getattr(table, export_dict['group_by'])
-    order_by = getattr(table, export_dict['order_by'])
+    groupBy = getattr(table, export_dict['group_by'])
+    orderBy = getattr(table, export_dict['order_by'])
     filter = db.text(export_dict['filter'])
 
-    levels_q = db.session.query(group_by). \
-        group_by(group_by). \
-        order_by(order_by). \
+    levelsQ = db.session.query(groupBy). \
+        group_by(groupBy). \
+        order_by(orderBy). \
         filter(filter)
 
-    levels = levels_q.all()
+    levels = levelsQ.all()
     # This will determine how many columns to add to the export
     # TODO: What if there is no grouping column?
 
     #pk = db.inspect(table).primary_key[0]
     baseQuery = db.session.query(table). \
-        group_by(getattr(table, 'participantID'), group_by). \
-        order_by(order_by). \
+        group_by(getattr(table, 'participantID'), groupBy). \
+        order_by(orderBy). \
         filter(filter)
 
     # Add the fields to the basequery
