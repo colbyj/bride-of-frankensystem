@@ -91,7 +91,12 @@ class BOFSFlask(Flask):
     def load_config(self, filename, silent=False):
         self.config.from_pyfile(filename, silent=silent)
 
-    def load_blueprint(self, blueprint_path, blueprint_name):
+    def load_blueprint(self, blueprint_path, blueprint_name=None, try_to_load_models=True):
+        print("Loading blueprint: %s" % blueprint_path)
+
+        if blueprint_name is None:
+            blueprint_name = blueprint_path
+
         blueprint = __import__(blueprint_path + ".views", fromlist=["views"])
         blueprint_var = getattr(blueprint, blueprint_name)
         self.register_blueprint(blueprint_var)
@@ -106,7 +111,9 @@ class BOFSFlask(Flask):
         except:
             pass  # No exports to add
 
-        print("%s: Loaded blueprint!" % blueprint_path)
+        if try_to_load_models: # Try to load the models too.
+            self.load_models(blueprint_path)
+
 
     def load_models(self, blueprint_path):
         try:

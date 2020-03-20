@@ -29,7 +29,7 @@ def create_app(path, config_name='default.cfg', debug=False):
         app.config['EXPORT'] = []
 
     for current_path in os.listdir(path):
-        if current_path in ["static", "templates"]:  # We definitely don't want these..
+        if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
             continue
 
         considered_path = os.path.join(path, current_path)
@@ -37,12 +37,11 @@ def create_app(path, config_name='default.cfg', debug=False):
         if os.path.isdir(considered_path):  # We should try this path..
             for subpath in os.listdir(considered_path):
                 if subpath == "views.py":
-                    app.load_blueprint("app." + current_path, current_path)
+                    app.load_blueprint("app." + current_path, current_path, False)
                 if subpath == "models.py":
                     app.load_models("app." + current_path)
 
     app.load_blueprint('BOFS.default', 'default')
-    app.load_models('BOFS.default')
 
     with app.app_context():
         app.load_questionnaires()
