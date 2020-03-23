@@ -13,9 +13,9 @@ from datetime import datetime
 from .JSONQuestionnaire import JSONQuestionnaire
 from .PageList import PageList
 from .globals import referrer
-from flask_socketio import SocketIO
 from flask_sessionstore import Session
 import random
+
 
 # Used to parse e.g., %20 to ' '
 try:
@@ -47,7 +47,7 @@ class BOFSFlask(Flask):
         self.db_tables = []
         self.questionnaires = {}
 
-        self.socketio = SocketIO(self, async_mode='eventlet', manage_session=False)
+        #self.socketio = SocketIO(self, async_mode='eventlet', manage_session=False)
 
         # Store Flask session in the database.
         self.sess = Session()
@@ -86,7 +86,34 @@ class BOFSFlask(Flask):
 
             super(BOFSFlask, self).run(host, port, **options)
         else:
-            self.socketio.run(self, host=host, port=port, **options)
+            self.eventlet_run(self, host=host, port=port, **options)
+            #self.socketio.run(self, host=host, port=port, **options)
+
+    # This is straight from Flask-SocketIO
+    # (https://github.com/miguelgrinberg/Flask-SocketIO/blob/master/flask_socketio/__init__.py)
+    # MIT License, Copyright holder Miguel Grinberg
+    def eventlet_run(self, app, host=None, port=None, **kwargs):
+        import eventlet
+        import eventlet.wsgi
+        import eventlet.green
+        addresses = eventlet.green.socket.getaddrinfo(host, port)
+        if not addresses:
+            raise RuntimeError('Could not resolve host to a valid address')
+        eventlet_socket = eventlet.listen(addresses[0][4], addresses[0][0])
+
+        # If provided an SSL argument, use an SSL socket
+        ssl_args = ['keyfile', 'certfile', 'server_side', 'cert_reqs',
+                    'ssl_version', 'ca_certs',
+                    'do_handshake_on_connect', 'suppress_ragged_eofs',
+                    'ciphers']
+        ssl_params = {k: kwargs[k] for k in kwargs if k in ssl_args}
+        if len(ssl_params) > 0:
+            for k in ssl_params:
+                kwargs.pop(k)
+            ssl_params['server_side'] = True  # Listening requires true
+            eventlet_socket = eventlet.wrap_ssl(eventlet_socket, **ssl_params)
+
+        eventlet.wsgi.server(eventlet_socket, app, **kwargs)
 
     def load_config(self, filename, silent=False):
         self.config.from_pyfile(filename, silent=silent)
