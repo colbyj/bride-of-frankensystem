@@ -236,14 +236,14 @@ class BOFSSessionInterface(SessionInterface):
         # The database has no session info! The cookie exists, but the session is empty.
         if not storedSession:
             self.create_db_object(app, sessionID)
-            return BOFSSession(None, sessionID=sessionID)
+            return BOFSSession(None, sessionID=sessionID, new=True)
 
         # The session has been expired, so let's clear out the DB and give a blank session
         if storedSession.expired:
             print("Session expired; deleting it.")
             app.db.session.delete(storedSession)
             app.db.session.commit()
-            return BOFSSession(None, sessionID=sessionID)
+            return BOFSSession(None, sessionID=sessionID, new=True)
 
         # Try to load the data from the DB into the session dict
         try:
@@ -252,12 +252,12 @@ class BOFSSessionInterface(SessionInterface):
             return BOFSSession(data, sessionID=sessionID)  # All is well.
         except:
             # Nope. Something bad happened; send them a blank session
-            return BOFSSession(None, sessionID=sessionID)
+            return BOFSSession(None, sessionID=sessionID, new=True)
 
     def save_session(self, app, session, response):
         domain = self.get_cookie_domain(app)
         #path = self.get_cookie_path(app)
-        path = "/"
+        path = "/"  # We'll only ever want one cookie per project.
 
         # Looks like the session was deleted... delete the cookie.
         # We can't delete stuff from the DB as we don't know the ID.
@@ -278,9 +278,10 @@ class BOFSSessionInterface(SessionInterface):
             storedSession.data = self.serializer.dumps(dict(session))
 
         # Only save if there's a reason to do so.
-        if session.modified or session.new:
+        if session.new or session.modified:
             app.db.session.commit()
 
+        if session.new:
             response.set_cookie("session", session.sessionID,
                                 expires=storedSession.expiry, httponly=httponly,
                                 domain=domain, path=path, secure=secure)
