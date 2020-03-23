@@ -157,5 +157,21 @@ def create(db):
         innerHeight = db.Column(db.Integer, nullable=False, default=0)
 
 
-    return Participant, Progress, RadioGridLog, Display
+    class SessionStore(db.Model):
+        __tablename__ = "session_store"
+
+        sessionID = db.Column(db.String(255), primary_key=True)
+        #participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'), nullable=True)
+        data = db.Column(db.Text)
+        expiry = db.Column(db.DateTime)
+
+        def __repr__(self):
+            return '<Session data {0!s}>'.format(self.data)
+
+        @property
+        def expired(self):
+            #print("Session ID {3}: {0} is None or {1} <= {2}".format(self.expiry, self.expiry, datetime.datetime.utcnow(), self.sessionID))
+            return self.expiry is None or self.expiry <= datetime.datetime.utcnow()
+
+    return Participant, Progress, RadioGridLog, Display, SessionStore
 

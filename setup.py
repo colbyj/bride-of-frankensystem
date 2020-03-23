@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='bride-of-frankensystem',
-    version='1.0',
+    version='1.1',
     packages=['', 'BOFS', 'BOFS.admin', 'BOFS.default'],
     package_data={
         'BOFS': [
@@ -22,10 +22,8 @@ setup(
         "future",
         "flask",
         "eventlet",
-        "flask-socketio",
         "sqlalchemy",
-        "flask-sqlalchemy",
-        "flask-sessionstore",
+        "flask-sqlalchemy"
     ]
 
 )

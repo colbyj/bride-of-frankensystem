@@ -1,7 +1,7 @@
 from builtins import str
 from builtins import range
 import datetime
-from flask import Blueprint, render_template, current_app, request, _app_ctx_stack
+from flask import Blueprint, render_template, current_app, request, make_response, _app_ctx_stack
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires
 import os.path
@@ -251,22 +251,36 @@ def route_current_url():
         return "/"
 
 
+#import requests.cookies
+
 @default.route("/restart")
 def route_restart():
     """
     Use this if you ever need to the user to start the experiment over for any reason.
-    I can't guantee this will always work; the safest method is always to clear the browser's cookies.
+    This tries to clear out all of the cookies.
     :return:
     """
-    if session.get("loggedIn", False):
-        # If I clear the session, I don't see to be able to use if immediately after.
-        # Therefore, I'm using the suggested alternative from SO:
-        #  https://stackoverflow.com/questions/27747578/how-do-i-clear-a-flask-session/51395792
-        [session.pop(key) for key in list(session.keys()) if
-         key != '_flashes' and key != 'loggedIn' and key != '_permanent']
-    else:
-        session.clear()
-    return redirect("/")
+
+    response = make_response(redirect("/"))
+    sessionID = request.cookies.get("session", None)
+
+    if sessionID:
+        # Delete from DB
+        ss = db.session.query(db.SessionStore).get(sessionID)
+
+        if ss:
+            db.session.delete(ss)
+            db.session.commit()
+
+    # Set cookie expiry for every route.
+    for page in page_list.page_list:
+        path = page['path']
+        if not path.startswith("/"):
+            path = "/" + path
+
+        response.set_cookie('session', expires=0, path=path)
+
+    return response
 
 
 @default.route("/submit", methods=['POST'])

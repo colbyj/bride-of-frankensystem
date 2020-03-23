@@ -9,7 +9,7 @@ import jinja2
 import sys
 import os
 from . import util
-from datetime import datetime
+from datetime import datetime, timedelta
 from .JSONQuestionnaire import JSONQuestionnaire
 from .PageList import PageList
 from .globals import referrer
@@ -50,9 +50,10 @@ class BOFSFlask(Flask):
         #self.socketio = SocketIO(self, async_mode='eventlet', manage_session=False)
 
         # Store Flask session in the database.
-        self.sess = Session()
-        self.config["SESSION_TYPE"] = "sqlalchemy"
-        self.config["SESSION_SQLALCHEMY"] = self.db
+        #self.sess = Session()
+        #self.config["SESSION_TYPE"] = "sqlalchemy"
+        #self.config["SESSION_SQLALCHEMY"] = self.db
+        self.session_interface = BOFSSessionInterface()
 
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
         self.add_url_rule("/JSON_questionnaire/<path:filename>", endpoint="JSON_questionnaire", view_func=self.route_JSON_questionnaire)
@@ -84,12 +85,12 @@ class BOFSFlask(Flask):
             print("!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!")
             print('\033[0m')  # End the red
 
-            super(BOFSFlask, self).run(host, port, **options)
+            super(BOFSFlask, self).run(host, port, use_reloader=False, **options)
         else:
             self.eventlet_run(self, host=host, port=port, **options)
             #self.socketio.run(self, host=host, port=port, **options)
 
-    # This is straight from Flask-SocketIO
+    # This method is straight from Flask-SocketIO
     # (https://github.com/miguelgrinberg/Flask-SocketIO/blob/master/flask_socketio/__init__.py)
     # MIT License, Copyright holder Miguel Grinberg
     def eventlet_run(self, app, host=None, port=None, **kwargs):
@@ -140,7 +141,6 @@ class BOFSFlask(Flask):
 
         if try_to_load_models: # Try to load the models too.
             self.load_models(blueprint_path)
-
 
     def load_models(self, blueprint_path):
         try:
@@ -204,3 +204,96 @@ class BOFSFlask(Flask):
     def inject_jinja_vars(self):
         return dict(flat_page_list=self.page_list.flat_page_list(), debug=self.debug, shuffle=random.shuffle)
 
+
+from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
+from werkzeug.datastructures import CallbackDict
+from uuid import uuid4
+
+
+class BOFSSessionInterface(SessionInterface):
+    serializer = TaggedJSONSerializer()
+
+    def create_db_object(self, app, sessionID):
+        storedSession = app.db.SessionStore()
+        storedSession.sessionID = sessionID
+        storedSession.expiry = datetime.utcnow() + timedelta(days=21)
+
+        app.db.session.add(storedSession)
+        app.db.session.commit()
+        return storedSession
+
+    def open_session(self, app, request):
+        sessionID = request.cookies.get("session")
+
+        # No sessionID cookie is set; create a new session.
+        if not sessionID:
+            sessionID = str(uuid4())
+            self.create_db_object(app, sessionID)
+            return BOFSSession(None, sessionID=sessionID, new=True)
+
+        storedSession = app.db.session.query(app.db.SessionStore).get(sessionID)
+
+        # The database has no session info! The cookie exists, but the session is empty.
+        if not storedSession:
+            self.create_db_object(app, sessionID)
+            return BOFSSession(None, sessionID=sessionID)
+
+        # The session has been expired, so let's clear out the DB and give a blank session
+        if storedSession.expired:
+            print("Session expired; deleting it.")
+            app.db.session.delete(storedSession)
+            app.db.session.commit()
+            return BOFSSession(None, sessionID=sessionID)
+
+        # Try to load the data from the DB into the session dict
+        try:
+            val = storedSession.data
+            data = self.serializer.loads(val)
+            return BOFSSession(data, sessionID=sessionID)  # All is well.
+        except:
+            # Nope. Something bad happened; send them a blank session
+            return BOFSSession(None, sessionID=sessionID)
+
+    def save_session(self, app, session, response):
+        domain = self.get_cookie_domain(app)
+        #path = self.get_cookie_path(app)
+        path = "/"
+
+        # Looks like the session was deleted... delete the cookie.
+        # We can't delete stuff from the DB as we don't know the ID.
+        if not session:
+            response.delete_cookie("session", domain=domain, path=path)
+            return
+
+        httponly = self.get_cookie_httponly(app)
+        secure = self.get_cookie_secure(app)
+
+        storedSession = app.db.session.query(app.db.SessionStore).get(session.sessionID)
+
+        # This must be a new session.
+        if not storedSession:
+            storedSession = self.create_db_object(app, session.sessionID)
+
+        if session.modified:
+            storedSession.data = self.serializer.dumps(dict(session))
+
+        # Only save if there's a reason to do so.
+        if session.modified or session.new:
+            app.db.session.commit()
+
+            response.set_cookie("session", session.sessionID,
+                                expires=storedSession.expiry, httponly=httponly,
+                                domain=domain, path=path, secure=secure)
+
+
+class BOFSSession(CallbackDict, SessionMixin):
+    def __init__(self, initial=None, sessionID=None, new=False):
+        def on_update(self):
+            self.modified = True
+
+        # When the dictionary is modified, self.modified will be set True
+        CallbackDict.__init__(self, initial, on_update)
+
+        self.modified = False  # Starting state
+        self.new = new
+        self.sessionID = sessionID

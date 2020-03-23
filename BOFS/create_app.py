@@ -46,7 +46,6 @@ def create_app(path, config_name='default.cfg', debug=False):
     with app.app_context():
         app.load_questionnaires()
 
-    app.sess.init_app(app)
     app.db.create_all()
 
     return app
