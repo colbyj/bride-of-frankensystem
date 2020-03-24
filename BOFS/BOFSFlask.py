@@ -13,7 +13,6 @@ from datetime import datetime, timedelta
 from .JSONQuestionnaire import JSONQuestionnaire
 from .PageList import PageList
 from .globals import referrer
-from flask_sessionstore import Session
 import random
 
 
