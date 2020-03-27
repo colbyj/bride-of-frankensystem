@@ -276,6 +276,12 @@ class BOFSSessionInterface(SessionInterface):
         if session.modified:
             storedSession.data = self.serializer.dumps(dict(session))
 
+        if 'participantID' in session:
+            storedSession.participantID = session['participantID']
+
+        if 'mTurkID' in session:
+            storedSession.mTurkID = session['mTurkID']
+
         # Only save if there's a reason to do so.
         if session.new or session.modified:
             app.db.session.commit()

@@ -4,6 +4,7 @@ import datetime
 from flask import Blueprint, render_template, current_app, request, make_response, _app_ctx_stack
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires
+from BOFS.BOFSFlask import BOFSSessionInterface, BOFSSession
 import os.path
 import uuid
 
@@ -109,27 +110,45 @@ def route_start_mturk():
         p.mTurkID = str(request.form['mTurkID']).strip()
         p.code = uuid.uuid4().hex
 
-        # Check to see if this MTurkID has been used already. If so, grab their previously assigned condition
-        pOthers = db.session.query(db.Participant). \
-            filter(
-            db.Participant.mTurkID == p.mTurkID,
-            db.Participant.participantID != p.participantID,
-            db.Participant.condition != -1
-        ).all()
-
-        if pOthers and len(pOthers) > 0:
-            p.condition = pOthers[0].condition
-            for pOther in pOthers:
-                # Reset the condition for the past attempt in order to
-                # not screw up condition assignment for everyone else.
-                pOther.condition = -1
-            session['condition'] = p.condition
-
         session['code'] = p.code
         session['mTurkID'] = p.mTurkID
 
-        db.session.commit()
-        return redirect("/redirect_next_page")
+        sessionFromMTurkID = db.session.query(db.SessionStore).\
+            filter(db.SessionStore.mTurkID == p.mTurkID).\
+            order_by(db.desc(db.SessionStore.createdOn)).all()
+
+        # This person has tried the task before and didn't finish. Let's load their information.
+        # This will leave an orphaned participant in the DB (they will load up and use their old participantID).
+        # If they had previously finished an attempt, then let them start over.
+        if sessionFromMTurkID and len(sessionFromMTurkID) > 0:
+            pFromMTurkID = db.session.query(db.Participant). \
+                filter(
+                    db.Participant.mTurkID == p.mTurkID,
+                    db.Participant.participantID == sessionFromMTurkID[0].participantID,
+                    db.Participant.finished !=  True
+                ).all()
+
+            if pFromMTurkID and len(pFromMTurkID) > 0:
+                dictData = BOFSSessionInterface.serializer.loads(sessionFromMTurkID[0].data)
+                for key in dictData.keys():
+                    session[key] = dictData[key]
+
+                #session.sessionID = sessonFromMTurkID[0].
+
+                # Ensure that if conditions are use, their incomplete attempt doesn't skew the counts.
+                p.condition = 0
+                db.session.commit()
+
+                # Their condition will be loaded from the session data already. This is extra insurance.
+                for pPastAttempt in pFromMTurkID:
+                    # Find the attempt that has the actual condition set (second attempts onward will have condition 0)
+                    if pPastAttempt.condition != 0:
+                        session['condition'] = pPastAttempt.condition
+
+                if 'currentUrl' in dictData:
+                    return redirect(session['currentUrl'])  # Redirect them to where they should actually be.
+
+        return redirect('/redirect_next_page')
 
     return render_template('mturk_id.html', crumbs=create_breadcrumbs())
 

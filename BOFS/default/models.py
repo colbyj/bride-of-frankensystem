@@ -161,16 +161,17 @@ def create(db):
         __tablename__ = "session_store"
 
         sessionID = db.Column(db.String(255), primary_key=True)
-        #participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'), nullable=True)
+        participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'), nullable=True)
+        mTurkID = db.Column(db.Text, nullable=True)
         data = db.Column(db.Text)
         expiry = db.Column(db.DateTime)
+        createdOn = db.Column(db.DateTime, nullable=False, default=db.func.now())
 
         def __repr__(self):
             return '<Session data {0!s}>'.format(self.data)
 
         @property
         def expired(self):
-            #print("Session ID {3}: {0} is None or {1} <= {2}".format(self.expiry, self.expiry, datetime.datetime.utcnow(), self.sessionID))
             return self.expiry is None or self.expiry <= datetime.datetime.utcnow()
 
     return Participant, Progress, RadioGridLog, Display, SessionStore
