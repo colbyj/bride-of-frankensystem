@@ -10,7 +10,7 @@ def create(db):
         mTurkID = db.Column(db.String(50), nullable=False, default="")
         ipAddress = db.Column(db.String(32), nullable=False, default="")
         userAgent = db.Column(db.String(255), nullable=False, default="")
-        condition = db.Column(db.Integer, nullable=False, default=0)
+        condition = db.Column(db.Integer, nullable=True, default=0)
         timeStarted = db.Column(db.DateTime, nullable=False, default=db.func.now())  # Starts after consent
         timeEnded = db.Column(db.DateTime, nullable=True)
         finished = db.Column(db.Boolean, nullable=False, default=False)
@@ -89,7 +89,12 @@ def create(db):
                 printText += "User put in condition {}.".format(self.condition)
                 print(printText)
             else:
-                self.condition = -1
+                self.condition = None
+
+        def release_condition(self):
+            if self.condition is not None and self.condition > 0:
+                self.condition = -self.condition
+
 
         @property
         def duration(self):

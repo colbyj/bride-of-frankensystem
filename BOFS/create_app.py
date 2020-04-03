@@ -28,6 +28,9 @@ def create_app(path, config_name='default.cfg', debug=False):
     if not 'EXPORT' in app.config:
         app.config['EXPORT'] = []
 
+    if not 'ALLOW_RETAKES' in app.config:
+        app.config['ALLOW_RETAKES'] = False
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
             continue

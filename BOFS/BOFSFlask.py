@@ -201,7 +201,11 @@ class BOFSFlask(Flask):
                "If that doesn't work, please clear your cookies or switch web browsers.", 404
 
     def inject_jinja_vars(self):
-        return dict(flat_page_list=self.page_list.flat_page_list(), debug=self.debug, shuffle=random.shuffle)
+        return dict(
+            flat_page_list=self.page_list.flat_page_list(),
+            debug=self.debug,
+            shuffle=random.shuffle,
+            crumbs=util.create_breadcrumbs())
 
 
 from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
@@ -264,7 +268,7 @@ class BOFSSessionInterface(SessionInterface):
             response.delete_cookie("session", domain=domain, path=path)
             return
 
-        httponly = self.get_cookie_httponly(app)
+        httpOnly = self.get_cookie_httponly(app)
         secure = self.get_cookie_secure(app)
 
         storedSession = app.db.session.query(app.db.SessionStore).get(session.sessionID)
@@ -288,7 +292,7 @@ class BOFSSessionInterface(SessionInterface):
 
         if session.new:
             response.set_cookie("session", session.sessionID,
-                                expires=storedSession.expiry, httponly=httponly,
+                                expires=storedSession.expiry, httponly=httpOnly,
                                 domain=domain, path=path, secure=secure)
 
 

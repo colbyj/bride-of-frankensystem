@@ -117,6 +117,8 @@ def route_start_mturk():
             filter(db.SessionStore.mTurkID == p.mTurkID).\
             order_by(db.desc(db.SessionStore.createdOn)).all()
 
+        allowRetakes = current_app.config['ALLOW_RETAKES']
+
         # This person has tried the task before and didn't finish. Let's load their information.
         # This will leave an orphaned participant in the DB (they will load up and use their old participantID).
         # If they had previously finished an attempt, then let them start over.
@@ -124,25 +126,28 @@ def route_start_mturk():
             pFromMTurkID = db.session.query(db.Participant). \
                 filter(
                     db.Participant.mTurkID == p.mTurkID,
-                    db.Participant.participantID == sessionFromMTurkID[0].participantID,
-                    db.Participant.finished !=  True
-                ).all()
+                    db.Participant.participantID == sessionFromMTurkID[0].participantID
+                )
+
+            if allowRetakes:
+                # If allow retakes is True, then don't try to re-load data from past attempts that were completed.
+                pFromMTurkID = pFromMTurkID.filter(db.Participant.finished != True)
+
+            pFromMTurkID = pFromMTurkID.all()
 
             if pFromMTurkID and len(pFromMTurkID) > 0:
                 dictData = BOFSSessionInterface.serializer.loads(sessionFromMTurkID[0].data)
                 for key in dictData.keys():
                     session[key] = dictData[key]
 
-                #session.sessionID = sessonFromMTurkID[0].
-
-                # Ensure that if conditions are use, their incomplete attempt doesn't skew the counts.
-                p.condition = 0
+                # Ensure that if conditions are used, their incomplete attempt doesn't skew the counts.
+                p.condition = None
                 db.session.commit()
 
                 # Their condition will be loaded from the session data already. This is extra insurance.
                 for pPastAttempt in pFromMTurkID:
                     # Find the attempt that has the actual condition set (second attempts onward will have condition 0)
-                    if pPastAttempt.condition != 0:
+                    if pPastAttempt.condition != 0 and pPastAttempt.condition is not None:
                         session['condition'] = pPastAttempt.condition
 
                 if 'currentUrl' in dictData:
@@ -150,7 +155,7 @@ def route_start_mturk():
 
         return redirect('/redirect_next_page')
 
-    return render_template('mturk_id.html', crumbs=create_breadcrumbs())
+    return render_template('mturk_id.html')
 
 
 @default.route("/questionnaire/<questionnaireName>", methods=['POST', 'GET'])
@@ -173,7 +178,6 @@ def route_questionnaire(questionnaireName, tag=""):
 
     return render_template('questionnaire.html',
                            tag=tag,
-                           crumbs=create_breadcrumbs(),
                            q=q.jsonData,
                            timeStarted=datetime.datetime.now())
 

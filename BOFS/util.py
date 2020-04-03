@@ -131,6 +131,9 @@ def create_breadcrumbs():
 
     # Create breadcrumbs (duplicates handled no differently than anything else)
     for i, page in enumerate(page_list):
+        if page['name'] == '':
+            continue
+
         crumb = {'name': page['name'], 'active': False}
 
         if page_list.index(page) == currentIndex:

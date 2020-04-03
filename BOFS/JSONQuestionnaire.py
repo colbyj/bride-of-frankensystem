@@ -107,20 +107,29 @@ class JSONQuestionnaire(object):
                 tableAttr[field.id] = db.Column(db.Text, nullable=False, default="")
 
         if "participant_calculations" in self.jsonData:
+            def execute_calculation(self, calculation):
+                try:
+                    return eval(calculation)
+                except Exception as e:
+                    error = "Unable to add calculated field `{0}` to the export of questionnaire `{1}`. \n" \
+                            "The preprocessed calculation string was: `{2}`\n" \
+                            "The thrown exception was: {3}".format(field_name, self.__tablename__, calculation, e)
+                    print(error)
+                    raise Exception(error)
+
             for field_name, calculation in self.jsonData["participant_calculations"].items():
                 self.calcFields.append(field_name)
                 calculation = self.preprocess_calculation_string(calculation)
 
-                tableAttr[field_name] = lambda self, calculation=calculation: (eval(calculation))
-
-        #pprint.pprint(tableAttr)
+                tableAttr[field_name] = lambda self, calculation=calculation: execute_calculation(self, calculation)
 
         self.dbClass = type(self.fileName, (db.Model,), tableAttr)
 
     # Replace field_name with self.field_name
     def preprocess_calculation_string(self, calculationString):
         for field in self.fields:
-            calculationString = re.sub("{}(?=,|\]|\)|-|\+|/\|\*)".format(field.id), "getattr(self, '{}')".format(field.id), calculationString)
+            calculationString = re.sub("{}(?=,|\]|\)|-|\+|/|\*| |$)".
+                                       format(field.id), "getattr(self, '{}')".format(field.id), calculationString)
 
         return calculationString
 
