@@ -297,6 +297,10 @@ def route_restart():
 
     # Set cookie expiry for every route.
     for page in page_list.page_list:
+        # TODO: Get all paths in page_list, for all conditions.
+        if 'path' not in page:
+            continue
+
         path = page['path']
         if not path.startswith("/"):
             path = "/" + path

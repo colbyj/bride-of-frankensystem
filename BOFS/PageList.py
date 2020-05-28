@@ -44,7 +44,7 @@ class PageList(object):
 
         questionnaires = list()
 
-        for i in range(0, condition_count):  # iterate through all conditions; we want all possible questionnaires.
+        for i in range(0, condition_count+1):  # iterate through all conditions; we want all possible questionnaires.
             for page in self.flat_page_list(i):
                 if not page['path'].startswith("questionnaire/"):
                     continue  # This isn't a questionnaire
