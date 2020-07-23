@@ -303,7 +303,8 @@ def variance(numbers):
     elif py3statistics:
         return p3var(numbers)
     mn = mean(numbers)
-    variance = old_div(sum([(e - mn) ** 2 for e in numbers]), len(numbers))
+    variance = sum([(e - mn) ** 2 for e in numbers]) / float(len(numbers))
+    return variance
 
 def std(numbers):
     if numpy:

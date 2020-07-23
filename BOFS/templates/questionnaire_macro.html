@@ -21,7 +21,7 @@
             {% for question in q.questions %}
                 <div class="question padding">
                     {% if question.title %}
-                        <h3>{{ question.title }}</h3>
+                        <h3>{{ question.title | safe }}</h3>
                     {% elif question.instructions %}
                         <h3>{{ question.instructions | safe }}</h3>
                     {% endif %}
@@ -33,15 +33,13 @@
 
                     {% if question.questiontype == "radiolist" %}
                         {% set lables = question.lables %}
-
                         {% if question.shuffle %}
                             {% do shuffle(question.labels) %}
                         {% endif %}
-
                         {% for label in question.labels %}
                         <div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
                             <input class="form-check-input" type="radio" name="{{ question.id }}" id="{{ question.id }}{{ loop.index }}" value="{{ label }}" {{ "required" if question.required }}>
-                            <label class="form-check-label" for="{{ question.id }}{{ loop.index }}">{{ label }}</label>
+                            <label class="form-check-label" for="{{ question.id }}{{ loop.index }}">{{ question.label_html[loop.index0] if question.label_html else label }}</label>
                         </div>
                         {% endfor %}
                     {% endif %}
@@ -54,15 +52,15 @@
                         {% for check_question in question.questions %}
                         <div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
                             <input class="form-check-input" type="checkbox" name="{{ check_question.id }}" id="{{ check_question.id }}" value="1">
-                            <label class="form-check-label" for="{{ check_question.id }}">{{ check_question.text }}</label>
+                            <label class="form-check-label" for="{{ check_question.id }}">{{ check_question.text | safe }}</label>
                         </div>
                         {% endfor %}
                     {% endif %}
 
                     {% if question.questiontype == "slider" %}
                         <div style="width: {{ question.width if question.width else default_field_width }}px;">
-                            <label for="{{ question.id }}" style="float:left;">{{ question.left }}</label>
-                            <label for="{{ question.id }}" style="float:right;">{{ question.right }}</label>
+                            <label for="{{ question.id }}" style="float:left;">{{ question.left | safe }}</label>
+                            <label for="{{ question.id }}" style="float:right;">{{ question.right | safe }}</label>
                             <div style="clear:both;"></div>
                         </div>
                         <input type="range" name="{{ question.id }}" id="{{ question.id }}" min="1" max="{{ question.tick_count }}" style="width: {{ question.width if question.width else default_field_width }}px;">
