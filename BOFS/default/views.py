@@ -135,6 +135,7 @@ def route_start_mturk():
 
             pFromMTurkID = pFromMTurkID.all()
 
+            # Load their old session
             if pFromMTurkID and len(pFromMTurkID) > 0:
                 dictData = BOFSSessionInterface.serializer.loads(sessionFromMTurkID[0].data)
                 for key in dictData.keys():
@@ -150,7 +151,7 @@ def route_start_mturk():
                     if pPastAttempt.condition != 0 and pPastAttempt.condition is not None:
                         session['condition'] = pPastAttempt.condition
 
-                if 'currentUrl' in dictData:
+                if 'currentUrl' in dictData and session['currentUrl'] not in ('startMTurk', 'start_mturk'):
                     return redirect(session['currentUrl'])  # Redirect them to where they should actually be.
 
         return redirect('/redirect_next_page')
