@@ -160,24 +160,44 @@ def route_export_item_timing():
 def create_export_base_queries(export_dict):
     table = getattr(db, export_dict['table'])
 
-    groupBy = getattr(table, export_dict['group_by'])
-    orderBy = getattr(table, export_dict['order_by'])
+    levels = None
     filter = db.text(export_dict['filter'])
+    groupBy = None
+    orderBy = None
 
-    levelsQ = db.session.query(groupBy). \
-        group_by(groupBy). \
-        order_by(orderBy). \
-        filter(filter)
+    # determine how many columns to add to the export
+    if 'group_by' in export_dict and export_dict['group_by'] != '':
+        groupBy = getattr(table, export_dict['group_by'])
 
-    levels = levelsQ.all()
-    # This will determine how many columns to add to the export
+
+
+        if 'order_by' in export_dict and export_dict['order_by'] != '':
+            orderBy = getattr(table, export_dict['order_by'])
+
+        levelsQ = db.session.query(groupBy)
+
+        if groupBy:
+            levelsQ = levelsQ.group_by(groupBy)
+
+        if orderBy:
+            levelsQ = levelsQ.order_by(orderBy)
+
+        levels = levelsQ.filter(filter).all()
+
     # TODO: What if there is no grouping column?
 
     #pk = db.inspect(table).primary_key[0]
-    baseQuery = db.session.query(table). \
-        group_by(getattr(table, 'participantID'), groupBy). \
-        order_by(orderBy). \
-        filter(filter)
+    baseQuery = db.session.query(table)
+
+    if groupBy:
+        baseQuery = baseQuery.group_by(getattr(table, 'participantID'), groupBy)
+    else:
+        baseQuery = baseQuery.group_by(getattr(table, 'participantID'))
+
+    if orderBy:
+        baseQuery = baseQuery.order_by(orderBy)
+
+    baseQuery = baseQuery.filter(filter)
 
     # Add the fields to the basequery
     for field in export_dict['fields']:
@@ -307,14 +327,18 @@ def route_export():
 
     # For custom exports, add columns based on levels determined by prior query
     for export in customExports:
-        for level in export['levels']:
+        if export['levels']:
+            for level in export['levels']:
+                for field in export['options']['fields']:
+                    columnList.append(str.format(u"{}_{}", field, str(level[0]).replace(" ", "_")))
+        else:
             for field in export['options']['fields']:
-                columnList.append(str.format(u"{}_{}", field, str(level[0]).replace(" ", "_")))
-
+                columnList.append(str.format(u"{}", field))
 
     # Finally construct the CSV string.
     csvString = ",".join(columnList) + "\n"  # CSV Header
 
+    # Iterate through each participant's data
     for row in rows:
         csvString += str.format(u"{},{},{},{},{}",
                                 row.Participant.participantID,
@@ -349,33 +373,59 @@ def route_export():
             query = query.filter(db.literal_column('participantID') == row.Participant.participantID)
             customExportData = query.all()  # Running separate queries will get the job done, but be kind of slow with many participants...
 
-            # build dictionary with one row per level...
-            customExportRMs = {}
 
-            for r in customExportData:
-                classValues = getattr(r, export['options']['table'])
-                groupValue = getattr(classValues, export['options']['group_by'])
-                customExportRMs[groupValue] = r
+            if export['levels']:
+                # build dictionary with one row per level...
+                customExportRMs = {}
 
-            for level in export['levels']:
+                # Each unique level in the grouping will have one row. Store the relvant row so it's easier to access
+                for r in customExportData:
+                    classValues = getattr(r, export['options']['table'])
+                    groupValue = getattr(classValues, export['options']['group_by'])
+                    customExportRMs[groupValue] = r
+
+                for level in export['levels']:
+                    for field in export['options']['fields']:
+                        if not level[0] in customExportRMs:
+                            csvString += ","
+                            break  # Missing data!
+
+                        classValues = getattr(customExportRMs[level[0]], export['options']['table'])
+
+                        # The entire table class is added to the query, as well as the individual fields. So try both.
+                        # Try class first due to it also having access to python properties.
+                        if hasattr(classValues, field):
+                            value = getattr(classValues, field)
+                        else:
+                            value = getattr(customExportRMs[level[0]], field)
+
+                        if callable(value):
+                            value = value()
+
+                        csvString += "," + escape_csv(value)
+            elif len(customExportData) != 0:
+                r = customExportData[0]
+
                 for field in export['options']['fields']:
-                    if not level[0] in customExportRMs:
-                        csvString += ","
-                        break  # Missing data!
+                    classValues = getattr(r, export['options']['table'])
 
-                    classValues = getattr(customExportRMs[level[0]], export['options']['table'])
-
-                    # The entire table class is added to the query, as well as the individual fields. So try both.
-                    # Try class first due to it also having access to python properties.
                     if hasattr(classValues, field):
                         value = getattr(classValues, field)
                     else:
-                        value = getattr(customExportRMs[level[0]], field)
+                        value = getattr(r, field)
 
                     if callable(value):
                         value = value()
 
                     csvString += "," + escape_csv(value)
+
+            else:
+                customExport = ""
+
+                for r in customExportData:
+                    classValues = getattr(r, export['options']['table'])
+
+
 
         csvString += "\n"
 
