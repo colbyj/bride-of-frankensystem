@@ -151,8 +151,10 @@ def route_start_mturk():
                     if pPastAttempt.condition != 0 and pPastAttempt.condition is not None:
                         session['condition'] = pPastAttempt.condition
 
-                if 'currentUrl' in dictData and session['currentUrl'] not in ('startMTurk', 'start_mturk'):
-                    return redirect(session['currentUrl'])  # Redirect them to where they should actually be.
+                # Redirect them to where they should actually be, only if that location is not going to put them in a weird loop.
+                # TODO: Dynamically create a list of pages to avoid redirecting to from PAGE_LIST
+                if 'currentUrl' in dictData and session['currentUrl'] not in ('startMTurk', 'start_mturk', 'consent'):
+                    return redirect(session['currentUrl'])
 
         return redirect('/redirect_next_page')
 
