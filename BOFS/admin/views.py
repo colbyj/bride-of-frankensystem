@@ -165,18 +165,22 @@ def create_export_base_queries(export_dict):
     groupBy = None
     orderBy = None
 
-    # determine how many columns to add to the export
+    if 'order_by' in export_dict and export_dict['order_by'] != '':
+        orderBy = getattr(table, export_dict['order_by'])
+
+    # determine how many columns to add to the export. If group_by is not used, then it's just one column
     if 'group_by' in export_dict and export_dict['group_by'] != '':
-        groupBy = getattr(table, export_dict['group_by'])
+        levelsQ = db.session.query()
 
-
-
-        if 'order_by' in export_dict and export_dict['order_by'] != '':
-            orderBy = getattr(table, export_dict['order_by'])
-
-        levelsQ = db.session.query(groupBy)
-
-        if groupBy:
+        if isinstance(export_dict['group_by'], list):
+            groupBy = []
+            for gb in export_dict['group_by']:
+                groupBy.append(getattr(table, gb))
+                levelsQ = levelsQ.add_columns(getattr(table, gb))
+                levelsQ = levelsQ.group_by(getattr(table, gb))
+        else:
+            groupBy = getattr(table, export_dict['group_by'])
+            levelsQ = levelsQ.add_columns(groupBy)
             levelsQ = levelsQ.group_by(groupBy)
 
         if orderBy:
@@ -184,13 +188,16 @@ def create_export_base_queries(export_dict):
 
         levels = levelsQ.filter(filter).all()
 
-    # TODO: What if there is no grouping column?
-
     #pk = db.inspect(table).primary_key[0]
     baseQuery = db.session.query(table)
 
     if groupBy:
-        baseQuery = baseQuery.group_by(getattr(table, 'participantID'), groupBy)
+        if groupBy:
+            if isinstance(groupBy, list):
+                for gb in groupBy:
+                    baseQuery = baseQuery.group_by(getattr(table, 'participantID'), gb)
+            else:
+                baseQuery = baseQuery.group_by(getattr(table, 'participantID'), groupBy)
     else:
         baseQuery = baseQuery.group_by(getattr(table, 'participantID'))
 
@@ -330,7 +337,10 @@ def route_export():
         if export['levels']:
             for level in export['levels']:
                 for field in export['options']['fields']:
-                    columnList.append(str.format(u"{}_{}", field, str(level[0]).replace(" ", "_")))
+                    columnHeader = str.format(u"{}", field)
+                    for levelName in level:
+                        columnHeader += str.format(u"_{}", str(levelName).replace(" ", "_"))
+                    columnList.append(columnHeader)
         else:
             for field in export['options']['fields']:
                 columnList.append(str.format(u"{}", field))
@@ -373,7 +383,6 @@ def route_export():
             query = query.filter(db.literal_column('participantID') == row.Participant.participantID)
             customExportData = query.all()  # Running separate queries will get the job done, but be kind of slow with many participants...
 
-
             if export['levels']:
                 # build dictionary with one row per level...
                 customExportRMs = {}
@@ -381,23 +390,32 @@ def route_export():
                 # Each unique level in the grouping will have one row. Store the relvant row so it's easier to access
                 for r in customExportData:
                     classValues = getattr(r, export['options']['table'])
-                    groupValue = getattr(classValues, export['options']['group_by'])
+                    groupValue = ""
+                    if isinstance(export['options']['group_by'], list):
+                        for gb in export['options']['group_by']:
+                            groupValue += str(getattr(classValues, gb))
+                    else:
+                        groupValue = getattr(classValues, export['options']['group_by'])
                     customExportRMs[groupValue] = r
 
                 for level in export['levels']:
+                    levelName = ""
+                    for levelPart in level:
+                        levelName += str(levelPart)
+
                     for field in export['options']['fields']:
-                        if not level[0] in customExportRMs:
+                        if not levelName in customExportRMs:
                             csvString += ","
                             break  # Missing data!
 
-                        classValues = getattr(customExportRMs[level[0]], export['options']['table'])
+                        classValues = getattr(customExportRMs[levelName], export['options']['table'])
 
                         # The entire table class is added to the query, as well as the individual fields. So try both.
                         # Try class first due to it also having access to python properties.
                         if hasattr(classValues, field):
                             value = getattr(classValues, field)
                         else:
-                            value = getattr(customExportRMs[level[0]], field)
+                            value = getattr(customExportRMs[levelName], field)
 
                         if callable(value):
                             value = value()
