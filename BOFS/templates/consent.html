@@ -16,6 +16,18 @@
 
         });
     </script>
+
+    <style>
+        .hny{
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 0;
+            width: 0;
+            z-index: -1;
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -53,6 +65,10 @@
                 </div>
                 <div class="invalid-feedback">
                     You must provide your consent to continue.
+                </div>
+                <div class="hny">
+                    <input type="email" name="email" id="email" value="">
+                    <label for="email">Enter your email</label>
                 </div>
             </div>
         </div>
