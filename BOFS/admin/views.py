@@ -98,12 +98,25 @@ def fetch_progress():
     return pages, progress
 
 
+def fetch_progress_summary():
+    return db.session.query(
+        db.Participant.condition,
+        db.func.count(db.Participant.participantID).label('count'),
+        db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
+        db.func.avg(db.case(
+            [(db.Participant.timeEnded == None, None)],
+            else_=(db.func.julianday(db.Participant.timeEnded) - db.func.julianday(db.Participant.timeStarted)) * 1440
+        )).label('minutes')).\
+        group_by(db.Participant.condition).all()
+
+
 @admin.route("/progress")
 @verify_admin
 def route_progress():
     pages, progress = fetch_progress()
+    summary = fetch_progress_summary()
 
-    return render_template("progress.html", pages=pages, progress=progress)
+    return render_template("progress.html", pages=pages, progress=progress, summary=summary)
 
 
 @admin.route("/progress_ajax")
@@ -112,6 +125,12 @@ def route_progress_ajax():
     pages, progress = fetch_progress()
     return render_template("progress_ajax.html", pages=pages, progress=progress)
 
+
+@admin.route("/progress_summary_ajax")
+@verify_admin
+def route_progress_summary_ajax():
+    summary = fetch_progress_summary()
+    return render_template("progress_summary_ajax.html", summary=summary)
 
 
 @admin.route("/export_item_timing")

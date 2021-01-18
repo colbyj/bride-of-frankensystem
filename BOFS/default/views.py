@@ -31,8 +31,13 @@ def route_consent():
     :return:
     """
     if request.method == 'POST':
+        if 'email' in request.form and request.form['email'] != '':
+            # We caught someone with our honeypot.
+            return render_template("consent.html")
+
         provide_consent(True)
         return redirect("/redirect_next_page")
+
     return render_template("consent.html")
 
 
