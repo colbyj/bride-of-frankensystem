@@ -1,0 +1,20 @@
+<table class="table table-striped" id="summary">
+    <thead>
+    <tr>
+        <th scope="col" style="text-align: right; width: 50px;">Condition</th>
+        <th scope="col" style="text-align: center; width: 70px;">Count</th>
+        <th scope="col" style="text-align: center; width: 70px;">Finished</th>
+        <th scope="col" style="text-align: center; min-width: 70px;">Time Taken (Minutes)</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for r in summary %}
+        <tr>
+            <td style="text-align: left">{{ r.condition }}</td>
+            <td style="text-align: right">{{ r.count }}</td>
+            <td style="text-align: right">{{ r.countFinished }}</td>
+            <td style="text-align: right">{{ r.minutes | float | round(2) }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
