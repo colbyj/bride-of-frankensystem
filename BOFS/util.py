@@ -270,6 +270,16 @@ def int_or_0(value):
         return 0
     return value
 
+
+def display_time(seconds):
+    if not seconds:
+        return seconds
+    if seconds > 60:
+        return str("{:.0f}:{:02.0f}").format((seconds / 60), (seconds % 60))
+    else:
+        return str(int(seconds))
+
+
 numpy = False
 py3statistics = False
 
@@ -289,6 +299,7 @@ except Exception as e1:
     except Exception as e2:
         print("Warning: Unable to import either NumPy or Python 3's statistics library!")
 
+
 # Some math functions
 def mean(numbers):
     if numpy:
@@ -296,6 +307,7 @@ def mean(numbers):
     elif py3statistics:
         return p3mean(numbers)
     return float(sum(numbers)) / max(len(numbers), 1)
+
 
 def variance(numbers):
     if numpy:
@@ -306,12 +318,14 @@ def variance(numbers):
     variance = sum([(e - mn) ** 2 for e in numbers]) / float(len(numbers))
     return variance
 
+
 def std(numbers):
     if numpy:
         return npstd(numbers)
     elif py3statistics:
         return p3std(numbers)
     return math.sqrt(variance(numbers))
+
 
 def median(numbers):
     if numpy:

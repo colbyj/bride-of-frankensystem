@@ -1,5 +1,12 @@
 from builtins import range
 import datetime
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import column_property
+from sqlalchemy.ext.declarative import declared_attr
+from BOFS.util import display_time
+
+
+abandoned_minutes = 15
 
 
 def create(db):
@@ -95,30 +102,46 @@ def create(db):
             if self.condition is not None and self.condition > 0:
                 self.condition = -self.condition
 
-
-        @property
+        @hybrid_property
         def duration(self):
             if self.timeEnded is None:
                 return 0
             return (self.timeEnded - self.timeStarted).total_seconds()
+        
+        @duration.expression
+        def duration(cls):
+            return db.case(
+                [(cls.timeEnded == None, None)],
+                else_=(db.func.julianday(cls.timeEnded) - db.func.julianday(cls.timeStarted)) * 86400
+            ).label('duration')
+
+        @declared_attr
+        def is_in_progress(cls):
+            return column_property(
+                ((db.func.julianday(db.func.now()) - db.func.julianday(cls.timeStarted)) * 1440 <= abandoned_minutes).label('is_in_progress')
+            )
+
+        @declared_attr
+        def is_abandoned(cls):
+            return column_property(
+                (cls.finished == False and ((db.func.julianday(db.func.now()) - db.func.julianday(cls.timeStarted)) * 1440 > abandoned_minutes)).label('is_abandoned')
+            )
 
         def display_duration(self):
             """
             display the time taken or status
             :return:
             """
+
             if self.timeEnded is None:
-                if self.lastActiveOn > datetime.datetime.now() - datetime.timedelta(minutes=15):
+                if self.lastActiveOn > datetime.datetime.now() - datetime.timedelta(minutes=abandoned_minutes):
                     return "In Progress"
                 else:
                     return "Abandoned"
 
             else:
                 seconds = (self.timeEnded - self.timeStarted).total_seconds()
-                if seconds > 60:
-                    return str("{:.0f}:{:02.0f}").format((seconds / 60), (seconds % 60))
-                return str(int(seconds))
-
+                return display_time(seconds)
 
     class Progress(db.Model):
         __tablename__ = "progress"

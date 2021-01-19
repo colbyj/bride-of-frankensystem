@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from builtins import str
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response
 from BOFS.globals import db, questionnaires, page_list
-from BOFS.util import fetch_condition_count
+from BOFS.util import fetch_condition_count, display_time
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag
 import json
 from .questionnaireResults import *
@@ -99,24 +99,37 @@ def fetch_progress():
 
 
 def fetch_progress_summary():
-    return db.session.query(
+    summary_groups = db.session.query(
         db.Participant.condition,
         db.func.count(db.Participant.participantID).label('count'),
+        db.func.sum(db.cast(db.Participant.is_abandoned, db.Integer)).label('countAbandoned'),
+        db.func.sum(db.cast(db.Participant.is_in_progress, db.Integer)).label('countInProgress'),
         db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
-        db.func.avg(db.case(
-            [(db.Participant.timeEnded == None, None)],
-            else_=(db.func.julianday(db.Participant.timeEnded) - db.func.julianday(db.Participant.timeStarted)) * 1440
-        )).label('minutes')).\
+        db.func.avg(db.Participant.duration).label('minutes')).\
         group_by(db.Participant.condition).all()
+
+    summary = db.session.query(
+        db.func.count(db.Participant.participantID).label('count'),
+        db.func.sum(db.cast(db.Participant.is_abandoned, db.Integer)).label('countAbandoned'),
+        db.func.sum(db.cast(db.Participant.is_in_progress, db.Integer)).label('countInProgress'),
+        db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
+        db.func.min(db.Participant.duration).label('minSeconds'),
+        db.func.max(db.Participant.duration).label('maxSeconds'),
+        db.func.avg(db.Participant.duration).label('seconds')).\
+        one()
+
+    return summary_groups, summary
 
 
 @admin.route("/progress")
 @verify_admin
 def route_progress():
     pages, progress = fetch_progress()
-    summary = fetch_progress_summary()
+    summary_groups, summary = fetch_progress_summary()
 
-    return render_template("progress.html", pages=pages, progress=progress, summary=summary)
+    return render_template("progress.html",
+                           pages=pages, progress=progress,
+                           summary_groups=summary_groups, summary=summary, display_time=display_time)
 
 
 @admin.route("/progress_ajax")
@@ -129,8 +142,9 @@ def route_progress_ajax():
 @admin.route("/progress_summary_ajax")
 @verify_admin
 def route_progress_summary_ajax():
-    summary = fetch_progress_summary()
-    return render_template("progress_summary_ajax.html", summary=summary)
+    summary_groups, summary = fetch_progress_summary()
+    return render_template("progress_summary_ajax.html",
+                           summary_groups=summary_groups, summary=summary, display_time=display_time)
 
 
 @admin.route("/export_item_timing")

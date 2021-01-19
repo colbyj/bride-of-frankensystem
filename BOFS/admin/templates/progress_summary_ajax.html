@@ -1,20 +1,54 @@
-<table class="table table-striped" id="summary">
-    <thead>
-    <tr>
-        <th scope="col" style="text-align: right; width: 50px;">Condition</th>
-        <th scope="col" style="text-align: center; width: 70px;">Count</th>
-        <th scope="col" style="text-align: center; width: 70px;">Finished</th>
-        <th scope="col" style="text-align: center; min-width: 70px;">Time Taken (Minutes)</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for r in summary %}
-        <tr>
-            <td style="text-align: left">{{ r.condition }}</td>
-            <td style="text-align: right">{{ r.count }}</td>
-            <td style="text-align: right">{{ r.countFinished }}</td>
-            <td style="text-align: right">{{ r.minutes | float | round(2) }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+<div id="summary">
+    <div style="display: flex; flex-wrap: wrap; margin-left: -15px;" >
+        <div class="question padding" style="flex-grow: 3; margin-left: 15px;">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th scope="col" style="text-align: right; width: 50px;">Condition</th>
+                    <th scope="col" style="text-align: center; width: 100px;">Count</th>
+                    <th scope="col" style="text-align: center; width: 100px;">In Progress</th>
+                    <th scope="col" style="text-align: center; width: 100px;">Abandoned</th>
+                    <th scope="col" style="text-align: center; width: 100px;">Finished</th>
+                    <th scope="col" style="text-align: center; min-width: 70px;">Time Taken</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in summary_groups %}
+                    <tr>
+                        <td style="text-align: left">{{ r.condition }}</td>
+                        <td style="text-align: right">{{ r.count }}</td>
+                        <td style="text-align: right">{{ r.countInProgress }}</td>
+                        <td style="text-align: right">{{ r.countAbandoned }}</td>
+                        <td style="text-align: right">{{ r.countFinished }}</td>
+                        <td style="text-align: right">{{ display_time(r.minutes)  }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="question padding" style="margin-left: 15px; flex-grow: 2">
+
+            <div style="display: flex">
+                <div style="flex-grow: 1;">
+                    <h3>Summary</h3>
+                    <div style="display: grid; grid-template-columns: 160px auto;">
+                        <b>Total Participants</b> <span>{{ summary.count }}</span>
+                        <b>In Progress</b> <span>{{ summary.countInProgress }}</span>
+                        <b>Abandoned</b> <span>{{ summary.countAbandoned }}</span>
+                        <b>Finished</b> <span>{{ summary.countFinished }}</span>
+                    </div>
+                </div>
+                <div style="flex-grow: 1; margin-left: 15px;">
+                    <div style="flex-grow: 1;">
+                    <h3>Completion Time</h3>
+                    <div style="display: grid; grid-template-columns: 120px auto;">
+                        <b>Average</b> <span>{{ display_time(summary.seconds) }}</span>
+                        <b>Minimum</b> <span>{{ display_time(summary.minSeconds) }}</span>
+                        <b>Maximum</b> <span>{{ display_time(summary.maxSeconds) }}</span>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
