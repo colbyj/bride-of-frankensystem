@@ -5,7 +5,7 @@ from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count, display_time
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag
 import json
-from .questionnaireResults import *
+from .QuestionnaireResults import *
 from datetime import datetime
 from os import path, listdir
 from sqlalchemy.orm.attributes import InstrumentedAttribute
@@ -332,7 +332,6 @@ def route_export():
         levels, baseQuery = create_export_base_queries(export)
         customExports.append({'options': export, 'base_query': baseQuery, 'levels': levels})
 
-
     # Now that the data is loaded, construct the CSV syntax.
     # Starting with the header row...
     columnList = columns['participant']
@@ -555,7 +554,6 @@ def route_preview_questionnaire(questionnaireName):
                 if "(OperationalError) no such table:" in e:
                     db.create_all()
                     errors.append(str.format(u"The error should be gone if you refresh."))
-
 
     return render_template("preview_questionnaire.html",
                            q=jsonData,

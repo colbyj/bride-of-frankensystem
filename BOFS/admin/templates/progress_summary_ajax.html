@@ -1,5 +1,6 @@
 <div id="summary">
     <div style="display: flex; flex-wrap: wrap; margin-left: -15px;" >
+        {% if 'CONDITIONS_NUM' in config and config['CONDITIONS_NUM'] > 1 %}
         <div class="question padding" style="flex-grow: 3; margin-left: 15px;">
             <table class="table table-striped">
                 <thead>
@@ -26,6 +27,7 @@
                 </tbody>
             </table>
         </div>
+        {% endif %}
         <div class="question padding" style="margin-left: 15px; flex-grow: 2">
 
             <div style="display: flex">

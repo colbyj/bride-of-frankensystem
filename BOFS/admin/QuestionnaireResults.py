@@ -30,8 +30,8 @@ class FieldDescriptives(object):
 
 
 class QuestionnaireResults(object):
-    def __init__(self, questionniare, tag):
-        self.questionnaire = questionniare
+    def __init__(self, questionnaire, tag):
+        self.questionnaire = questionnaire
         self.tag = tag
 
         self.descriptiveResults = []  # One per calculated column

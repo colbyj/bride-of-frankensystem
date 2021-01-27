@@ -84,8 +84,11 @@ def create(db):
                 printText = "Total conditions: {}, Counts: ".format(numConditions)
 
                 for condition in range(1, numConditions+1):
-                    pCount[condition-1] = db.session.query(db.Participant).filter(
-                        db.Participant.condition == condition).count()
+                    pCount[condition-1] = db.session.query(db.Participant).\
+                        filter(
+                            db.and_(db.Participant.condition == condition, ~db.Participant.is_abandoned)
+                        ).\
+                        count()
                     if lowest is None or pCount[condition-1] < lowest:
                         lowest = pCount[condition-1]
 
