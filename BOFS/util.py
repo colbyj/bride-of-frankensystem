@@ -40,7 +40,7 @@ def verify_correct_page(f):
         # Add or update their progress
         if 'participantID' in session:
             participant = db.session.query(db.Participant).get(session['participantID'])
-            participant.lastActiveOn = datetime.datetime.now()
+            participant.lastActiveOn = datetime.datetime.utcnow()
             db.session.commit()
 
             progress = db.session.query(db.Progress).filter(
@@ -52,12 +52,12 @@ def verify_correct_page(f):
                 progress = db.Progress()
                 progress.participantID = session['participantID']
                 progress.path = currentUrl
-                progress.startedOn = datetime.datetime.now()
+                progress.startedOn = datetime.datetime.utcnow()
                 db.session.add(progress)
                 db.session.commit()
 
             if request.method == "POST":
-                progress.submittedOn = datetime.datetime.now()
+                progress.submittedOn = datetime.datetime.utcnow()
                 db.session.commit()
 
         return f(*args, **kwargs)
@@ -228,7 +228,7 @@ def provide_consent(assignCondition=True, logDisplaySize=True):
     p = db.Participant()
     p.ipAddress = request.environ['REMOTE_ADDR']  # request.headers.get('X-Real-IP')  # request.remote_addr
     p.userAgent = request.user_agent.string
-    p.timeStarted = datetime.datetime.now()
+    p.timeStarted = datetime.datetime.utcnow()
 
     if assignCondition:
         p.assign_condition()

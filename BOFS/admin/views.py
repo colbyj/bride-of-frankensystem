@@ -483,7 +483,7 @@ def route_export():
         return Response(csvString,
                     mimetype="text/csv",
                     headers={
-                        "Content-disposition": "attachment; filename=%s.csv" % ("export_" + datetime.now().strftime("%Y-%m-%d_%H-%M"))
+                        "Content-disposition": "attachment; filename=%s.csv" % ("export_" + datetime.utcnow().strftime("%Y-%m-%d_%H-%M"))
                     })
     else:
         return render_template("export.html",
@@ -645,5 +645,5 @@ def route_table_csv(tableName):
     return Response(csv,
                     mimetype="text/csv",
                     headers={
-                        "Content-disposition": "attachment; filename=%s.csv" % (tableName + "_" + datetime.now().strftime("%Y-%m-%d"))
+                        "Content-disposition": "attachment; filename=%s.csv" % (tableName + "_" + datetime.utcnow().strftime("%Y-%m-%d"))
                     })

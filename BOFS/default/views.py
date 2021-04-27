@@ -187,7 +187,7 @@ def route_questionnaire(questionnaireName, tag=""):
     return render_template('questionnaire.html',
                            tag=tag,
                            q=q.jsonData,
-                           timeStarted=datetime.datetime.now())
+                           timeStarted=datetime.datetime.utcnow())
 
 
 @default.route("/redirect_previous_page")
@@ -257,7 +257,7 @@ def route_end():
     :return:
     """
     p = db.Participant.query.get(session['participantID'])
-    p.timeEnded = datetime.datetime.now()
+    p.timeEnded = datetime.datetime.utcnow()
     p.finished = True
 
     db.session.commit()
@@ -269,7 +269,7 @@ def route_end():
 def route_user_active():
     if 'participantID' in session:
         participant = db.session.query(db.Participant).get(session['participantID'])
-        participant.lastActiveOn = datetime.datetime.now()
+        participant.lastActiveOn = datetime.datetime.utcnow()
         db.session.commit()
     return ""
 

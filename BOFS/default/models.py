@@ -94,7 +94,7 @@ def create(db):
 
                     printText += "{}, ".format(pCount[condition-1])
 
-                self.condition = pCount.index(lowest) + 1
+                self.condition = pCount.index(min(pCount)) + 1
 
                 printText += "User put in condition {}.".format(self.condition)
                 print(printText)
@@ -121,13 +121,13 @@ def create(db):
         @declared_attr
         def is_in_progress(cls):
             return column_property(
-                ((db.func.julianday(db.func.now()) - db.func.julianday(cls.timeStarted)) * 1440 <= abandoned_minutes).label('is_in_progress')
+                db.and_(~cls.finished, ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) <= (abandoned_minutes / 1440.0))).label('is_in_progress')
             )
 
         @declared_attr
         def is_abandoned(cls):
             return column_property(
-                (cls.finished == False and ((db.func.julianday(db.func.now()) - db.func.julianday(cls.timeStarted)) * 1440 > abandoned_minutes)).label('is_abandoned')
+                db.and_(~cls.finished, ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) > (abandoned_minutes / 1440.0))).label('is_abandoned')
             )
 
         def display_duration(self):
@@ -137,7 +137,7 @@ def create(db):
             """
 
             if self.timeEnded is None:
-                if self.lastActiveOn > datetime.datetime.now() - datetime.timedelta(minutes=abandoned_minutes):
+                if self.lastActiveOn > datetime.datetime.utcnow() - datetime.timedelta(minutes=abandoned_minutes):
                     return "In Progress"
                 else:
                     return "Abandoned"
