@@ -41,7 +41,7 @@ def route_consent():
     return render_template("consent.html")
 
 
-# Sets participant's condition to -1 always
+# Sets a participant's condition to 0 instead of assigning it as normal
 @default.route("/consent_nc", methods=['POST', 'GET'])
 @verify_correct_page
 def route_consent_nc():
@@ -117,6 +117,10 @@ def route_start_mturk():
 
         session['code'] = p.code
         session['mTurkID'] = p.mTurkID
+
+        # Don't try to load any past attempts if this config option is set
+        if not current_app.config['RETRIEVE_SESSIONS']:
+            return redirect('/redirect_next_page')
 
         sessionFromMTurkID = db.session.query(db.SessionStore).\
             filter(db.SessionStore.mTurkID == p.mTurkID).\

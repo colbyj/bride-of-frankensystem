@@ -13,23 +13,26 @@ def create_app(path, config_name='default.cfg', debug=False):
         app.load_blueprint('BOFS.admin', 'admin')
 
     # Set defaults for some config options
-    if not 'USE_BREADCRUMBS' in app.config:
+    if 'USE_BREADCRUMBS' not in app.config:
         app.config['USE_BREADCRUMBS'] = True
 
-    if not 'USE_LOGO' in app.config:
+    if 'USE_LOGO' not in app.config:
         app.config['USE_LOGO'] = True
 
-    if not 'LOG_GRID_CLICKS' in app.config:
+    if 'LOG_GRID_CLICKS' not in app.config:
         app.config['LOG_GRID_CLICKS'] = False
 
-    if not 'ADDITIONAL_ADMIN_PAGES' in app.config:
+    if 'ADDITIONAL_ADMIN_PAGES' not in app.config:
         app.config['ADDITIONAL_ADMIN_PAGES'] = []
 
-    if not 'EXPORT' in app.config:
+    if 'EXPORT' not in app.config:
         app.config['EXPORT'] = []
 
-    if not 'ALLOW_RETAKES' in app.config:
+    if 'ALLOW_RETAKES' not in app.config:
         app.config['ALLOW_RETAKES'] = False
+
+    if 'RETRIEVE_SESSIONS' not in app.config:
+        app.config['RETRIEVE_SESSIONS'] = True
 
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
