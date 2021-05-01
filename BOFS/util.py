@@ -86,9 +86,9 @@ def verify_session_valid(f):
                 session.clear()
                 return redirect('/')
             # See that the user's IP address matches what's in the database
-            if participant.ipAddress != request.environ['REMOTE_ADDR']:
-                session.clear()
-                return redirect('/')
+            #if participant.ipAddress != request.environ['REMOTE_ADDR']:
+            #    session.clear()
+            #    return redirect('/')
 
         return f(*args, **kwargs)
     return decorated_function
