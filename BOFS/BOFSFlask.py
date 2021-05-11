@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, session, redirect, send_from_
 from flask_sqlalchemy import SQLAlchemy
 from flask.config import Config
 import jinja2
+import json
 import sys
 import os
 from . import util
@@ -205,7 +206,9 @@ class BOFSFlask(Flask):
             flat_page_list=self.page_list.flat_page_list(),
             debug=self.debug,
             shuffle=random.shuffle,
-            crumbs=util.create_breadcrumbs())
+            crumbs=util.create_breadcrumbs(),
+            json_dumps=json.dumps
+        )
 
 
 from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
