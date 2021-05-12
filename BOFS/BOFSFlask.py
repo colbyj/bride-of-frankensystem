@@ -7,6 +7,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask.config import Config
 import jinja2
 import json
+import re
 import sys
 import os
 from . import util
@@ -71,6 +72,9 @@ class BOFSFlask(Flask):
 
         # allows flat_page_list variable to be accessible from all templates
         self.template_context_processors[None].append(self.inject_jinja_vars)
+
+        # properly apply content-encoding request headers for gzip and brotli
+        self.after_request(self.add_headers_to_compressed)
 
     # Overriding this ensures compatibility with existing run.py files regardless of whether socketio is used or not
     def run(self, host=None, port=None, **options):
@@ -209,6 +213,26 @@ class BOFSFlask(Flask):
             crumbs=util.create_breadcrumbs(),
             json_dumps=json.dumps
         )
+
+    def add_headers_to_compressed(self, response):
+        if request.path and re.search(r'\.(br)$', request.path):
+            if 'Content-Type' in response.headers and re.search(r'\.(data.br)$', request.path):
+                response.headers['Content-Type'] = 'application/octet-stream'
+                response.status_code = 200  # Don't allow the browser to use the cached data file.
+            if 'Content-Type' in response.headers and re.search(r'\.(js.br)$', request.path):
+                response.headers['Content-Type'] = 'application/javascript'
+
+            response.headers.add('Content-Encoding', 'br')
+
+        if request.path and re.search(r'\.(gz)$', request.path):
+            if 'Content-Type' in response.headers and re.search(r'\.(data.gz)$', request.path):
+                response.headers['Content-Type'] = 'application/octet-stream'
+                response.status_code = 200  # Don't allow the browser to use the cached data file.
+            if 'Content-Type' in response.headers and re.search(r'\.(js.gz)$', request.path):
+                response.headers['Content-Type'] = 'application/javascript'
+            response.headers.add('Content-Encoding', 'gzip')
+
+        return response
 
 
 from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
