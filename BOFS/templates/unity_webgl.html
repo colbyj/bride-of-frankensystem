@@ -4,15 +4,20 @@
         #loading {
             background-image: url('{{ url_for('BOFS_static', filename='loading.gif') }}');
             background-repeat: no-repeat;
-            background-position: top center;
+            background-position: center 20px;
             height: 120px;
-            position: fixed;
-            top: 250px;
+            position: absolute;
+            top: {{ height / 2 - 60 }}px;
             left: 50%;
             text-align: center;
-            padding-top: 80px;
+            padding-top: 90px;
+            padding-left: 40px;
+            padding-right: 40px;
             display: inline;
             transform: translate(-50%, 0%);
+            border: 1px solid #EEEEEE;
+            background-color: #F7F7F7;
+            border-radius: 8px;
         }
 
         .template-wrap {
@@ -28,6 +33,7 @@
 {% block content %}
     {% if unity_parameters %}
     <div class="template-wrap clear">
+        <div id="loading">Loading...</div>
         <canvas id="unity-canvas" width={{ width }} height={{ height }} style="width: {{ width }}px; height: {{ height }}px; background: #231F20"></canvas>
     </div>
     {% else %}
@@ -55,27 +61,44 @@
                 document.getElementsByTagName('head')[0].appendChild(meta);
               }
 
-              var gameInstance = createUnityInstance(document.querySelector("#unity-canvas"), {{ json_dumps(unity_parameters) | safe }});
-        </script>
-    {% else %}
-        <script>
-            function UnityProgress (gameInstance, progress) {
-                this.loading = document.getElementById("loading");
+            function UnityProgress (progress) {
+                let loading = document.getElementById("loading");
 
                 if (progress != 1) {
                     progressPercent = Math.round(progress * 100);
-                    this.loading.innerHTML = "Downloading... (" + progressPercent + "%)";
+                    loading.innerHTML = "Downloading... (" + progressPercent + "%)";
+                    loading.hidden = false;
                 }
                 else {
-                    this.loading.innerHTML = "Loading WebGL Game...";
+                    loading.hidden = true;
                 }
             }
 
-            function EndGame() {
-                window.location.href = "/redirect_next_page";
-            }
-
+            var gameInstance = null;
+            createUnityInstance(document.querySelector("#unity-canvas"), {{ json_dumps(unity_parameters) | safe }},
+                (progress) => { UnityProgress(progress)}
+            ).then((instance) => { gameInstance = instance });
+        </script>
+    {% else %}
+        <script>
             var gameInstance = UnityLoader.instantiate("gameContainer", "{{ json_path }}", {onProgress: UnityProgress});
+
+            function UnityProgress (gameInstance, progress) {
+                let loading = document.getElementById("loading");
+
+                if (progress != 1) {
+                    progressPercent = Math.round(progress * 100);
+                    loading.innerHTML = "Downloading... (" + progressPercent + "%)";
+                }
+                else {
+                    loading.innerHTML = "Loading WebGL Game...";
+                }
+            }
         </script>
     {% endif %}
+    <script>
+        function EndGame() {
+            window.location.href = "/redirect_next_page";
+        }
+    </script>
 {% endblock %}
