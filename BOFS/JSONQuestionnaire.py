@@ -16,7 +16,7 @@ class QuestionnaireField(object):
     def __init__(self, id, dataType, reversed=False, labels=[]):
         self.id = id
         self.dataType = dataType
-        self.reversed = reversed  # TODO: This is basically depricated now.
+        self.reversed = reversed  # TODO: This is basically deprecated now.
         self.labels = labels
 
     def __repr__(self):
@@ -33,7 +33,7 @@ class JSONQuestionnaire(object):
             with open(fullPath) as f:
                 self.jsonData = json.load(f)
         except ValueError as error:
-            print("ERROR! Unable to `%s` questionnaire. Please check that the file contains valid JSON syntax. "
+            print("ERROR! Unable to parse `%s` questionnaire. Please check that the file contains valid JSON syntax. "
                   "Python reports the following error: `%s`" % (fileName, error))
             self.jsonData = None
 

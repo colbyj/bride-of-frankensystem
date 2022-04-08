@@ -51,6 +51,7 @@ def create_app(path, config_name='default.cfg', debug=False):
 
     with app.app_context():
         app.load_questionnaires()
+        app.load_tables()
 
     app.db.create_all()
 

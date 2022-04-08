@@ -13,6 +13,7 @@ import os
 from . import util
 from datetime import datetime, timedelta
 from .JSONQuestionnaire import JSONQuestionnaire
+from .JSONTable import JSONTable
 from .PageList import PageList
 from .globals import referrer
 import random
@@ -47,13 +48,9 @@ class BOFSFlask(Flask):
         self.db = SQLAlchemy(self)
         self.db_tables = []
         self.questionnaires = {}
-
-        #self.socketio = SocketIO(self, async_mode='eventlet', manage_session=False)
+        self.tables = {}
 
         # Store Flask session in the database.
-        #self.sess = Session()
-        #self.config["SESSION_TYPE"] = "sqlalchemy"
-        #self.config["SESSION_SQLALCHEMY"] = self.db
         self.session_interface = BOFSSessionInterface()
 
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
@@ -143,7 +140,7 @@ class BOFSFlask(Flask):
         except:
             pass  # No exports to add
 
-        if try_to_load_models: # Try to load the models too.
+        if try_to_load_models:  # Try to load the models too.
             self.load_models(blueprint_path)
 
     def load_models(self, blueprint_path):
@@ -172,6 +169,35 @@ class BOFSFlask(Flask):
         except ImportError:
             print("%s: `models.py` not found. Add a `models.py` file to your blueprint folder use this feature." % blueprint_path)
 
+    def load_table(self, filename):
+        if filename in self.db.metadata.tables:
+            return
+
+        if filename in self.tables:
+            return
+
+        print(filename)
+        table = JSONTable(filename)
+        table.create_db_class()
+
+        # Add the table as a database class, if it hasn't been added already.
+        if not hasattr(self.db, table.dbClass.__name__):
+            setattr(self.db, table.dbClass.__name__, table.dbClass)
+
+        self.tables[filename] = table
+        return table
+
+    def load_tables(self):
+        tableFilenames = []
+
+        if os.path.exists(self.root_path + "/tables"):
+            for q in os.listdir(self.root_path + "/tables"):
+                if q.endswith(".json"):
+                    tableFilenames.append(q.replace(".json", ""))
+
+        for tableFilename in tableFilenames:
+            self.load_table(tableFilename)
+
     def load_questionnaire(self, filename, add_to_db=False):
         if "questionnaire_" + filename in self.db.metadata.tables:
             return
@@ -179,7 +205,7 @@ class BOFSFlask(Flask):
         if filename in self.questionnaires:
             return
 
-        print (filename)
+        print(filename)
         questionnaire = JSONQuestionnaire(filename)
         questionnaire.create_db_class()
 

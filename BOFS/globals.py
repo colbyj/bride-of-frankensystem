@@ -53,6 +53,13 @@ def _find_app_questionnaires():
     return top.app.questionnaires
 
 
+def _find_app_tables():
+    top = _app_ctx_stack.top
+    if top is None:
+        raise RuntimeError(_app_ctx_err_msg)
+    return top.app.tables
+
+
 def _find_app_page_list():
     top = _app_ctx_stack.top
     if top is None:
@@ -70,5 +77,6 @@ def _find_app_socketio():
 db = LocalProxy(_find_app_db)
 referrer = LocalProxy(_find_referrer)
 questionnaires = LocalProxy(_find_app_questionnaires)
+tables = LocalProxy(_find_app_tables)
 page_list = LocalProxy(_find_app_page_list)
 socketio = LocalProxy(_find_app_socketio)

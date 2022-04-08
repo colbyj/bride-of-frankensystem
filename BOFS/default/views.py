@@ -3,7 +3,7 @@ from builtins import range
 import datetime
 from flask import Blueprint, render_template, current_app, request, make_response, _app_ctx_stack
 from BOFS.util import *
-from BOFS.globals import db, referrer, page_list, questionnaires
+from BOFS.globals import db, referrer, page_list, questionnaires, tables
 from BOFS.BOFSFlask import BOFSSessionInterface, BOFSSession
 import os.path
 import uuid
@@ -168,6 +168,21 @@ def route_start_mturk():
         return redirect('/redirect_next_page')
 
     return render_template('mturk_id.html')
+
+
+@default.route("/table/<tableName>", methods=['POST', 'GET'])
+def route_table(tableName):
+    """
+    Provides a simple API to get data from a table (via GET) or add data to a table (via POST).
+    :param tableName: The name of the table, as it is in /app/tables (without the .json)
+    :return:
+    """
+    t = tables[tableName]
+
+    if request.method == 'POST':
+        return t.handle_post()
+
+    return t.handle_get()
 
 
 @default.route("/questionnaire/<questionnaireName>", methods=['POST', 'GET'])
