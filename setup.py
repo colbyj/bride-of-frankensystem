@@ -25,5 +25,8 @@ setup(
         "sqlalchemy",
         "flask-sqlalchemy",
         "toml"
-    ]
+    ],
+    entry_points={
+        'console_scripts': ['BOFS=BOFS.cli:main']
+    }
 )
