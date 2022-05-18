@@ -7,10 +7,11 @@ from flask_sqlalchemy import SQLAlchemy
 from flask.config import Config
 import jinja2
 import json
+import toml
 import re
 import sys
 import os
-from . import util
+from BOFS import util
 from datetime import datetime, timedelta
 from .JSONQuestionnaire import JSONQuestionnaire
 from .JSONTable import JSONTable
@@ -55,6 +56,7 @@ class BOFSFlask(Flask):
 
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
         self.add_url_rule("/JSON_questionnaire/<path:filename>", endpoint="JSON_questionnaire", view_func=self.route_JSON_questionnaire)
+        self.add_url_rule("/consent.html", endpoint="consent_html", view_func=self.route_consent)
         self.register_error_handler(404, self.page_not_found)
 
         # Allows developers of BOFS deployments to override BOFS templates
@@ -118,7 +120,14 @@ class BOFSFlask(Flask):
         eventlet.wsgi.server(eventlet_socket, app, **kwargs)
 
     def load_config(self, filename, silent=False):
-        self.config.from_pyfile(filename, silent=silent)
+        if filename.endswith(".cfg"):
+            self.config.from_pyfile(filename, silent=silent)
+        elif filename.endswith(".toml"):
+            self.config.from_file(filename, load=toml.load)
+        elif filename.endswith(".json"):
+            self.config.from_file(filename, load=json.load)
+        else:
+            print("Error: Cannot load configuration file.")
 
     def load_blueprint(self, blueprint_path, blueprint_name=None, try_to_load_models=True):
         print("Loading blueprint: %s" % blueprint_path)
@@ -225,6 +234,9 @@ class BOFSFlask(Flask):
 
     def route_JSON_questionnaire(self, filename):
         return send_from_directory(self.root_path + '/questionnaires', filename)
+
+    def route_consent(self):
+        return send_from_directory(self.root_path, "consent.html")
 
     def page_not_found(self, e):
         return "Could not load the requested page. If you are just starting out, " \

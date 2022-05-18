@@ -23,7 +23,7 @@ setup(
         "flask",
         "eventlet",
         "sqlalchemy",
-        "flask-sqlalchemy"
+        "flask-sqlalchemy",
+        "toml"
     ]
-
 )

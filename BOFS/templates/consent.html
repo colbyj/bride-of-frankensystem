@@ -12,8 +12,9 @@
             $("#screenHeight").val(window.screen.height);
             $("#innerWidth").val(window.innerWidth);
             $("#innerHeight").val(window.innerHeight);
-            $("#dppx").val(dppx())
+            $("#dppx").val(dppx());
 
+            $("#consentDiv").load("{{ url_for('consent_html') }}");
         });
     </script>
 
@@ -43,12 +44,8 @@
         <i>Before proceeding, please read the following. You must give your consent to continue.</i>
 
         <div class="question">
-            <div class="padding">
-                {% if config['CONSENT_TEXT'] and config['CONSENT_TEXT'] != '' %}
-                    {{ config['CONSENT_TEXT'] | safe }}
-                {% else %}
-                Please set the <pre>CONSENT_TEXT</pre> variable in the config file!
-                {% endif %}
+            <div class="padding" id="consentDiv">
+
             </div>
         </div>
 

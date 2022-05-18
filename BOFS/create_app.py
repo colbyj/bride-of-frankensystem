@@ -1,10 +1,13 @@
 from __future__ import absolute_import
 import os
-import imp
+import sys
 from .BOFSFlask import BOFSFlask
 
 
-def create_app(path, config_name='default.cfg', debug=False):
+def create_app(path, config_name, debug=False):
+    os.chdir(path)  # Set the current working directory to the specified path
+    sys.path.append(path)  # Ensure BOFS can find the blueprints properly
+
     app = BOFSFlask(__name__, config_name=config_name, root_path=path)
     app.load_config(config_name, silent=False)
     app.debug = debug
@@ -43,9 +46,9 @@ def create_app(path, config_name='default.cfg', debug=False):
         if os.path.isdir(considered_path):  # We should try this path..
             for subpath in os.listdir(considered_path):
                 if subpath == "views.py":
-                    app.load_blueprint("app." + current_path, current_path, False)
+                    app.load_blueprint(current_path, current_path, False)
                 if subpath == "models.py":
-                    app.load_models("app." + current_path)
+                    app.load_models(current_path)
 
     app.load_blueprint('BOFS.default', 'default')
 

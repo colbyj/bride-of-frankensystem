@@ -1,7 +1,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from flask import current_app, request
-from . import util
+from BOFS import util
 
 
 class PageList(object):
