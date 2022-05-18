@@ -1,7 +1,4 @@
-from builtins import str
 import json
-import six
-from os import listdir, path
 from functools import wraps
 from flask import request, session, current_app, render_template, g, redirect, url_for
 from BOFS.globals import db
@@ -66,7 +63,7 @@ def verify_admin(f):
 
 
 def escape_csv(input):
-    if isinstance(input, six.string_types):
+    if isinstance(input, str):
         return str.format(u"\"{}\"", input.strip().replace("\n", " ").replace("\r", " ").replace("\"", "'"))
     if input is None:
         return str()

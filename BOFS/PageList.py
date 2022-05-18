@@ -1,5 +1,3 @@
-from __future__ import print_function
-from __future__ import absolute_import
 from flask import current_app, request
 from BOFS import util
 

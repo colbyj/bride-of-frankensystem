@@ -1,5 +1,4 @@
 import os
-import sys
 import argparse
 from .create_app import create_app
 

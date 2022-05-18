@@ -1,7 +1,3 @@
-from __future__ import division
-from builtins import range
-from builtins import object
-from past.utils import old_div
 import math
 from BOFS.globals import db
 from BOFS.util import fetch_condition_count, mean, std, variance
@@ -26,7 +22,7 @@ class FieldDescriptives(object):
             self.max = max(data)
             self.mean = mean(data)
             self.std = std(data)
-            self.sem = old_div(self.std,math.sqrt(self.length))
+            self.sem = self.std / math.sqrt(self.length)
 
 
 class QuestionnaireResults(object):

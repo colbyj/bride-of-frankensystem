@@ -1,5 +1,3 @@
-from __future__ import absolute_import
-from builtins import str
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response
 from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count, display_time

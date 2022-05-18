@@ -1,15 +1,11 @@
-from __future__ import print_function
-from __future__ import absolute_import
-from builtins import str
-from builtins import object
 import os
 import json
+import re
+import pprint
+from flask import current_app, request, session, config
 from datetime import datetime
 from .globals import db
-from flask import current_app, request, session, config
-import pprint
 from BOFS.util import mean, stdev, std, var, variance, median
-import re
 
 
 class QuestionnaireField(object):

@@ -19,7 +19,6 @@ setup(
     author_email='colby.johanson@usask.ca',
     description='A framework that allows for the development of custom online experiments and surveys.',
     install_requires=[
-        "future",
         "flask",
         "eventlet",
         "sqlalchemy",

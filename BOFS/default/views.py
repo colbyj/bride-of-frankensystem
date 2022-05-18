@@ -1,12 +1,8 @@
-from builtins import str
-from builtins import range
-import datetime
+import uuid
 from flask import Blueprint, render_template, current_app, request, make_response, _app_ctx_stack
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
-from BOFS.BOFSFlask import BOFSSessionInterface, BOFSSession
-import os.path
-import uuid
+from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
 
 
 default = Blueprint('default', __name__)
@@ -300,8 +296,6 @@ def route_current_url():
     else:
         return "/"
 
-
-#import requests.cookies
 
 @default.route("/restart")
 def route_restart():
