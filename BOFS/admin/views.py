@@ -265,7 +265,7 @@ def route_export():
 
     columns['participant'] = [
         "participantID",
-        "mTurkID",
+        "externalID",
         "condition",
         "duration",
         "finished"
@@ -384,7 +384,7 @@ def route_export():
         csvString += str.format(u"{},{},{},{},{}",
                                 row.Participant.participantID,
                                 row.Participant.mTurkID,
-                                row.Participant.condition,
+                                condition_num_to_label(row.Participant.condition),
                                 row.Participant.duration,
                                 row.Participant.finished
                                 )
