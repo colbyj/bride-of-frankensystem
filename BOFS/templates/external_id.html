@@ -10,11 +10,11 @@
 
             <div class="question" style="">
                 <div class="padding">
-                    <h3>Please enter your MTurk ID</h3>
+                    <h3>Please enter your {{ config['EXTERNAL_ID_LABEL'] }}.</h3>
                     <div>
                         <input class="form-control" type="text" name="mTurkID" id="mTurkID" style="width: 300px;" placeholder="" required />
                         <div class="invalid-feedback">
-                            Please enter your MTurk Worker ID. You can find this on your MTurk dashboard.
+                            {{ config['EXTERNAL_ID_PROMPT'] }}
                         </div>
                     </div>
                 </div>

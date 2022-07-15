@@ -4,6 +4,7 @@ import operator
 from .globals import db
 import math
 import datetime
+import uuid
 
 
 # Decorator to help views verify whether the user is on the right page
@@ -226,6 +227,13 @@ def provide_consent(assignCondition=True, logDisplaySize=True):
     p.ipAddress = request.environ['REMOTE_ADDR']  # request.headers.get('X-Real-IP')  # request.remote_addr
     p.userAgent = request.user_agent.string
     p.timeStarted = datetime.datetime.utcnow()
+
+    if current_app.config['STATIC_COMPLETION_CODE'] is not None:
+        p.code = current_app.config['STATIC_COMPLETION_CODE']
+        session['code'] = p.code
+    elif current_app.config['GENERATE_COMPLETION_CODE']:
+        p.code = uuid.uuid4().hex
+        session['code'] = p.code
 
     if assignCondition:
         p.assign_condition()

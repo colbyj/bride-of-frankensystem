@@ -1,4 +1,3 @@
-import uuid
 from flask import Blueprint, render_template, current_app, request, make_response, _app_ctx_stack
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
@@ -98,8 +97,9 @@ def route_assign_condition():
 
 @default.route("/startMTurk", methods=['POST', 'GET'])  # Deprecated
 @default.route("/start_mturk", methods=['POST', 'GET'])
+@default.route("/external_id", methods=['POST', 'GET'])
 @verify_correct_page
-def route_start_mturk():
+def route_external_id():
     """
     If we are using a platform where the user has a unique (and anonymous) ID associated with their account,
     then you can use this page to request that ID. This is set up to work with Mechanical Turk, but the
@@ -109,9 +109,7 @@ def route_start_mturk():
     if request.method == 'POST':
         p = db.Participant.query.get(session['participantID'])
         p.mTurkID = str(request.form['mTurkID']).strip()
-        p.code = uuid.uuid4().hex
 
-        session['code'] = p.code
         session['mTurkID'] = p.mTurkID
 
         # Don't try to load any past attempts if this config option is set
@@ -158,12 +156,12 @@ def route_start_mturk():
 
                 # Redirect them to where they should actually be, only if that location is not going to put them in a weird loop.
                 # TODO: Dynamically create a list of pages to avoid redirecting to from PAGE_LIST
-                if 'currentUrl' in dictData and session['currentUrl'] not in ('startMTurk', 'start_mturk', 'consent'):
+                if 'currentUrl' in dictData and session['currentUrl'] not in ('startMTurk', 'start_mturk', 'external_id', 'consent'):
                     return redirect(session['currentUrl'])
 
         return redirect('/redirect_next_page')
 
-    return render_template('mturk_id.html')
+    return render_template('external_id.html')
 
 
 @default.route("/table/<tableName>", methods=['POST', 'GET'])

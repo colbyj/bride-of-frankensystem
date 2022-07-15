@@ -36,6 +36,21 @@ def create_app(path, config_name, debug=False):
     if 'RETRIEVE_SESSIONS' not in app.config:
         app.config['RETRIEVE_SESSIONS'] = True
 
+    if 'EXTERNAL_ID_LABEL' not in app.config:
+        app.config['EXTERNAL_ID_LABEL'] = "Mechanical Turk Worker ID"
+
+    if 'EXTERNAL_ID_PROMPT' not in app.config:
+        app.config['EXTERNAL_ID_PROMPT'] = "Please enter your MTurk Worker ID. You can find this on your MTurk dashboard."
+
+    if 'GENERATE_COMPLETION_CODE' not in app.config:
+        app.config['GENERATE_COMPLETION_CODE'] = True
+
+    if 'STATIC_COMPLETION_CODE' not in app.config:
+        app.config['STATIC_COMPLETION_CODE'] = None
+
+    if 'COMPLETION_CODE_MESSAGE' not in app.config:
+        app.config['COMPLETION_CODE_MESSAGE'] = "Please copy and paste this code into the MTurk form:"
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
             continue
