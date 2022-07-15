@@ -51,6 +51,9 @@ def create_app(path, config_name, debug=False):
     if 'COMPLETION_CODE_MESSAGE' not in app.config:
         app.config['COMPLETION_CODE_MESSAGE'] = "Please copy and paste this code into the MTurk form:"
 
+    if 'OUTGOING_URL' not in app.config:
+        app.config['OUTGOING_URL'] = None
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
             continue

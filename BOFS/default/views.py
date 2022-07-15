@@ -161,7 +161,11 @@ def route_external_id():
 
         return redirect('/redirect_next_page')
 
-    return render_template('external_id.html')
+    mTurkID = None
+    if 'mTurkID' in session and len(session['mTurkID']) > 0:
+        mTurkID = session['mTurkID']
+
+    return render_template('external_id.html', mTurkID=mTurkID)
 
 
 @default.route("/table/<tableName>", methods=['POST', 'GET'])
@@ -274,6 +278,9 @@ def route_end():
     p.finished = True
 
     db.session.commit()
+
+    if 'OUTGOING_URL' in current_app.config and current_app.config['OUTGOING_URL'] is not None:
+        return redirect(current_app.config['OUTGOING_URL'])
 
     return render_template('end.html', code=session['code'] if 'code' in session else None)
 

@@ -20,6 +20,9 @@ def verify_correct_page(f):
     def decorated_function(*args, **kwargs):
         currentUrl = request.url.replace(request.url_root, "")
 
+        if 'PROLIFIC_PID' in request.args:
+            session['mTurkID'] = request.args['PROLIFIC_PID']
+
         # Don't allow users to skip things or go back. Redirect to the correct page if they try.
         if 'currentUrl' in session and currentUrl != session['currentUrl']:
             return redirect(str.format(u"{}/{}", current_app.config["APPLICATION_ROOT"], str(session['currentUrl'])))
