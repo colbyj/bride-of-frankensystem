@@ -204,15 +204,7 @@ def fetch_current_condition():
 
 
 def fetch_condition_count():
-    if not "CONDITIONS_NUM" in current_app.config:
-        return 1
-
-    conditions = current_app.config["CONDITIONS_NUM"]
-
-    if conditions <= 0:
-        return 1
-
-    return conditions
+    return len(current_app.config["CONDITIONS"])
 
 
 # This is useful only after data has been collected.

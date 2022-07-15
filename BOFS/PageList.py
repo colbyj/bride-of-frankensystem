@@ -8,6 +8,28 @@ class PageList(object):
     def __init__(self, page_list):
         self.page_list = page_list
 
+    def unconditional_pages(self):
+        pages = []
+        for entry in self.page_list:
+            if 'conditional_routing' in entry:
+                continue
+            pages.append(entry)
+
+        return pages
+
+    def conditional_pages(self, condition):
+        pages = []
+
+        for entry in self.page_list:
+            if 'conditional_routing' in entry:
+                for conditional_route in entry['conditional_routing']:
+                    if conditional_route['condition'] == condition:
+                        for conditional_entry in conditional_route['page_list']:
+                            pages.append(conditional_entry)
+                        break  # once a match has been found, then we're done
+
+        return pages
+
     def flat_page_list(self, condition=None):
         """
         This is the typical access point for the page_list variable.
@@ -39,19 +61,30 @@ class PageList(object):
         :returns: list -- one entry per questionnaire, the filename of the questionnaire (without the .json).
         """
         condition_count = util.fetch_condition_count()
-
         questionnaires = list()
 
-        for i in range(0, condition_count+1):  # iterate through all conditions; we want all possible questionnaires.
-            for page in self.flat_page_list(i):
+        for page in self.unconditional_pages():
+            if not page['path'].startswith("questionnaire/"):
+                continue  # Not a questionnaire
+
+            questionnaire_name = page['path'].replace("questionnaire/", "", 1)
+
+            if not include_tags:
+                questionnaire_name = questionnaire_name.split("/")[0]
+
+            questionnaires.append(questionnaire_name)
+
+        for condition in range(1, condition_count+1):
+            for page in self.conditional_pages(condition):
                 if not page['path'].startswith("questionnaire/"):
-                    continue  # This isn't a questionnaire
+                    continue  # Not a questionnaire
 
                 questionnaire_name = page['path'].replace("questionnaire/", "", 1)
 
                 if not include_tags:
                     questionnaire_name = questionnaire_name.split("/")[0]
 
+                # The same questionnaire may appear in multiple conditions, so don't add it again.
                 if questionnaire_name not in questionnaires:
                     questionnaires.append(questionnaire_name)
 

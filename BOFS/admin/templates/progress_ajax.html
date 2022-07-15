@@ -2,7 +2,7 @@
     <thead>
     <tr>
         <th scope="col" style="text-align: right; width: 50px;">PID</th>
-        <th scope="col" style="text-align: left; width: 100px;">MTurk ID</th>
+        <th scope="col" style="text-align: left; width: 100px;">External ID</th>
         <th scope="col" style="text-align: right; width: 70px;">Condition</th>
         <th scope="col" style="text-align: center; width: 110px;">Started On</th>
         {% for page in pages %}
@@ -17,7 +17,7 @@
         <tr>
             <td style="text-align: right">{{ r.Participant.participantID }}</td>
             <td style="text-align: left">{{ r.Participant.mTurkID }}</td>
-            <td style="text-align: right">{{ r.Participant.condition }}</td>
+            <td style="text-align: right">{{ condition_num_to_label(r.Participant.condition) }}</td>
             <td style="text-align: center">{{ r.Participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             {% for page in pages %}
                 <td style="text-align: center">

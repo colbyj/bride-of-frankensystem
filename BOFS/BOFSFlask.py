@@ -205,6 +205,14 @@ class BOFSFlask(Flask):
         self.questionnaires[filename] = questionnaire
         return questionnaire
 
+    def questionnaire_list_is_safe(self):
+        """
+        Checks to see if the questionnaire list has any duplicates.
+        :return True if a duplicate was found, False otherwise.
+        """
+        questionnaires = self.page_list.get_questionnaire_list(include_tags=True)
+        return len(set(questionnaires)) == len(questionnaires)
+
     def load_questionnaires(self, add_to_db=False):
         for page in self.page_list.get_questionnaire_list():
             self.load_questionnaire(page, add_to_db)

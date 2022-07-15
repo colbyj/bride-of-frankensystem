@@ -1,6 +1,6 @@
 <div id="summary">
     <div style="display: flex; flex-wrap: wrap; margin-left: -15px;" >
-        {% if 'CONDITIONS_NUM' in config and config['CONDITIONS_NUM'] > 1 %}
+        {% if (config['CONDITIONS'] | length) > 1 %}
         <div class="question padding" style="flex-grow: 3; margin-left: 15px;">
             <table class="table table-striped">
                 <thead>
@@ -16,7 +16,7 @@
                 <tbody>
                 {% for r in summary_groups %}
                     <tr>
-                        <td style="text-align: left">{{ r.condition }}</td>
+                        <td style="text-align: left">{{ condition_num_to_label(r.condition) }}</td>
                         <td style="text-align: right">{{ r.count }}</td>
                         <td style="text-align: right">{{ r.countInProgress }}</td>
                         <td style="text-align: right">{{ r.countAbandoned }}</td>

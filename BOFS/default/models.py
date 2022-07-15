@@ -74,26 +74,31 @@ def create(db):
         def assign_condition(self):
             from flask import current_app
 
-            if 'CONDITIONS_NUM' in current_app.config and current_app.config['CONDITIONS_NUM'] > 0:
-                numConditions = current_app.config['CONDITIONS_NUM']
+            numConditions = len(current_app.config['CONDITIONS'])
+            if numConditions > 0:
                 pCount = [0] * numConditions
-
-                lowest = None
 
                 printText = "Total conditions: {}, Counts: ".format(numConditions)
 
                 for condition in range(1, numConditions+1):
+                    # Count the participants that have not abandoned the study.
                     pCount[condition-1] = db.session.query(db.Participant).\
                         filter(
                             db.and_(db.Participant.condition == condition, ~db.Participant.is_abandoned)
                         ).\
                         count()
-                    if lowest is None or pCount[condition-1] < lowest:
-                        lowest = pCount[condition-1]
 
                     printText += "{}, ".format(pCount[condition-1])
 
-                self.condition = pCount.index(min(pCount)) + 1
+                pCountSorted = sorted(pCount)
+                conditionAssigned = False
+
+                for count in pCountSorted:
+                    idx = pCount.index(count)
+                    conditionMeta = current_app.config['CONDITIONS'][idx]
+                    if 'enabled' not in conditionMeta or conditionMeta['enabled'] == True:
+                        self.condition = idx + 1
+                        break
 
                 printText += "User put in condition {}.".format(self.condition)
                 print(printText)

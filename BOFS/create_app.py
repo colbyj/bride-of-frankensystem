@@ -54,6 +54,9 @@ def create_app(path, config_name, debug=False):
     if 'OUTGOING_URL' not in app.config:
         app.config['OUTGOING_URL'] = None
 
+    if 'CONDITIONS' not in app.config:
+        app.config['CONDITIONS'] = []
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
             continue
@@ -70,6 +73,10 @@ def create_app(path, config_name, debug=False):
     app.load_blueprint('BOFS.default', 'default')
 
     with app.app_context():
+        if not app.questionnaire_list_is_safe():
+            print("Error! The same questionnaire was specified twice. Please add a tag to your questionnaire if this "
+                  "was intentional.")
+            return
         app.load_questionnaires()
         app.load_tables()
 

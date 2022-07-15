@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response
 from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count, display_time
-from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag
+from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
 import json
 from .QuestionnaireResults import *
 from datetime import datetime
@@ -47,7 +47,8 @@ def inject_template_vars():
         questionnairesLive=questionnairesLive,
         questionnairesLiveUntagged=questionnairesLiveUntagged,
         questionnairesSystem=questionnairesSystem,
-        logGridClicks=current_app.config['LOG_GRID_CLICKS']
+        logGridClicks=current_app.config['LOG_GRID_CLICKS'],
+        condition_num_to_label=condition_num_to_label
     )
 
 
