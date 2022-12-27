@@ -560,6 +560,21 @@ def route_preview_questionnaire(questionnaireName):
                            errors=errors)
 
 
+@admin.route("/questionnaire_html/<questionnaireName>")
+@verify_admin
+def route_questionnaire_html(questionnaireName):
+    errors = []
+
+    try:
+        f = open(current_app.root_path + '/questionnaires/' + questionnaireName + ".json", 'r')
+        jsonData = f.read()
+        jsonData = json.loads(jsonData)
+    except Exception as e:
+        errors = list(e.args)
+
+    return render_template("preview_questionnaire_simple.html", q=jsonData)
+
+
 @admin.route("/analyze_questionnaire/<questionnaireName>/<tag>")
 @admin.route("/analyze_questionnaire/<questionnaireName>")
 @verify_admin
