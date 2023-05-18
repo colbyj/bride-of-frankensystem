@@ -79,7 +79,6 @@ def create_app(path, config_name, debug=False):
             return
         app.load_questionnaires()
         app.load_tables()
-
-    app.db.create_all()
+        app.db.create_all()
 
     return app
