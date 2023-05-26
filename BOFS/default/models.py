@@ -114,7 +114,7 @@ def create(db):
         @duration.expression
         def duration(cls):
             return db.case(
-                [(cls.timeEnded == None, None)],
+                (cls.timeEnded == None, None),
                 else_=(db.func.julianday(cls.timeEnded) - db.func.julianday(cls.timeStarted)) * 86400
             ).label('duration')
 
