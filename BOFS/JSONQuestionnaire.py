@@ -9,15 +9,9 @@ from BOFS.util import mean, stdev, std, var, variance, median
 
 
 class QuestionnaireField(object):
-    def __init__(self, id, dataType, reversed=False, labels=[]):
+    def __init__(self, id, dataType):
         self.id = id
         self.dataType = dataType
-        self.reversed = reversed  # TODO: This is basically deprecated now.
-        self.labels = labels
-
-    def __repr__(self):
-        return "{{'id': {}, 'dataType': {}, 'reversed': {}, 'labels': {}}}".format(
-                repr(self.id), repr(self.dataType), repr(self.reversed), repr(self.labels))
 
 
 class JSONQuestionnaire(object):
@@ -54,12 +48,12 @@ class JSONQuestionnaire(object):
             #try:
             if q['questiontype'] == "radiogrid":  # Radiogrids will have multiple questions inside of them.
                 for qt in q['q_text']:
-                    self.fields.append(QuestionnaireField(qt['id'], 'integer', qt.get('reversed', False), q.get('labels', [])))
+                    self.fields.append(QuestionnaireField(qt['id'], 'integer'))
             elif q['questiontype'] == "checklist":  # checklists also have multiple questions
                 for qt in q['questions']:
                     self.fields.append(QuestionnaireField(qt['id'], 'integer'))
             elif q['questiontype'] == "radiolist":  # will always be integer types
-                self.fields.append(QuestionnaireField(q['id'], 'integer', False, q.get('labels', [])))
+                self.fields.append(QuestionnaireField(q['id'], 'string'))
             elif q['questiontype'] in ["slider", "num_field"]:
                 self.fields.append(QuestionnaireField(q['id'], 'integer'))
             else:
@@ -160,12 +154,7 @@ class JSONQuestionnaire(object):
             timeStarted = datetime.strptime(request.form['timeStarted'], "%Y-%m-%d %H:%M:%S")
 
         # For some reason we've lost the fields! add them again
-        if not self.fields or len(self.fields) == 0:
-            print("Oh no! We've lost ALL the fields at {}. Running fetchFields() again.".format(str(timeStarted)))
-            self.fetch_fields()
-
-        if len(self.fields) != self.fieldCount:
-            print("Oh no! We've lost SOME OF the fields at {}. Running fetchFields() again.".format(str(timeStarted)))
+        if not self.fields or len(self.fields) == 0 or len(self.fields) != self.fieldCount:
             self.fetch_fields()
 
         # Log the per-item timing data
