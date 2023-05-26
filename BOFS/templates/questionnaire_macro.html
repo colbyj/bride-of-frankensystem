@@ -32,7 +32,7 @@
                     {% endif %}
 
                     {% if question.questiontype == "radiolist" %}
-                        {% set lables = question.lables %}
+                        {% set labels = question.labels %}
                         {% if question.shuffle %}
                             {% do shuffle(question.labels) %}
                         {% endif %}
