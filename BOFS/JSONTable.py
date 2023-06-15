@@ -32,23 +32,39 @@ class JSONTable(object):
 
         for column in self.jsonData['columns']:
             columnDetails = self.jsonData['columns'][column]
-            if columnDetails['type'] == "integer":
-                default = 0 if 'default' not in columnDetails else columnDetails['default']
-                tableAttr[column] = db.Column(db.Integer, nullable=False, default=default)
-            elif columnDetails['type'] == "float":
-                default = 0 if 'default' not in columnDetails else columnDetails['default']
-                tableAttr[column] = db.Column(db.Float, nullable=False, default=default)
-            elif columnDetails['type'] == "datetime":
-                default = datetime.min if 'default' not in columnDetails else columnDetails['default']
-                tableAttr[column] = db.Column(db.DateTime, nullable=False, default=default)
-            elif columnDetails['type'] == "boolean":
-                default = False if 'default' not in columnDetails else columnDetails['default']
-                tableAttr[column] = db.Column(db.Boolean, nullable=False, default=default)
+            if 'type' in columnDetails:
+                if columnDetails['type'] == "integer":
+                    default = 0 if 'default' not in columnDetails else columnDetails['default']
+                    tableAttr[column] = db.Column(db.Integer, nullable=False, default=default)
+                elif columnDetails['type'] == "float":
+                    default = 0 if 'default' not in columnDetails else columnDetails['default']
+                    tableAttr[column] = db.Column(db.Float, nullable=False, default=default)
+                elif columnDetails['type'] == "datetime":
+                    default = datetime.min if 'default' not in columnDetails else columnDetails['default']
+                    tableAttr[column] = db.Column(db.DateTime, nullable=False, default=default)
+                elif columnDetails['type'] == "boolean":
+                    default = False if 'default' not in columnDetails else columnDetails['default']
+                    tableAttr[column] = db.Column(db.Boolean, nullable=False, default=default)
+                else:
+                    default = "" if 'default' not in columnDetails else columnDetails['default']
+                    tableAttr[column] = db.Column(db.Text, nullable=False, default=default)
             else:
                 default = "" if 'default' not in columnDetails else columnDetails['default']
                 tableAttr[column] = db.Column(db.Text, nullable=False, default=default)
 
         self.dbClass = type(self.fileName, (db.Model,), tableAttr)
+
+    def create_exports_dict(self):
+        if 'exports' not in self.jsonData:
+            return None
+
+        exports_dict = []
+        if len(self.jsonData['exports']) > 0:
+            for export_definition in self.jsonData['exports']:
+                export_definition['table'] = self.fileName
+                exports_dict.append(export_definition)
+
+        return exports_dict
 
     def row_to_dict(self, row):
         result = {}

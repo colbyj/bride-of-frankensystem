@@ -193,9 +193,12 @@ def create_export_base_queries(export_dict):
     table = getattr(db, export_dict['table'])
 
     levels = None
-    filter = db.text(export_dict['filter'])
+    filter = None
     groupBy = None
     orderBy = None
+
+    if 'filter' in export_dict and export_dict['filter'] != '':
+        filter = db.text(export_dict['filter'])
 
     if 'order_by' in export_dict and export_dict['order_by'] != '':
         orderBy = getattr(table, export_dict['order_by'])
@@ -218,7 +221,10 @@ def create_export_base_queries(export_dict):
         if orderBy:
             levelsQ = levelsQ.order_by(orderBy)
 
-        levels = levelsQ.filter(filter).all()
+        if filter is not None:
+            levels = levelsQ.filter(filter).all()
+        else:
+            levels = levelsQ.all()
 
     #pk = db.inspect(table).primary_key[0]
     baseQuery = db.session.query(table)
@@ -236,13 +242,14 @@ def create_export_base_queries(export_dict):
     if orderBy:
         baseQuery = baseQuery.order_by(orderBy)
 
-    baseQuery = baseQuery.filter(filter)
+    if filter is not None:
+        baseQuery = baseQuery.filter(filter)
 
     # Add the fields to the basequery
     for field in export_dict['fields']:
         if hasattr(table, field) and callable(getattr(table, field)):
             continue  # We can't include this python property as part of the query
-        baseQuery = baseQuery.add_columns(db.literal_column(field))
+        baseQuery = baseQuery.add_columns(db.literal_column(export_dict['fields'][field]).label(field))
 
     return levels, baseQuery
 

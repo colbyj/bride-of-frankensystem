@@ -169,6 +169,10 @@ class BOFSFlask(Flask):
         print(filename)
         table = JSONTable(filename)
         table.create_db_class()
+        exports_dict = table.create_exports_dict()
+
+        if exports_dict is not None:
+            self.config['EXPORT'] += exports_dict
 
         # Add the table as a database class, if it hasn't been added already.
         if not hasattr(self.db, table.dbClass.__name__):
