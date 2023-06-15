@@ -28,18 +28,16 @@ BOF includes a number of features relating to deploying online experiments
 
 Dependencies
 ============
-BOF requires either Python 2.7.x or Python 3.x, along with the following Python packages.
+BOF requires Python 3.7+, along with the following Python packages.
 
-* `future` - Used for Python 2 and 3 compatibility.
 * `flask` - The web framework that BOF is based off of.
 * `sqlalchemy` - An object-relational manager that is used for database table definitions and query access.
-* `flask-sqlalchemy` - A bridge between Flask and SQLAlchemy
+* `flask-sqlalchemy` - A bridge between Flask and SQLAlchemy/
 * `eventlet` - This is used as the production (live) web server, as an alternative to Flask's built in web server or the Apache web server.
+* `toml` - The configuration files use the toml format.
 
 Installation
 ============
-Requires Python 2.7.x or Python 3.x. 
-
 The preferred method of installation is to download the zip file and run: 
 `pip install bride-of-frankensystem-master.zip` 
 from directory in which the file is located.

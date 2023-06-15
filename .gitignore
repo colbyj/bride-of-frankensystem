@@ -4,3 +4,6 @@
 *___jb_old___
 *.directory
 /.project
+BOFS/bride_of_frankensystem.egg-info/*
+build/*
+bride_of_frankensystem.egg-info/*
