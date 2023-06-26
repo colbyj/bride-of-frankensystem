@@ -36,15 +36,30 @@ BOF requires Python 3.7+, along with the following Python packages.
 * `eventlet` - This is used as the production (live) web server, as an alternative to Flask's built in web server or the Apache web server.
 * `toml` - The configuration files use the toml format.
 
+
 Installation
 ============
-The preferred method of installation is to download the zip file and run: 
-`pip install bride-of-frankensystem-master.zip` 
-from directory in which the file is located.
-This should also install all required packages using `pip`. 
+It is highly recommended that you install BOFS in a [venv](https://docs.python.org/3/library/venv.html). What 
+this does is ensure that your project always has access to the version of BOF that it was developed with. 
+
+The steps for doing this are:
+1. Create the venv with: `python -m venv bofs_venv`
+2. Activate the venv.
+   * In Windows this is done via `.\bofs_venv\Scripts\activate.bat` if using `cmd` or `.\bofs_venv\Scripts\Activate.ps1` if using Powershell (the default command line in Windows 11).
+   * In MacOS or Linux this is done via `source bofs_venv/bin/activate`
+3. Download the project source code as a zip and install it via pip: `pip install bride-of-frankensystem-master.zip` 
+
+
+Running BOFS
+============
+Once installed via `pip`, you can run your project by executing the `BOFS <your_config_file>` command in your project directory.
+You can use the `-d` flag to enable debugging mode. If you are using PyCharm, then you can run it by adding a custom run
+configuration with `BOFS` as the module name and your config file as the parameter.
+
 
 Further Help
 ============
 
 * [Example Projects](https://github.com/colbyj/bride-of-frankensystem-examples)
 * [Wiki](https://github.com/colbyj/bride-of-frankensystem/wiki)
+* [Migrating to BOF 2.0](https://github.com/colbyj/bride-of-frankensystem/wiki/Migrating-to-BOFS-2.0)
