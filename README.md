@@ -48,7 +48,7 @@ The steps for doing this are:
    * In Windows this is done via `.\bofs_venv\Scripts\activate.bat` if using `cmd` or `.\bofs_venv\Scripts\Activate.ps1` if using Powershell (the default command line in Windows 11).
    * In MacOS or Linux this is done via `source bofs_venv/bin/activate`
 3. Download the project source code as a zip and install it via pip: `pip install bride-of-frankensystem-master.zip`
-   * Or, you can download via pypi: `pip install -i https://test.pypi.org/simple/ bride-of-frankensystem`
+   * Or, you can download via pypi: `pip install bride-of-frankensystem`
 
 
 Running BOFS
