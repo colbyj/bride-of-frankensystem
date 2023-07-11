@@ -63,7 +63,7 @@
                             <label for="{{ question.id }}" style="float:right;">{{ question.right | safe }}</label>
                             <div style="clear:both;"></div>
                         </div>
-                        <input type="range" name="{{ question.id }}" id="{{ question.id }}" min="1" max="{{ question.tick_count }}" style="width: {{ question.width if question.width else default_field_width }}px;">
+                        <input type="range" name="{{ question.id }}" id="{{ question.id }}" value="{{ question.default }}" min="1" max="{{ question.tick_count }}" style="width: {{ question.width if question.width else default_field_width }}px;">
                     {% endif %}
 
                     {% if question.questiontype == "field" %}
