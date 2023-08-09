@@ -25,9 +25,10 @@ class BOFSFlask(Flask):
 
         self.page_list = PageList(self.config['PAGE_LIST'])
 
-        bofs_path = os.path.dirname(os.path.abspath(__file__))  # Get the current working path.
+        bofs_path = os.path.dirname(os.path.abspath(config_name))  # Get the current working path.
 
         self.bofs_path = bofs_path
+        self.instance_path = bofs_path
 
         self.db = SQLAlchemy(self)
         self.db_tables = []
@@ -264,6 +265,3 @@ class BOFSFlask(Flask):
             response.headers.add('Content-Encoding', 'gzip')
 
         return response
-
-
-
