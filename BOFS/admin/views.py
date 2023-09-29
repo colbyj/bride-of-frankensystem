@@ -8,7 +8,6 @@ from datetime import datetime
 from os import path, listdir
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-
 admin = Blueprint('admin', __name__, template_folder='templates', static_folder='static', url_prefix="/admin")
 
 
@@ -104,7 +103,7 @@ def fetch_progress_summary():
         db.func.sum(db.cast(db.Participant.is_abandoned, db.Integer)).label('countAbandoned'),
         db.func.sum(db.cast(db.Participant.is_in_progress, db.Integer)).label('countInProgress'),
         db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
-        db.func.avg(db.Participant.duration).label('minutes')).\
+        db.func.avg(db.Participant.duration).label('minutes')). \
         group_by(db.Participant.condition).all()
 
     summary = db.session.query(
@@ -114,7 +113,7 @@ def fetch_progress_summary():
         db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
         db.func.min(db.Participant.duration).label('minSeconds'),
         db.func.max(db.Participant.duration).label('maxSeconds'),
-        db.func.avg(db.Participant.duration).label('seconds')).\
+        db.func.avg(db.Participant.duration).label('seconds')). \
         one()
 
     return summary_groups, summary
@@ -196,6 +195,7 @@ def create_export_base_queries(export_dict):
     filter = None
     groupBy = None
     orderBy = None
+    having = None
 
     if 'filter' in export_dict and export_dict['filter'] != '':
         filter = db.text(export_dict['filter'])
@@ -205,6 +205,9 @@ def create_export_base_queries(export_dict):
 
     # determine how many columns to add to the export. If group_by is not used, then it's just one column
     if 'group_by' in export_dict and export_dict['group_by'] != '':
+        if 'having' in export_dict and export_dict['having'] != '':  # Having can only work if group_by is used.
+            having = db.text(export_dict['having'])
+
         levelsQ = db.session.query()
 
         if isinstance(export_dict['group_by'], list):
@@ -226,16 +229,18 @@ def create_export_base_queries(export_dict):
         else:
             levels = levelsQ.all()
 
-    #pk = db.inspect(table).primary_key[0]
+    # pk = db.inspect(table).primary_key[0]
     baseQuery = db.session.query(table)
 
     if groupBy:
-        if groupBy:
-            if isinstance(groupBy, list):
-                for gb in groupBy:
-                    baseQuery = baseQuery.group_by(getattr(table, 'participantID'), gb)
-            else:
-                baseQuery = baseQuery.group_by(getattr(table, 'participantID'), groupBy)
+        if isinstance(groupBy, list):
+            for gb in groupBy:
+                baseQuery = baseQuery.group_by(getattr(table, 'participantID'), gb)
+        else:
+            baseQuery = baseQuery.group_by(getattr(table, 'participantID'), groupBy)
+
+        if having is not None:
+            baseQuery = baseQuery.having(having)
     else:
         baseQuery = baseQuery.group_by(getattr(table, 'participantID'))
 
@@ -258,7 +263,8 @@ def create_export_base_queries(export_dict):
 @admin.route("/export/download", endpoint="route_export_download")
 @verify_admin
 def route_export():
-    unfinishedCount = db.session.query(db.Participant).filter(db.Participant.finished == False).count()  # For display only
+    unfinishedCount = db.session.query(db.Participant).filter(
+        db.Participant.finished == False).count()  # For display only
     missingCount = 0
     innerJoins = db.session.query(db.Participant)  # Participants with complete data
     leftJoins = db.session.query(db.Participant)  # Participants with complete or incomplete data
@@ -291,19 +297,19 @@ def route_export():
         qDBC = db.aliased(questionnaires[qName].dbClass, name=qNameAndTag)
 
         leftJoins = leftJoins.outerjoin(qDBC,
-                              db.and_(
-                                  qDBC.participantID == db.Participant.participantID,
-                                  qDBC.tag == qTag
-                              )).add_entity(qDBC)
+                                        db.and_(
+                                            qDBC.participantID == db.Participant.participantID,
+                                            qDBC.tag == qTag
+                                        )).add_entity(qDBC)
 
         innerJoins = innerJoins.join(qDBC,
-                              db.and_(
-                                  qDBC.participantID == db.Participant.participantID,
-                                  qDBC.tag == qTag
-                              )).add_entity(qDBC)
+                                     db.and_(
+                                         qDBC.participantID == db.Participant.participantID,
+                                         qDBC.tag == qTag
+                                     )).add_entity(qDBC)
 
-        #attributes = questionnaires[qName].dbClass.__dict__
-        #keys = sorted(attributes.keys())
+        # attributes = questionnaires[qName].dbClass.__dict__
+        # keys = sorted(attributes.keys())
 
         columns[qNameAndTag] = []
         calculatedColumns[qNameAndTag] = []
@@ -389,11 +395,11 @@ def route_export():
     # Iterate through each participant's data
     for row in rows:
         csvString += str.format(u"{},{},{},{},{}",
-                                row.Participant.participantID,
-                                row.Participant.mTurkID,
-                                condition_num_to_label(row.Participant.condition),
-                                row.Participant.duration,
-                                row.Participant.finished
+                                row.participantID,
+                                row.mTurkID,
+                                condition_num_to_label(row.condition),
+                                row.duration,
+                                row.finished
                                 )
 
         for qNameAndTag in qList:
@@ -418,7 +424,7 @@ def route_export():
 
         for export in customExports:
             query = export['base_query']
-            query = query.filter(db.literal_column('participantID') == row.Participant.participantID)
+            query = query.filter(db.literal_column('participantID') == row.participantID)
             customExportData = query.all()  # Running separate queries will get the job done, but be kind of slow with many participants...
 
             if export['levels']:
@@ -433,7 +439,7 @@ def route_export():
                         for gb in export['options']['group_by']:
                             groupValue += str(getattr(classValues, gb))
                     else:
-                        groupValue = getattr(classValues, export['options']['group_by'])
+                        groupValue = str(getattr(classValues, export['options']['group_by']))
                     customExportRMs[groupValue] = r
 
                 for level in export['levels']:
@@ -481,16 +487,15 @@ def route_export():
                 for r in customExportData:
                     classValues = getattr(r, export['options']['table'])
 
-
-
         csvString += "\n"
 
     if request.base_url.endswith("/download"):
         return Response(csvString,
-                    mimetype="text/csv",
-                    headers={
-                        "Content-disposition": "attachment; filename=%s.csv" % ("export_" + datetime.utcnow().strftime("%Y-%m-%d_%H-%M"))
-                    })
+                        mimetype="text/csv",
+                        headers={
+                            "Content-disposition": "attachment; filename=%s.csv" % (
+                                        "export_" + datetime.utcnow().strftime("%Y-%m-%d_%H-%M"))
+                        })
     else:
         return render_template("export.html",
                                data=csvString,
@@ -548,15 +553,16 @@ def route_preview_questionnaire(questionnaireName):
             for e in errors:
                 if "(OperationalError) no such column:" in e:
                     e = e.split(tableName + ".")
-                    columnName = e[len(e)-1]
+                    columnName = e[len(e) - 1]
                     dataType = db.metadata.tables[tableName].columns[columnName].type
-    
+
                     addColumn = db.DDL(str.format("ALTER TABLE {} ADD COLUMN {} {}", tableName, columnName, dataType))
                     db.engine.execute(addColumn)
-    
+
                     errors.append(str.format(u"{} {} was added to {}. "
-                                             u"This error should be gone when you refresh.", columnName, dataType, tableName))
-    
+                                             u"This error should be gone when you refresh.", columnName, dataType,
+                                             tableName))
+
                 if "(OperationalError) no such table:" in e:
                     db.create_all()
                     errors.append(str.format(u"The error should be gone if you refresh."))
@@ -666,5 +672,6 @@ def route_table_csv(tableName):
     return Response(csv,
                     mimetype="text/csv",
                     headers={
-                        "Content-disposition": "attachment; filename=%s.csv" % (tableName + "_" + datetime.utcnow().strftime("%Y-%m-%d"))
+                        "Content-disposition": "attachment; filename=%s.csv" % (
+                                    tableName + "_" + datetime.utcnow().strftime("%Y-%m-%d"))
                     })

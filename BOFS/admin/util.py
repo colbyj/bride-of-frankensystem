@@ -74,10 +74,13 @@ def escape_csv(input):
 
 
 def condition_num_to_label(condition):
-    if len(current_app.config['CONDITIONS']) > 0:
-        return current_app.config['CONDITIONS'][condition-1]['label']
-    else:
+    if len(current_app.config['CONDITIONS']) == 0:
         return condition
+    elif condition is None:
+        return ""
+    else:
+
+        return current_app.config['CONDITIONS'][condition - 1]['label']
 
 
 def questionnaire_name_and_tag(questionnnaireNameAndTagString):
