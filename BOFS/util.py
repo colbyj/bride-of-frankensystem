@@ -5,6 +5,7 @@ from .globals import db
 import math
 import datetime
 import uuid
+from posixpath import join as urljoin
 
 
 # Decorator to help views verify whether the user is on the right page
@@ -16,6 +17,7 @@ def verify_correct_page(f):
     .. note::
         * Should be used just on routes after the user's session is created (usually after the consent form).
     """
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         currentUrl = request.url.replace(request.url_root, "")
@@ -62,6 +64,7 @@ def verify_correct_page(f):
                 db.session.commit()
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -73,6 +76,7 @@ def verify_session_valid(f):
         * Should be used just on routes after the session is created (for example, after the initial questionnaire).
         * The ``/submit`` path is where the value of ``session['currentUrl']`` is set.
     """
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         # The user shouldn't be here yet, redirect to the start
@@ -87,18 +91,19 @@ def verify_session_valid(f):
                 session.clear()
                 return redirect('/')
             # See that the user's IP address matches what's in the database
-            #if participant.ipAddress != request.environ['REMOTE_ADDR']:
+            # if participant.ipAddress != request.environ['REMOTE_ADDR']:
             #    session.clear()
             #    return redirect('/')
 
         return f(*args, **kwargs)
+
     return decorated_function
 
 
 def redirect_and_set_next_path(current_path=None):
     """
     Uses the next_path_in_list() method to redirect the user
-    
+
     :param str current_path: The user's current path
     :returns: str -- the next path in PAGE_LIST which the user should be sent to.
     """
@@ -114,6 +119,14 @@ def redirect_next_page(request):
     """
     session['currentUrl'] = current_app.page_list.next_path(request.url_rule.rule)
     return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
+
+
+def join_urls(path: str, *paths: str):
+    paths = list(paths)
+    for i in range(len(paths)):
+        if paths[i] != None and paths[i] != '' and paths[i][0] == '/':
+            paths[i] = paths[i][1:]
+    return urljoin(path, *tuple(paths))
 
 
 def create_breadcrumbs():
@@ -144,7 +157,7 @@ def create_breadcrumbs():
 
     # Check for and handle any groupings of pages with the same name.
     for i, crumb in enumerate(crumbs):
-        if i+1 == len(crumbs):
+        if i + 1 == len(crumbs):
             break
 
         crumbsInGroup = 1
@@ -154,8 +167,8 @@ def create_breadcrumbs():
             positionInGroup = crumbsInGroup
 
         # Keep removing pages after the first one which have the same name.
-        while crumbs[i]['name'] == crumbs[i+1]['name']:
-            removedCrumb = crumbs.pop(i+1)
+        while crumbs[i]['name'] == crumbs[i + 1]['name']:
+            removedCrumb = crumbs.pop(i + 1)
 
             crumbsInGroup += 1
 
@@ -288,6 +301,7 @@ try:
     from numpy import std as npstd
     from numpy import var as npvar
     from numpy import median as npmedian
+
     numpy = True
 except Exception as e1:
     try:
@@ -295,6 +309,7 @@ except Exception as e1:
         from statistics import stdev as p3std
         from statistics import variance as p3var
         from statistics import median as p3median
+
         py3statistics = True
     except Exception as e2:
         print("Warning: Unable to import either NumPy or Python 3's statistics library!")

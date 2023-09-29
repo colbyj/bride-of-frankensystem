@@ -6,6 +6,7 @@ import os
 import random
 from flask import Flask, request, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
+from flask_compress import Compress
 from BOFS import util
 from .BOFSSession import BOFSSessionInterface
 from .JSONQuestionnaire import JSONQuestionnaire
@@ -25,15 +26,15 @@ class BOFSFlask(Flask):
 
         self.page_list = PageList(self.config['PAGE_LIST'])
 
-        bofs_path = os.path.dirname(os.path.abspath(config_name))  # Get the current working path.
-
-        self.bofs_path = bofs_path
-        self.instance_path = bofs_path
+        self.bofs_path = os.path.dirname(__file__)  # Get the path to where the BOFS files (like this file) are
+        self.instance_path = os.path.dirname(os.path.abspath(config_name))  # Get the current working path.
 
         self.db = SQLAlchemy(self)
         self.db_tables = []
         self.questionnaires = {}
         self.tables = {}
+
+        self.compress = Compress(self)
 
         # Store Flask session in the database.
         self.session_interface = BOFSSessionInterface()
@@ -43,10 +44,14 @@ class BOFSFlask(Flask):
         self.add_url_rule("/consent.html", endpoint="consent_html", view_func=self.route_consent)
         self.register_error_handler(404, self.page_not_found)
 
+        default_templates_path = os.path.join(self.bofs_path, "templates")
+        project_templates_path = os.path.join(self.instance_path, 'templates')
+
         # Allows developers of BOFS deployments to override BOFS templates
         my_loader = jinja2.ChoiceLoader([
             self.jinja_loader,
-            jinja2.FileSystemLoader(self.bofs_path + '/templates'),
+            jinja2.FileSystemLoader(default_templates_path),
+            jinja2.FileSystemLoader(project_templates_path),
         ])
 
         self.jinja_loader = my_loader
@@ -55,9 +60,6 @@ class BOFSFlask(Flask):
 
         # allows flat_page_list variable to be accessible from all templates
         self.template_context_processors[None].append(self.inject_jinja_vars)
-
-        # properly apply content-encoding request headers for gzip and brotli
-        self.after_request(self.add_headers_to_compressed)
 
     # Overriding this ensures compatibility with existing run.py files regardless of whether socketio is used or not
     def run(self, host=None, port=None, **options):
@@ -245,23 +247,3 @@ class BOFSFlask(Flask):
             crumbs=util.create_breadcrumbs(),
             json_dumps=json.dumps
         )
-
-    def add_headers_to_compressed(self, response):
-        if request.path and re.search(r'\.(br)$', request.path):
-            if 'Content-Type' in response.headers and re.search(r'\.(data.br)$', request.path):
-                response.headers['Content-Type'] = 'application/octet-stream'
-                response.status_code = 200  # Don't allow the browser to use the cached data file.
-            if 'Content-Type' in response.headers and re.search(r'\.(js.br)$', request.path):
-                response.headers['Content-Type'] = 'application/javascript'
-
-            response.headers.add('Content-Encoding', 'br')
-
-        if request.path and re.search(r'\.(gz)$', request.path):
-            if 'Content-Type' in response.headers and re.search(r'\.(data.gz)$', request.path):
-                response.headers['Content-Type'] = 'application/octet-stream'
-                response.status_code = 200  # Don't allow the browser to use the cached data file.
-            if 'Content-Type' in response.headers and re.search(r'\.(js.gz)$', request.path):
-                response.headers['Content-Type'] = 'application/javascript'
-            response.headers.add('Content-Encoding', 'gzip')
-
-        return response

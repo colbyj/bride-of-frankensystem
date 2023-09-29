@@ -117,9 +117,13 @@ class PageList(object):
             current_path = request.path
         if current_path.startswith("/"):
             path = current_path[1:]
-        currentIndex = self.get_index(current_path)
+        current_index = self.get_index(current_path)
+        flat_page_list = self.flat_page_list()
 
-        return self.flat_page_list()[currentIndex + 1]['path']
+        if current_index == len(flat_page_list) - 1:
+            return current_path
+
+        return flat_page_list[current_index + 1]['path']
 
     def previous_path(self, current_path=None):
         """
@@ -132,6 +136,9 @@ class PageList(object):
         if current_path.startswith("/"):
             current_path = current_path[1:]
 
-        currentIndex = self.get_index(current_path)
+        current_index = self.get_index(current_path)
 
-        return self.flat_page_list()[currentIndex - 1]['path']
+        if current_index == 0:
+            return current_path
+
+        return self.flat_page_list()[current_index - 1]['path']

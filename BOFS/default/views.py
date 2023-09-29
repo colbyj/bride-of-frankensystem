@@ -31,7 +31,7 @@ def route_consent():
             return render_template("consent.html")
 
         provide_consent(True)
-        return redirect("/redirect_next_page")
+        return redirect("/redirect_from_page/consent")
 
     return render_template("consent.html")
 
@@ -46,7 +46,7 @@ def route_consent_nc():
     """
     if request.method == 'POST':
         provide_consent(False)
-        return redirect("/redirect_next_page")
+        return redirect("/redirect_from_page/consent_nc")
     return render_template("consent.html")
 
 
@@ -58,8 +58,8 @@ def route_create_participant():
     show a consent form.
     :return:
     """
-    provide_consent(True)
-    return redirect("/redirect_next_page")
+    provide_consent(True, False)
+    return redirect("/redirect_from_page/create_participant")
 
 
 # Use this route in place of /consent_nc, if you want to bypass the consent form without assigning a condition.
@@ -72,8 +72,8 @@ def route_create_participant_nc():
     and so could be used in conjuction with `/assign_condition`.
     :return:
     """
-    provide_consent(False)
-    return redirect("/redirect_next_page")
+    provide_consent(False, False)
+    return redirect("/redirect_from_page/create_participant_nc")
 
 
 @default.route("/assign_condition")
@@ -92,7 +92,7 @@ def route_assign_condition():
 
     session['condition'] = p.condition
 
-    return redirect("/redirect_next_page")
+    return redirect("/redirect_from_page/assign_condition")
 
 
 @default.route("/startMTurk", methods=['POST', 'GET'])  # Deprecated
@@ -114,7 +114,7 @@ def route_external_id():
 
         # Don't try to load any past attempts if this config option is set
         if not current_app.config['RETRIEVE_SESSIONS']:
-            return redirect('/redirect_next_page')
+            return redirect(join_urls('/redirect_from_page', request.path))
 
         sessionFromMTurkID = db.session.query(db.SessionStore).\
             filter(db.SessionStore.mTurkID == p.mTurkID).\
@@ -159,7 +159,7 @@ def route_external_id():
                 if 'currentUrl' in dictData and session['currentUrl'] not in ('startMTurk', 'start_mturk', 'external_id', 'consent'):
                     return redirect(session['currentUrl'])
 
-        return redirect('/redirect_next_page')
+        return redirect(join_urls('/redirect_from_page', request.path))
 
     mTurkID = None
     if 'mTurkID' in session and len(session['mTurkID']) > 0:
@@ -199,7 +199,7 @@ def route_questionnaire(questionnaireName, tag=""):
     if request.method == 'POST':
         q.handle_questionnaire(tag)
 
-        return redirect("/redirect_next_page")
+        return redirect(join_urls('/redirect_from_page', request.path))
 
     return render_template('questionnaire.html',
                            tag=tag,
@@ -360,7 +360,7 @@ def route_instructions(pageName):
     :return:
     """
     if request.method == "POST":
-        return redirect("/redirect_next_page")
+        return redirect(join_urls('/redirect_from_page', request.path))
 
     jinja = current_app.jinja_env
     instructionsTemplate = jinja.get_or_select_template("instructions/%s.html" % pageName)

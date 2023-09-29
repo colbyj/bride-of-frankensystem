@@ -20,6 +20,7 @@ dependencies = [
     "eventlet",
     "sqlalchemy",
     "flask-sqlalchemy",
+    "flask-compress",
     "toml"
 ]
 requires-python = ">=3.7"
