@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, current_app, request, make_response, _app_ctx_stack
+from werkzeug.urls import url_parse
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
 from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
@@ -226,14 +227,17 @@ def route_redirect_next_page():
     :return:
     """
     if not request is None and not request.referrer is None:
-        currentPage = str.replace(str(request.referrer), request.host_url, "")
-    else:
-        currentPage = session['currentUrl']
+        parsed = url_parse(request.referrer)
+        current_page = parsed.path
+        #currentPage = str.replace(str(request.referrer), request.host_url, "")
 
-    if currentPage == "end":
+    else:
+        current_page = session['currentUrl']
+
+    if current_page == "end":
         return redirect(current_app.config["APPLICATION_ROOT"] + "/end")
 
-    session['currentUrl'] = page_list.next_path(currentPage)
+    session['currentUrl'] = page_list.next_path(current_page)
     nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
 
     return redirect(nextUrl)
