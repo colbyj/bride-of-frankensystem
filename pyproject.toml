@@ -16,10 +16,12 @@ classifiers = [
     "Framework :: Flask"
 ]
 dependencies = [
-    "flask",
-    "eventlet",
-    "sqlalchemy",
-    "flask-sqlalchemy",
+    "flask==2.1.3",
+    "eventlet==0.33.1",
+    "sqlalchemy==1.4.39",
+    "flask-sqlalchemy==2.5.1",
+    "Werkzeug==2.2.0",
+    "dnspython==2.2.1",
     "flask-compress",
     "toml"
 ]
