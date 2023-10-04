@@ -16,14 +16,14 @@ classifiers = [
     "Framework :: Flask"
 ]
 dependencies = [
-    "flask",
+    "flask>=2.3.0",
     "eventlet",
-    "sqlalchemy",
-    "flask-sqlalchemy",
+    "sqlalchemy>=1.4.18",
+    "flask-sqlalchemy>=3.0.0",
     "flask-compress",
     "toml"
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 
 [tool.setuptools.packages.find]
 where = [""]
