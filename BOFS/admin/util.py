@@ -76,10 +76,9 @@ def escape_csv(input):
 def condition_num_to_label(condition):
     if len(current_app.config['CONDITIONS']) == 0:
         return condition
-    elif condition is None:
+    elif condition is None or condition == 0:
         return ""
     else:
-
         return current_app.config['CONDITIONS'][condition - 1]['label']
 
 
