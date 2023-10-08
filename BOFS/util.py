@@ -232,7 +232,12 @@ def provide_consent(assignCondition=True, logDisplaySize=True):
     import datetime
 
     p = db.Participant()
-    p.ipAddress = request.environ['REMOTE_ADDR']  # request.headers.get('X-Real-IP')  # request.remote_addr
+    ip_address = request.headers.get('X-Real-IP')
+
+    if ip_address == None:
+        ip_address = request.environ['REMOTE_ADDR']
+
+    p.ipAddress = ip_address  # request.remote_addr
     p.userAgent = request.user_agent.string
     p.timeStarted = datetime.datetime.utcnow()
 
