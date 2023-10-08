@@ -146,7 +146,8 @@ class BOFSFlask(Flask):
                 print("Warning: %s.models does not contain a `create()` function! No models will be added.")
                 return
 
-            my_classes = create_function(self.db)
+            with self.app_context():
+                my_classes = create_function(self.db)
 
             if hasattr(my_classes, '__iter__'):  # A list or tuple was returned
                 for c in my_classes:

@@ -54,6 +54,12 @@ def create_app(path, config_name, debug=False):
     if 'OUTGOING_URL' not in app.config:
         app.config['OUTGOING_URL'] = None
 
+    if 'ABANDONED_MINUTES' not in app.config:
+        app.config['ABANDONED_MINUTES'] = 5
+
+    if 'COUNTS_INCLUDE_ABANDONED' not in app.config:
+        app.config['COUNTS_INCLUDE_ABANDONED'] = False
+
     if 'CONDITIONS' not in app.config:
         app.config['CONDITIONS'] = []
 

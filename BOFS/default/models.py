@@ -3,9 +3,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property
 from sqlalchemy.ext.declarative import declared_attr
 from BOFS.util import display_time
-
-
-abandoned_minutes = 15
+from flask import current_app
 
 
 def create(db):
@@ -47,7 +45,7 @@ def create(db):
             return questionnaires[name].create_blank()
 
         # Return a dictionary of question ID -> time delta
-        def questionnaire_log(self, name, tag=""):
+        def questionnaire_log(self, name, tag="") -> dict:
             q = self.questionnaire(name, tag)
 
             if tag == "":
@@ -71,9 +69,7 @@ def create(db):
 
             return result
 
-        def assign_condition(self):
-            from flask import current_app
-
+        def assign_condition(self) -> None:
             numConditions = len(current_app.config['CONDITIONS'])
             if numConditions > 0:
                 pCount = [0] * numConditions
@@ -82,11 +78,15 @@ def create(db):
 
                 for condition in range(1, numConditions+1):
                     # Count the participants that have not abandoned the study.
-                    pCount[condition-1] = db.session.query(db.Participant).\
-                        filter(
-                            db.and_(db.Participant.condition == condition, ~db.Participant.is_abandoned)
-                        ).\
-                        count()
+                    if current_app.config['COUNTS_INCLUDE_ABANDONED']:
+                        pCount[condition - 1] = db.session.query(db.Participant).\
+                            filter(db.Participant.condition == condition).\
+                            count()
+                    else:
+                        pCount[condition-1] = db.session.query(db.Participant).\
+                            filter(
+                                db.and_(db.Participant.condition == condition, ~db.Participant.is_abandoned)
+                            ).count()
 
                     printText += "{}, ".format(pCount[condition-1])
 
@@ -105,12 +105,12 @@ def create(db):
             else:
                 self.condition = None
 
-        def release_condition(self):
+        def release_condition(self) -> None:
             if self.condition is not None and self.condition > 0:
                 self.condition = -self.condition
 
         @hybrid_property
-        def duration(self):
+        def duration(self) -> int:
             if self.timeEnded is None:
                 return 0
             return (self.timeEnded - self.timeStarted).total_seconds()
@@ -125,23 +125,29 @@ def create(db):
         @declared_attr
         def is_in_progress(cls):
             return column_property(
-                db.and_(~cls.finished, ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) <= (abandoned_minutes / 1440.0))).label('is_in_progress')
+                db.and_(
+                    ~cls.finished,
+                    ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) <= (current_app.config['ABANDONED_MINUTES'] / 1440.0))
+                ).label('is_in_progress')
             )
 
         @declared_attr
         def is_abandoned(cls):
             return column_property(
-                db.and_(~cls.finished, ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) > (abandoned_minutes / 1440.0))).label('is_abandoned')
+                db.and_(
+                    ~cls.finished,
+                    ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) > (current_app.config['ABANDONED_MINUTES'] / 1440.0))
+                ).label('is_abandoned')
             )
 
-        def display_duration(self):
+        def display_duration(self) -> str:
             """
             display the time taken or status
             :return:
             """
 
             if self.timeEnded is None:
-                if self.lastActiveOn > datetime.datetime.utcnow() - datetime.timedelta(minutes=abandoned_minutes):
+                if self.lastActiveOn > datetime.datetime.utcnow() - datetime.timedelta(minutes=current_app.config['ABANDONED_MINUTES']):
                     return "In Progress"
                 else:
                     return "Abandoned"
@@ -149,6 +155,7 @@ def create(db):
             else:
                 seconds = (self.timeEnded - self.timeStarted).total_seconds()
                 return display_time(seconds)
+
 
     class Progress(db.Model):
         __tablename__ = "progress"
@@ -158,7 +165,7 @@ def create(db):
         startedOn = db.Column(db.DateTime, nullable=False, default=db.func.now())
         submittedOn = db.Column(db.DateTime, nullable=True)
 
-        def display_duration(self):
+        def display_duration(self) -> str:
             if self.submittedOn is None:
                 return "..."
             else:
@@ -206,7 +213,7 @@ def create(db):
             return '<Session data {0!s}>'.format(self.data)
 
         @property
-        def expired(self):
+        def expired(self) -> bool:
             return self.expiry is None or self.expiry <= datetime.datetime.utcnow()
 
     return Participant, Progress, RadioGridLog, Display, SessionStore
