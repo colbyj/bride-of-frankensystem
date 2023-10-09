@@ -22,7 +22,7 @@
         width: 90vw !important;
     }
 
-    input, select, textarea {
+    input, select, textarea, .slider-labels {
         max-width: 90vw !important;
     }
 }
@@ -100,6 +100,12 @@ p {
     width: var(--contents-width);
     margin-left: auto;
     margin-right: auto;
+}
+
+.slider-labels {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
 }
 
 .error-box {
