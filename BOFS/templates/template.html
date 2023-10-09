@@ -21,19 +21,20 @@
     <script src="{{ url_for('BOFS_static', filename='js/jquery-3.4.1.min.js') }}"></script>
     <script src="{{ url_for('BOFS_static', filename='js/popper.min.js') }}"></script>
     <script src="{{ url_for('BOFS_static', filename='js/bootstrap.min.js') }}"></script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block head %}{% endblock %}
 </head>
 <body>
 
 <div class="title-bar">
     <div class="title-text">
-        {% if config['USE_LOGO'] %}<div style="float: right"><img src="{{ url_for('BOFS_static', filename='logo.png') }}"></div>{% endif %}
         <div style="float: left; padding-top: 2px;">{{ config['TITLE'] }}</div>
     </div>
 </div>
 <br>
 
-<div style="width: 967px; margin-left: auto; margin-right: auto;" class="content">
+<div class="content">
     <div class="questions">
         {% if crumbs and config['USE_BREADCRUMBS'] %}
         <div>
@@ -60,7 +61,7 @@
     </div>
 </div>
 
-{% if (session.get('loggedIn', False) or debug) and session.get('participantID', False) and request.blueprint != 'admin' %}
+{% if False and (session.get('loggedIn', False) or debug) and session.get('participantID', False) and request.blueprint != 'admin' %}
 <div class="fixed-bottom debug-menu bg-dark">
     <div class="row">
         <div class="col-sm-2" style="text-align:left;">
