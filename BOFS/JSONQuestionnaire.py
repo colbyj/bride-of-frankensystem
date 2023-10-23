@@ -203,7 +203,7 @@ class JSONQuestionnaire(object):
 
         setattr(newObject, 'participantID', session['participantID'])
         setattr(newObject, 'timeStarted', timeStarted)
-        setattr(newObject, 'timeEnded', datetime.now())
+        setattr(newObject, 'timeEnded', datetime.utcnow())
         setattr(newObject, 'tag', tag)
 
         db.session.add(newObject)

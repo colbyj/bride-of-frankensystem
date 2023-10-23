@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property
 from sqlalchemy.ext.declarative import declared_attr
@@ -15,11 +15,11 @@ def create(db):
         ipAddress = db.Column(db.String(32), nullable=False, default="")
         userAgent = db.Column(db.String(255), nullable=False, default="")
         condition = db.Column(db.Integer, nullable=True, default=0)
-        timeStarted = db.Column(db.DateTime, nullable=False, default=db.func.now())  # Starts after consent
+        timeStarted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # Starts after consent
         timeEnded = db.Column(db.DateTime, nullable=True)
         finished = db.Column(db.Boolean, nullable=False, default=False)
         code = db.Column(db.String(36), nullable=False, default=0)
-        lastActiveOn = db.Column(db.DateTime, nullable=False, default=db.func.now())
+        lastActiveOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
         def questionnaire(self, name, tag=""):
             from BOFS.globals import questionnaires
@@ -127,7 +127,7 @@ def create(db):
             return column_property(
                 db.and_(
                     ~cls.finished,
-                    ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) <= (current_app.config['ABANDONED_MINUTES'] / 1440.0))
+                    ((db.func.julianday(datetime.utcnow()) - db.func.julianday(cls.lastActiveOn)) <= (current_app.config['ABANDONED_MINUTES'] / 1440.0))
                 ).label('is_in_progress')
             )
 
@@ -136,7 +136,7 @@ def create(db):
             return column_property(
                 db.and_(
                     ~cls.finished,
-                    ((db.func.julianday(db.func.now()) - db.func.julianday(cls.lastActiveOn)) > (current_app.config['ABANDONED_MINUTES'] / 1440.0))
+                    ((db.func.julianday(datetime.utcnow()) - db.func.julianday(cls.lastActiveOn)) > (current_app.config['ABANDONED_MINUTES'] / 1440.0))
                 ).label('is_abandoned')
             )
 
@@ -147,7 +147,7 @@ def create(db):
             """
 
             if self.timeEnded is None:
-                if self.lastActiveOn > datetime.datetime.utcnow() - datetime.timedelta(minutes=current_app.config['ABANDONED_MINUTES']):
+                if self.lastActiveOn > datetime.utcnow() - timedelta(minutes=current_app.config['ABANDONED_MINUTES']):
                     return "In Progress"
                 else:
                     return "Abandoned"
@@ -162,7 +162,7 @@ def create(db):
 
         participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'), primary_key=True)
         path = db.Column(db.Text, nullable=False, primary_key=True)
-        startedOn = db.Column(db.DateTime, nullable=False, default=db.func.now())
+        startedOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
         submittedOn = db.Column(db.DateTime, nullable=True)
 
         def display_duration(self) -> str:
@@ -180,7 +180,7 @@ def create(db):
 
         radioGridLog = db.Column(db.Integer, primary_key=True, autoincrement=True)
         participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'))
-        timeClicked = db.Column(db.DateTime, nullable=False, default=db.func.now())
+        timeClicked = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
         questionnaire = db.Column(db.String, nullable=False, default="")
         tag = db.Column(db.String, nullable=False, default="")
         questionID = db.Column(db.String, nullable=False, default="")
@@ -207,14 +207,14 @@ def create(db):
         mTurkID = db.Column(db.Text, nullable=True)
         data = db.Column(db.Text)
         expiry = db.Column(db.DateTime)
-        createdOn = db.Column(db.DateTime, nullable=False, default=db.func.now())
+        createdOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
         def __repr__(self):
             return '<Session data {0!s}>'.format(self.data)
 
         @property
         def expired(self) -> bool:
-            return self.expiry is None or self.expiry <= datetime.datetime.utcnow()
+            return self.expiry is None or self.expiry <= datetime.utcnow()
 
     return Participant, Progress, RadioGridLog, Display, SessionStore
 

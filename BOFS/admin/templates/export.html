@@ -11,10 +11,6 @@
                     <input type="checkbox" class="form-check-input" id="includeUnfinished" name="includeUnfinished" {{ "checked" if request.args.get('includeUnfinished', False) }}>
                     <label for="includeUnfinished">Include participants that did not complete the task (N={{unfinishedCount}})</label>
                 </li>
-                <li>
-                    <input type="checkbox" class="form-check-input" id="includeMissing" name="includeMissing" {{ "checked" if request.args.get('includeMissing', False) }}>
-                    <label for="includeMissing">Include participants that completed, but have missing data (N={{missingCount}})</label>
-                </li>
             </ul>
 
             <button type="submit" class="btn btn-dark">Preview</button>

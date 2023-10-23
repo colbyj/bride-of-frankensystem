@@ -27,7 +27,7 @@ class JSONTable(object):
             '__tablename__': tableName,
             str.format(u'{0}ID', self.fileName): db.Column(db.Integer, primary_key=True, autoincrement=True),
             'participantID': db.Column(db.Integer, db.ForeignKey("participant.participantID"), nullable=False),
-            'timeSubmitted': db.Column(db.DateTime, nullable=False, default=db.func.now())
+            'timeSubmitted': db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
         }
 
         for column in self.jsonData['columns']:
