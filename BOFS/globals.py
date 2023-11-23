@@ -1,4 +1,4 @@
-from flask.globals import _app_ctx_stack, _request_ctx_stack, LocalProxy
+from flask.globals import app_ctx, request, LocalProxy
 
 
 # This code is based on flask's globals.py file
@@ -20,24 +20,26 @@ documentation for more information.\
 
 
 def _find_app_db():
-    top = _app_ctx_stack.top
-    if top is None:
+    if app_ctx is None:
         raise RuntimeError(_app_ctx_err_msg)
-    return top.app.db
+    return app_ctx.app.db
 
 
 def _find_referrer():
-    top = _request_ctx_stack.top
-    if top is None:
+    if request is None:
         raise RuntimeError(_request_ctx_err_msg)
 
     # Remove trailing "/" from URL, if it's there
-    url_root = top.request.url_root
+    url_root = request.url_root
     if url_root.endswith("/"):
         url_root = url_root[:-1]
 
-    # Remove the beginning portion of the URL from the referrer URL
-    _referrer = top.request.referrer.replace(url_root, "")
+
+    _referrer = request.referrer
+    if _referrer is None:
+        return None
+
+    _referrer = _referrer.replace(url_root, "")  # Remove the beginning portion of the URL from the referrer URL
 
     # Don't have leading slash on URL
     if _referrer.startswith("/"):
@@ -47,31 +49,21 @@ def _find_referrer():
 
 
 def _find_app_questionnaires():
-    top = _app_ctx_stack.top
-    if top is None:
+    if app_ctx is None:
         raise RuntimeError(_app_ctx_err_msg)
-    return top.app.questionnaires
+    return app_ctx.app.questionnaires
 
 
 def _find_app_tables():
-    top = _app_ctx_stack.top
-    if top is None:
+    if app_ctx is None:
         raise RuntimeError(_app_ctx_err_msg)
-    return top.app.tables
+    return app_ctx.app.tables
 
 
 def _find_app_page_list():
-    top = _app_ctx_stack.top
-    if top is None:
+    if app_ctx is None:
         raise RuntimeError(_app_ctx_err_msg)
-    return top.app.page_list
-
-
-def _find_app_socketio():
-    top = _app_ctx_stack.top
-    if top is None:
-        raise RuntimeError(_app_ctx_err_msg)
-    return top.app.socketio
+    return app_ctx.app.page_list
 
 
 db = LocalProxy(_find_app_db)
@@ -79,4 +71,3 @@ referrer = LocalProxy(_find_referrer)
 questionnaires = LocalProxy(_find_app_questionnaires)
 tables = LocalProxy(_find_app_tables)
 page_list = LocalProxy(_find_app_page_list)
-socketio = LocalProxy(_find_app_socketio)

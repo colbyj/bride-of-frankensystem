@@ -1,5 +1,5 @@
-from flask import Blueprint, render_template, current_app, request, make_response, _app_ctx_stack
-from werkzeug.urls import url_parse
+from flask import Blueprint, render_template, current_app, request, make_response
+from urllib.parse import urlsplit
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
 from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
@@ -227,7 +227,7 @@ def route_redirect_next_page():
     :return:
     """
     if not request is None and not request.referrer is None:
-        parsed = url_parse(request.referrer)
+        parsed = urlsplit(request.referrer)
         current_page = parsed.path
         #currentPage = str.replace(str(request.referrer), request.host_url, "")
 
