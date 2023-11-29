@@ -17,6 +17,9 @@ from .PageList import PageList
 class BOFSFlask(Flask):
     def __init__(self, import_name, config_name, root_path=None):
         super(BOFSFlask, self).__init__(import_name)
+        self.reloader_off = False
+        self.debug = False
+
         if root_path:
             self.root_path = root_path
 
@@ -71,7 +74,6 @@ class BOFSFlask(Flask):
             print(f"Preview locally at http://127.0.0.1:{actual_port}")
 
         if self.debug:
-            self.debug = True
             print('\033[91m' + '\033[1m')  # Start red text
             print("!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!")
             print(" Debugging mode is enabled. ")
@@ -79,7 +81,10 @@ class BOFSFlask(Flask):
             print("!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!")
             print('\033[0m')  # End the red
 
-            super(BOFSFlask, self).run(host, port, use_reloader=False, **options)
+        if not self.reloader_off:
+            print('Auto-reloading of project when changes are detected is turned ON.')
+
+            super(BOFSFlask, self).run(host, port, use_reloader=not self.reloader_off, **options)
         else:
             self.eventlet_run(self, host=host, port=port, **options)
 

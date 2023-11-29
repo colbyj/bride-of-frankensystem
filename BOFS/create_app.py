@@ -3,13 +3,14 @@ import sys
 from .BOFSFlask import BOFSFlask
 
 
-def create_app(path, config_name, debug=False):
+def create_app(path, config_name, debug=False, reloader_off=False):
     os.chdir(path)  # Set the current working directory to the specified path
     sys.path.append(path)  # Ensure BOFS can find the blueprints properly
 
     app = BOFSFlask(__name__, config_name=config_name, root_path=path)
     app.load_config(config_name, silent=False)
     app.debug = debug
+    app.reloader_off = reloader_off
 
     if 'USE_ADMIN' not in app.config or app.config['USE_ADMIN'] is True:
         app.load_blueprint('BOFS.admin', 'admin')
