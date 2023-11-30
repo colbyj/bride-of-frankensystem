@@ -4,7 +4,8 @@ import toml
 import re
 import os
 import random
-from flask import Flask, request, send_from_directory
+from flask import Flask, request, send_from_directory, Response
+from flask.sansio.scaffold import T_before_request
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 from BOFS import util
@@ -63,9 +64,10 @@ class BOFSFlask(Flask):
 
         # allows flat_page_list variable to be accessible from all templates
         self.template_context_processors[None].append(self.inject_jinja_vars)
+        self.before_request_funcs.setdefault(None, []).append(self.before_request_)
 
     # Overriding this ensures compatibility with existing run.py files regardless of whether socketio is used or not
-    def run(self, host=None, port=None, **options):
+    def run(self, host=None, port=None, **options) -> None:
         actual_port = port if port is not None else 5000
         actual_host = host if not host is None else '127.0.0.1'
 
@@ -91,7 +93,7 @@ class BOFSFlask(Flask):
     # This method is straight from Flask-SocketIO
     # (https://github.com/miguelgrinberg/Flask-SocketIO/blob/master/flask_socketio/__init__.py)
     # MIT License, Copyright holder Miguel Grinberg
-    def eventlet_run(self, app, host=None, port=None, **kwargs):
+    def eventlet_run(self, app, host=None, port=None, **kwargs) -> None:
         import eventlet.wsgi
         import eventlet.green
         addresses = eventlet.green.socket.getaddrinfo(host, port)
@@ -113,7 +115,7 @@ class BOFSFlask(Flask):
 
         eventlet.wsgi.server(eventlet_socket, app, **kwargs)
 
-    def load_config(self, filename, silent=False):
+    def load_config(self, filename, silent=False) -> None:
         if filename.endswith(".cfg"):
             self.config.from_pyfile(filename, silent=silent)
         elif filename.endswith(".toml"):
@@ -123,7 +125,7 @@ class BOFSFlask(Flask):
         else:
             print("Error: Cannot load configuration file.")
 
-    def load_blueprint(self, blueprint_path, blueprint_name=None, try_to_load_models=True):
+    def load_blueprint(self, blueprint_path, blueprint_name=None, try_to_load_models=True) -> None:
         print("Loading blueprint: %s" % blueprint_path)
 
         if blueprint_name is None:
@@ -133,23 +135,24 @@ class BOFSFlask(Flask):
         blueprint_var = getattr(blueprint, blueprint_name)
         self.register_blueprint(blueprint_var)
 
-        try:
-            self.config['ADDITIONAL_ADMIN_PAGES'] += blueprint.ADDITIONAL_ADMIN_PAGES
-        except:
-            pass  # No Admin pages to add
+        if 'ADDITIONAL_ADMIN_PAGES' not in self.config:
+            self.config['ADDITIONAL_ADMIN_PAGES'] = []
 
-        try:
-            self.config['EXPORT'] += blueprint.EXPORT
-        except:
-            pass  # No exports to add
+        if hasattr(blueprint, 'ADDITIONAL_ADMIN_PAGES'):
+            self.config['ADDITIONAL_ADMIN_PAGES'].append(blueprint.ADDITIONAL_ADMIN_PAGES)
+
+        if 'EXPORT' not in self.config:
+            self.config['EXPORT'] = []
+
+        if hasattr(blueprint, 'EXPORT'):
+            self.config['EXPORT'].append(blueprint.EXPORT)
 
         if try_to_load_models:  # Try to load the models too.
             self.load_models(blueprint_path)
 
-    def load_models(self, blueprint_path):
+    def load_models(self, blueprint_path) -> None:
         try:
             module = __import__(blueprint_path + ".models", fromlist=["models"])
-
             create_function = getattr(module, "create")
 
             if create_function is None:
@@ -173,12 +176,12 @@ class BOFSFlask(Flask):
         except ImportError:
             print("%s: `models.py` not found. Add a `models.py` file to your blueprint folder use this feature." % blueprint_path)
 
-    def load_table(self, filename):
+    def load_table(self, filename) -> JSONTable | None:
         if filename in self.db.metadata.tables:
-            return
+            return None
 
         if filename in self.tables:
-            return
+            return None
 
         print(filename)
         table = JSONTable(filename)
@@ -195,7 +198,7 @@ class BOFSFlask(Flask):
         self.tables[filename] = table
         return table
 
-    def load_tables(self):
+    def load_tables(self) -> None:
         tableFilenames = []
 
         if os.path.exists(self.root_path + "/tables"):
@@ -206,12 +209,12 @@ class BOFSFlask(Flask):
         for tableFilename in tableFilenames:
             self.load_table(tableFilename)
 
-    def load_questionnaire(self, filename, add_to_db=False):
+    def load_questionnaire(self, filename, add_to_db=False) -> JSONQuestionnaire | None:
         if "questionnaire_" + filename in self.db.metadata.tables:
-            return
+            return None
 
         if filename in self.questionnaires:
-            return
+            return None
 
         print(filename)
         questionnaire = JSONQuestionnaire(filename)
@@ -223,7 +226,7 @@ class BOFSFlask(Flask):
         self.questionnaires[filename] = questionnaire
         return questionnaire
 
-    def questionnaire_list_is_safe(self):
+    def questionnaire_list_is_safe(self) -> bool:
         """
         Checks to see if the questionnaire list has any duplicates.
         :return True if a duplicate was found, False otherwise.
@@ -231,26 +234,30 @@ class BOFSFlask(Flask):
         questionnaires = self.page_list.get_questionnaire_list(include_tags=True)
         return len(set(questionnaires)) == len(questionnaires)
 
-    def load_questionnaires(self, add_to_db=False):
+    def load_questionnaires(self, add_to_db=False) -> None:
         for page in self.page_list.get_questionnaire_list():
             self.load_questionnaire(page, add_to_db)
 
     # Default routes...
-    def route_BOFS_static(self, filename):
+    def route_BOFS_static(self, filename) -> Response:
         return send_from_directory(self.bofs_path + '/static', filename)
 
-    def route_JSON_questionnaire(self, filename):
+    def route_JSON_questionnaire(self, filename) -> Response:
         return send_from_directory(self.root_path + '/questionnaires', filename)
 
-    def route_consent(self):
+    def route_consent(self) -> Response:
         return send_from_directory(self.root_path, "consent.html")
 
-    def page_not_found(self, e):
+    def page_not_found(self, e) -> tuple[str, int]:
         return "Could not load the requested page. If you are just starting out, " \
                "please click <a href=\"/restart\"><b>here</b></a> to reset your cookies for this page. " \
                "If that doesn't work, please clear your cookies or switch web browsers.", 404
 
-    def inject_jinja_vars(self):
+    def inject_jinja_vars(self) -> dict:
+        """
+        Allows all templates to access several variables/methods used within BOFS.
+        :return: a dictionary of variables/methods
+        """
         return dict(
             flat_page_list=self.page_list.flat_page_list(),
             debug=self.debug,
@@ -258,3 +265,12 @@ class BOFSFlask(Flask):
             crumbs=util.create_breadcrumbs(),
             json_dumps=json.dumps
         )
+
+    def before_request_(self) -> None:
+        """
+        If running the server in debug mode, turn off Jinja caching.
+        """
+        if not self.debug:
+            return
+
+        self.jinja_env.cache = {}

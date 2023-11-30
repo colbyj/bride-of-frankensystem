@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bride-of-frankensystem"
-version = "1.9.2.5"
+version = "1.9.2.6"
 description = "A framework that allows for the development of custom online experiments and surveys."
 readme = "README.md"
 authors = [{ name = "Colby Johanson", email = "colby.johanson@usask.ca" }]
@@ -23,7 +23,7 @@ dependencies = [
     "flask-compress",
     "toml"
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [tool.setuptools.packages.find]
 where = [""]
