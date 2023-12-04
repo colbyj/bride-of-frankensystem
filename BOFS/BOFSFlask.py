@@ -1,11 +1,9 @@
 import jinja2
 import json
 import toml
-import re
 import os
 import random
-from flask import Flask, request, send_from_directory, Response
-from flask.sansio.scaffold import T_before_request
+from flask import Flask,  send_from_directory, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 from BOFS import util
