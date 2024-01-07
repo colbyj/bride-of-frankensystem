@@ -24,10 +24,7 @@ def main():
         path = os.path.dirname(os.path.abspath(args.config))
         args.config = os.path.basename(args.config)
 
-    app = create_app(path, args.config)
-    app.debug = args.debug
-    app.reloader_off = args.reloader_off
-
+    app = create_app(path, args.config, args.debug, args.reloader_off)
     port = 5000  # Default to port 5000 if it's not set.
 
     if "PORT" in app.config:

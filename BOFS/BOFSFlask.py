@@ -14,10 +14,10 @@ from .PageList import PageList
 
 
 class BOFSFlask(Flask):
-    def __init__(self, import_name, config_name, root_path=None):
+    def __init__(self, import_name, config_name, root_path=None, run_with_reloader_off=False, run_with_debugging=False):
         super(BOFSFlask, self).__init__(import_name)
-        self.reloader_off = False
-        self.debug = False
+        self.run_with_reloader_off = run_with_reloader_off
+        self.run_with_debugging = run_with_debugging
 
         if root_path:
             self.root_path = root_path
@@ -81,8 +81,8 @@ class BOFSFlask(Flask):
             print("!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!")
             print('\033[0m')  # End the red
 
-        if not self.reloader_off:
-            print('Auto-reloading of project when changes are detected is turned ON.')
+            if not self.run_with_reloader_off:
+                print('Auto-reloading of project when changes are detected is turned ON.')
 
             super(BOFSFlask, self).run(host, port, use_reloader=not self.reloader_off, **options)
         else:
@@ -163,11 +163,11 @@ class BOFSFlask(Flask):
             if hasattr(my_classes, '__iter__'):  # A list or tuple was returned
                 for c in my_classes:
                     setattr(self.db, c.__name__, c)
-                    if self.debug:
+                    if self.run_with_debugging:
                         print("%s: Loaded %s" % (blueprint_path, c))
             else:
                 setattr(self.db, my_classes.__name__, my_classes)
-                if self.debug:
+                if self.run_with_debugging:
                     print("%s: Loaded %s" % (blueprint_path, my_classes))
 
             print("%s: `models.py` loaded!" % blueprint_path)
@@ -258,7 +258,7 @@ class BOFSFlask(Flask):
         """
         return dict(
             flat_page_list=self.page_list.flat_page_list(),
-            debug=self.debug,
+            debug=self.run_with_debugging,
             shuffle=random.shuffle,
             crumbs=util.create_breadcrumbs(),
             json_dumps=json.dumps
@@ -268,7 +268,5 @@ class BOFSFlask(Flask):
         """
         If running the server in debug mode, turn off Jinja caching.
         """
-        if not self.debug:
-            return
-
-        self.jinja_env.cache = {}
+        if self.run_with_debugging:
+            self.jinja_env.cache = {}
