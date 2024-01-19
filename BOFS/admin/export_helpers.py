@@ -4,7 +4,7 @@ from .util import escape_csv, questionnaire_name_and_tag, condition_num_to_label
 from flask  import current_app
 
 
-def create_export_base_queries(export_dict: dict):
+def create_export_base_query(export_dict: dict):
     """
     Builds the base query for exporting values in blueprint-defined tables.
     To be used for each entry in the config's EXPORT
@@ -193,7 +193,7 @@ def add_custom_exports_to_export(column_list: list[str],
     custom_exports = []
 
     for export in current_app.config['EXPORT']:
-        levels, fields, base_query = create_export_base_queries(export)
+        levels, fields, base_query = create_export_base_query(export)
         custom_exports.append({'options': export, 'fields': fields, 'base_query': base_query, 'levels': levels})
 
     # For custom exports, add columns based on levels determined by prior query

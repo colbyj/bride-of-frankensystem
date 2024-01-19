@@ -143,7 +143,7 @@ class BOFSFlask(Flask):
             self.config['EXPORT'] = []
 
         if hasattr(blueprint, 'EXPORT'):
-            self.config['EXPORT'].append(blueprint.EXPORT)
+            self.config['EXPORT'].extend(blueprint.EXPORT)
 
         if try_to_load_models:  # Try to load the models too.
             self.load_models(blueprint_path)
