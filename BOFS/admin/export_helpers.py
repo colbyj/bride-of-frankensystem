@@ -225,7 +225,7 @@ def add_custom_exports_to_export(column_list: list[str],
                 for field in export['fields']:
                     export_column_name = field
                     if export['levels']:
-                        export_column_name = field + "_" + str(export_row_index)
+                        export_column_name = field + "_" + str(export['levels'][export_row_index][0])
 
                     export_data[participant_id][export_column_name] = getattr(custom_export_row, field)
 

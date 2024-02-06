@@ -391,3 +391,8 @@ def route_table_csv(tableName):
                         "Content-disposition": "attachment; filename=%s.csv" % (
                                     tableName + "_" + datetime.utcnow().strftime("%Y-%m-%d"))
                     })
+
+@admin.errorhandler(500)
+def internal_error(error):
+    return f"<h1>Internal Server Error (500)</h1> <p>{error.description}</p><pre>{error.original_exception}</pre>"
+

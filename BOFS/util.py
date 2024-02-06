@@ -210,7 +210,7 @@ def fetch_current_condition():
             condition = session['condition']
             if condition == -1:
                 condition = 0
-            return condition
+            return int(condition)
         return 0
     except:
         return None  # This is almost definitely a "Working outside of request context" error
