@@ -1,0 +1,49 @@
+# Database settings
+SQLALCHEMY_DATABASE_URI = 'sqlite:///minimal.db'
+
+# The secret key MUST be changed to something unique.
+# You should at the very least mash your keyboard a bit to generate a random string.
+SECRET_KEY = 'You Must Change This to Something Unique'
+
+# --------------------
+# Application Settings
+# --------------------
+APPLICATION_ROOT = ''       # Rarely adjusted, used to set the project to be accessible at a different URL rather than /.
+TITLE = 'Example Project'   # What users see at the top of the page
+ADMIN_PASSWORD = 'example'  # Used to log in to the admin pages at /admin
+USE_BREADCRUMBS = false     # Show breadcrumbs-style progress bar
+PORT = 5001                 # Configure what port the project will be accessible at
+RETRIEVE_SESSIONS = true    # If ID entered at /external_id was already used, then attempt to load a participant's progress from the database and redirect them to where they last were.
+ALLOW_RETAKES = true        # With the external_id page in use, setting this to true will prevent the same ID from being used twice.
+LOG_GRID_CLICKS = false     # Used for more fine-grained logging of participant's progress through questionnaires. Log the time the each radio button in a radio grid is clicked.
+CONDITIONS = []             # Leave blank for only 1 condition. Format for multiple conditions is shown below
+#CONDITIONS = [{label='condition 1', enabled=true}, {label='condition 2', enabled=true}]
+
+# External ID Settings, adjust these to adjust the phrasing on /external_id for Prolific, MTurk, etc.
+EXTERNAL_ID_LABEL = "Mechanical Turk Worker ID"
+EXTERNAL_ID_PROMPT = "Please enter your MTurk Worker ID. You can find this on your MTurk dashboard."
+
+# ------------------------------
+# Completion Codes and end route
+# ------------------------------
+#STATIC_COMPLETION_CODE = ''        # Set this if you want all participants to be given the same completion code at the end of the survey.
+GENERATE_COMPLETION_CODE = true     # Generate a random completion code for the user.
+COMPLETION_CODE_MESSAGE = 'Please copy and paste this code into the MTurk form:'
+# OUTGOING_URL = ''                 # On the /end route, participants can be optionally redirected to an external page instead of being given a code
+
+# ---------
+# Page List
+# ---------
+# Defines the pages that the user will see and their order.
+# Each entry must contain a user-friendly name that is displayed to the user and a unique path.
+# For questionnaires, you can append a /<tag> to the end if you need to include the same questionanire twice.
+# If USE_BREADCRUMBS is true, then the pages with identical names will have (#) beside them.
+PAGE_LIST = [
+    {name='Consent', path='consent'},
+    {name='External ID', path='external_id'},
+    {name='Questionnaire', path='questionnaire/example/first'},
+    {name='Questionnaire', path='questionnaire/example/second'},
+    {name='End', path='end'}
+]
+
+#

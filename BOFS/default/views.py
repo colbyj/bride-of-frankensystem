@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, current_app, request, make_response
 from urllib.parse import urlsplit
+
+from BOFS.JSONTable import JSONTable
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
 from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
@@ -18,13 +20,15 @@ def route_index():
 @verify_correct_page
 def route_consent():
     """
+    ``/consent``
+
     This shows a consent form. Upon submission, the participant entry is created in the database, they
     are assigned a condition, and the session variables are set.
-    This is typically the first page you will use in PAGE_LIST. If not, use one of
-    * `/consent_nc`
-    * `/create_participant`
-    * `/create_participant_nc`
-    :return:
+    This is typically the first page you will use in ``PAGE_LIST``. If not, use one of
+
+    * ``/consent_nc``
+    * ``/create_participant``
+    * ``/create_participant_nc``
     """
     if request.method == 'POST':
         if 'email' in request.form and request.form['email'] != '':
@@ -42,8 +46,9 @@ def route_consent():
 @verify_correct_page
 def route_consent_nc():
     """
-    This acts just like `/consent`, except it does not assign the user a condition (defaults to 0).
-    :return:
+    ``/consent_nc``
+
+    This acts just like ``/consent``, except it does not assign the user a condition (defaults to 0).
     """
     if request.method == 'POST':
         provide_consent(False)
@@ -55,9 +60,10 @@ def route_consent_nc():
 @default.route("/create_participant")
 def route_create_participant():
     """
+    ``/create_participant``
+
     This creates the participant in the database and sets up the session variables. Use if you don't need to
     show a consent form.
-    :return:
     """
     provide_consent(True, False)
     return redirect("/redirect_from_page/create_participant")
@@ -67,11 +73,13 @@ def route_create_participant():
 @default.route("/create_participant_nc")
 def route_create_participant_nc():
     """
+    ``/create_participant_nc``
+
     This creates the participant in the database and sets up the session variables. Use if you don't need to
     show a consent form.
+
     This does not assign the participant a condition (defaults to 0)
-    and so could be used in conjuction with `/assign_condition`.
-    :return:
+    and so could be used in conjunction with ``/assign_condition``.
     """
     provide_consent(False, False)
     return redirect("/redirect_from_page/create_participant_nc")
@@ -82,10 +90,14 @@ def route_create_participant_nc():
 @verify_correct_page
 def route_assign_condition():
     """
-    Typically conditions are assigned upon consent. Use this page if you want to assign a condition later on in
+    ``/assign_condition``
+
+    Typically, conditions are assigned upon consent. Use this page if you want to assign a condition later on in
     the experiment. This might be used, for example, after several initial questionnaires, so that participants
     who fail to actually attempt the task don't end up getting assigned a condition.
-    :return:
+
+    If you used ``/consent_nc`` or ``/create_participant_nc``, then you will need to use this to assign them to a
+    condition other than 0.
     """
     p = db.session.query(db.Participant).get(session['participantID'])
     p.assign_condition()
@@ -102,6 +114,8 @@ def route_assign_condition():
 @verify_correct_page
 def route_external_id():
     """
+    ``/external_id`` or (for backwards compatibility) ``/startMTurk`` or ``/start_mturk``
+
     If we are using a platform where the user has a unique (and anonymous) ID associated with their account,
     then you can use this page to request that ID. This is set up to work with Mechanical Turk, but the
     template can be overwritten to request different types of ID.
@@ -172,11 +186,14 @@ def route_external_id():
 @default.route("/table/<tableName>", methods=['POST', 'GET'])
 def route_table(tableName):
     """
+    ``/table/<tableName>``
+
     Provides a simple API to get data from a table (via GET) or add data to a table (via POST).
+
     :param tableName: The name of the table, as it is in /app/tables (without the .json)
-    :return:
+    :return: the return value is either ``JSONTable.handle_post()`` or ``JSONTable.handle_get()`` depending on the request type.
     """
-    t = tables[tableName]
+    t: "JSONTable" = tables[tableName]
 
     if request.method == 'POST':
         return t.handle_post()
@@ -189,11 +206,17 @@ def route_table(tableName):
 @verify_correct_page
 def route_questionnaire(questionnaireName, tag=""):
     """
-    Render a questionnaire.
+    ``/questionnaire/<questionnaireName>`` or ``/questionnaire/<questionnaireName>/<tag>``
+
+    Render a questionnaire with the specified name. The questionnaire should be defined as a JSON file (with a .json
+    file extension) in the ``/questionnaire`` directory.
+
+    If the same questionnaire is going to be used twice, then use the URL that includes the <tag>, this allows you to
+    define a name associated with that instance of the questionnaire. For example, "before" and "after" or "1" and "2".
+
     :param questionnaireName: The name of the json file (without the .json extension).
     :param tag: If the same questionnaire is to be displayed more than once, provide it with a
                 unique tag (e.g., "before" or "after" or "1")
-    :return:
     """
     q = questionnaires[questionnaireName]
 
@@ -211,8 +234,9 @@ def route_questionnaire(questionnaireName, tag=""):
 @default.route("/redirect_previous_page")
 def route_redirect_previous_page():
     """
+    ``/redirect_previous_page``
+
     Sends a user to the previous page. This is intended primarily for debugging purposes.
-    :return:
     """
     session['currentUrl'] = page_list.previous_path(session['currentUrl'])
     nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
@@ -223,8 +247,9 @@ def route_redirect_previous_page():
 @default.route("/redirect_next_page")
 def route_redirect_next_page():
     """
+    ``/redirect_next_page``
+
     This is the preferred way of sending a user to the next page.
-    :return:
     """
     if not request is None and not request.referrer is None:
         parsed = urlsplit(request.referrer)
@@ -246,9 +271,11 @@ def route_redirect_next_page():
 @default.route("/redirect_from_page/<path:page>")
 def route_redirect_from_page(page):
     """
+    ``/redirect_from_page/<path:page>``
+
     Redirect the user from a specific page.
+
     :param page: The page to start from, the user will be sent to next page in the list
-    :return:
     """
     session['currentUrl'] = page_list.next_path(page)
     nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
@@ -259,9 +286,11 @@ def route_redirect_from_page(page):
 @default.route("/redirect_to_page/<path:page>")
 def route_redirect_to_page(page):
     """
-    Redirect the user to a specific page path in PAGE_LIST
+    ``/redirect_to_page/<path:page>``
+
+    Redirect the user to a specific page path in ``PAGE_LIST``
+
     :param page:
-    :return:
     """
     session['currentUrl'] = page
     nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
@@ -274,8 +303,10 @@ def route_redirect_to_page(page):
 @verify_session_valid
 def route_end():
     """
-    Ends the experiment and shows the user's completion code, if they have been given one.
-    :return:
+    ``/end``
+
+    Ends the experiment, marks the participants as finished, and shows the user's completion code if they have been
+    given one. Can also be configured to redirect to an external URL.
     """
     p = db.Participant.query.get(session['participantID'])
     p.timeEnded = datetime.datetime.utcnow()
@@ -300,6 +331,11 @@ def route_user_active():
 
 @default.route("/current_url")
 def route_current_url():
+    """
+    ``/current_url``
+
+    :return: The current URL of the user. For a new user, it returns "/".
+    """
     if "currentUrl" in session:
         return session['currentUrl']
     else:
@@ -309,9 +345,10 @@ def route_current_url():
 @default.route("/restart")
 def route_restart():
     """
+    ``/restart``
+
     Use this if you ever need to the user to start the experiment over for any reason.
-    This tries to clear out all of the cookies.
-    :return:
+    This tries to clear out all the cookies.
     """
 
     response = make_response(redirect("/"))
@@ -343,9 +380,10 @@ def route_restart():
 @default.route("/submit", methods=['POST'])
 def submit():
     """
+    ``/submit``
+
     Use this if you simply need to submit a form that redirects to the next page without doing anything with
     the form data.
-    :return:
     """
     return redirect("/redirect_next_page")
 
@@ -358,10 +396,19 @@ def submit():
 @verify_session_valid
 def route_instructions(pageName):
     """
-    Generic page to render instructions. Instructions can be inside of blueprints.
-    Find html at "instructions/<pageName>.html" and insert it as a variable into instructions.html
-    :param pageName:
-    :return:
+    ``/instructions/<pageName>``
+
+    Generic page to render instructions. The instructions are defined in HTML within a file and rendered in BOF using
+    the template. A button to redirect to the next page in the study is shown after the instructions.
+
+    Instruction HTML files can be placed in the project root directory's templates folder in
+    ``/templates/instructions/...`` or in one of your blueprint's templates folder in
+    ``/<my_blueprint>/templates/instructions/...``.
+
+    The files must be in HTML format and use the ``.html`` extension. The ``pageName`` specified is the filename for the
+    instructions, without the file extension.
+
+    :param pageName: the name of the file to use to render the instructions (without the .html extension)
     """
     if request.method == "POST":
         return redirect(join_urls('/redirect_from_page', request.path))

@@ -1,0 +1,106 @@
+{
+    "title":"Example Questionnaire",
+    "instructions":"Please rate each video game experience....",
+    "code":"",
+    "questions":[
+        {
+            "questiontype":"textview",
+            "title":"I am a title",
+            "text":"This allows you to display descriptive or informative text."
+        },
+        {
+            "questiontype":"radiogrid",
+            "instructions":"choose option...",
+            "id":"radio_1",
+            "shuffle":"true",
+            "labels":[
+                "I hate it!",
+                "",
+                "Neutral",
+                "",
+                "I love it!"
+            ],
+            "q_text":[
+                {
+                    "id":"q_1",
+                    "text":"dfdjs;aljd"
+                },
+                {
+                    "id":"q_2",
+                    "text":"hahahahaha"
+                },
+                {
+                    "id":"q_3",
+                    "text":"muahahahaha"
+                }
+            ]
+        },
+        {
+            "questiontype":"radiolist",
+            "instructions":"choose one option...",
+            "id":"radiolist_1",
+            "labels":[
+                "Yes",
+                "Maybe",
+                "No"
+            ]
+        },
+        {
+            "questiontype":"checklist",
+            "instructions":"choose any options...",
+            "id":"checklist_1",
+            "shuffle":true,
+            "questions":[
+                {
+                    "id":"cl_1",
+                    "text":"Option 1"
+                },
+                {
+                    "id":"cl_2",
+                    "text":"Option 2"
+                },
+                {
+                    "id":"cl_3",
+                    "text":"Option 3"
+                }
+            ]
+        },
+        {
+            "questiontype":"slider",
+            "instructions":"I am a slider",
+            "id":"slider_1",
+            "left":"left",
+            "right":"right",
+            "tick_count":5,
+            "width":500
+        },
+        {
+            "questiontype":"field",
+            "instructions":"enter text",
+            "placeholder":"I am a placeholder",
+            "id":"input_1"
+        },
+        {
+            "questiontype": "num_field",
+            "instructions": "enter a number",
+            "id": "number_field"
+        },
+        {
+            "id": "dropdownexample",
+            "questiontype":"drop_down",
+            "instructions":"choose one",
+            "items":[
+                "apples",
+                "oranges",
+                "watermelon"
+            ]
+        },
+        {
+            "questiontype":"multi_field",
+            "id":"big",
+            "placeholder":"I am holding the place",
+            "instructions":"big text field",
+            "height":"100"
+        }
+    ]
+}
