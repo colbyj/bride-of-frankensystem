@@ -66,5 +66,6 @@ Further Help
 ============
 
 * [Example Projects](https://github.com/colbyj/bride-of-frankensystem-examples)
-* [Wiki](https://github.com/colbyj/bride-of-frankensystem/wiki)
+* [Documentation (HTML)](https://bride-of-frankensystem.readthedocs.io/en/latest/)
+* [Documentation (PDF)](https://bride-of-frankensystem.readthedocs.io/_/downloads/en/latest/pdf/)
 * [Migrating to BOF 2.0](https://github.com/colbyj/bride-of-frankensystem/wiki/Migrating-to-BOFS-2.0)
