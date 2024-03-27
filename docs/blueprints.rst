@@ -107,7 +107,7 @@ the ``/task`` page.
 
 
 Database Tables
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 This example makes use of a database table. For more information on how to use database tables in your custom routes,
 see :doc:`tables`.
