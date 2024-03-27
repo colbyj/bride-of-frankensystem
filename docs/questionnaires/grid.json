@@ -1,0 +1,38 @@
+{
+    "title":"Example Questionnaire 2",
+    "instructions":"",
+    "code":"",
+    "questions":[
+        {
+            "questiontype":"radiogrid",
+            "instructions":"Rate your agreement",
+            "id":"radio_1",
+            "shuffle":"true",
+            "labels":[
+                "Strongly disagree",
+                "",
+                "Neutral",
+                "",
+                "Strongly agree"
+            ],
+            "q_text":[
+                {
+                    "id":"q1",
+                    "text":"This example is fantastic"
+                },
+                {
+                    "id":"q2",
+                    "text":"This example could be improved"
+                },
+                {
+                    "id":"q3",
+                    "text":"This example is the highlight of my day"
+                }
+            ]
+        }
+    ],
+  "participant_calculations": {
+    "ExampleQualityMean": "mean([q1, 6-q2 , q3])",
+    "ExampleQualitySum": "q1 + 6-q2 + q3"
+  }
+}

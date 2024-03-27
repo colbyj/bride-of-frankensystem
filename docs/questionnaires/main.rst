@@ -94,6 +94,12 @@ represents the calculation. The Python code can reference any of the question ``
 
 The following functions are supported: ``mean``, ``variance``, ``std``, and ``median``.
 
+Below is a complete questionnaire featuring calculations:
+
+.. literalinclude:: grid.json
+    :caption: grid.json
+    :language: JSON
+
 
 Previewing Questionnaires
 -------------------------

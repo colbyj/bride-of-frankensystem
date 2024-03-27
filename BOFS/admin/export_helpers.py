@@ -138,7 +138,7 @@ def add_questionnaires_to_export(column_list: list[str],
         questionnaire = questionnaires[questionnaire_name]
 
         # Add the questionnaire's table/class to the query...
-        questionnaire_db_class = db.aliased(questionnaire.dbClass, name=entry)
+        questionnaire_db_class = db.aliased(questionnaire.db_class, name=entry)
         join_condition = db.and_(questionnaire_db_class.participantID == db.Participant.participantID,
                                  questionnaire_db_class.tag == questionnaire_tag
                                  )
@@ -157,7 +157,7 @@ def add_questionnaires_to_export(column_list: list[str],
             columns[entry].append(column.id)
 
         # Similarly, make a list of calculated columns to later be part of the CSV header row.
-        for column in questionnaire.calcFields:
+        for column in questionnaire.calc_fields:
             column_list.append(entry + "_" + column)
             calculated_columns[entry].append(column)
 

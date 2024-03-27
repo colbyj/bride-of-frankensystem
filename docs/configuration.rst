@@ -3,14 +3,11 @@ Project Configuration
 
 This page includes a description of each of the options within a project's configuration file (its ``.toml`` file).
 
-# The secret key MUST be changed to something unique.
-# You should at the very least mash your keyboard a bit to generate a random string.
-
 ============================ ===================== ==================
 Variable                     Data Type             Description
 ============================ ===================== ==================
 SQLALCHEMY_DATABASE_URI      string                This is the URI of the SQLite database.
-SECRET_KEY                   string                You must set this to a unique string. At least mash your keyboard's keys a bit.
+SECRET_KEY                   string                You *must* set this to a unique string. At least mash your keyboard's keys a bit.
 APPLICATION_ROOT             string                Rarely adjusted, used to set the project to be accessible at a different URL rather than /.
 TITLE                        string                What users see at the top of the page.
 ADMIN_PASSWORD               string                Used to log in to the admin pages at ``/admin``.

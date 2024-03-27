@@ -244,17 +244,18 @@ def route_preview_questionnaire(questionnaireName):
     errors = []
 
     try:
-        f = open(current_app.root_path + '/questionnaires/' + questionnaireName + ".json", 'r')
-        jsonData = f.read()
-        jsonData = json.loads(jsonData)
+        f = open(current_app.get_questionnaire_path(questionnaireName), 'r')
+        json_data = f.read()
+        json_data = json.loads(json_data)
+        f.close()
     except Exception as e:
         errors = list(e.args)
 
-    tableName = "questionnaire_" + questionnaireName
+    table_name = "questionnaire_" + questionnaireName
 
     if questionnaireName in page_list.get_questionnaire_list():
         try:
-            db.session.query(db.metadata.tables[tableName]).first()
+            db.session.query(db.metadata.tables[table_name]).first()
         except Exception as e:
             errors.extend(list(e.args))
             if "(OperationalError) no such column:" in e.args[0]:
@@ -268,23 +269,23 @@ def route_preview_questionnaire(questionnaireName):
             # Figure out what column it is by parsing errors.
             for e in errors:
                 if "(OperationalError) no such column:" in e:
-                    e = e.split(tableName + ".")
-                    columnName = e[len(e) - 1]
-                    dataType = db.metadata.tables[tableName].columns[columnName].type
+                    e = e.split(table_name + ".")
+                    column_name = e[len(e) - 1]
+                    dataType = db.metadata.tables[table_name].columns[column_name].type
 
-                    addColumn = db.DDL(str.format("ALTER TABLE {} ADD COLUMN {} {}", tableName, columnName, dataType))
-                    db.engine.execute(addColumn)
+                    add_column = db.DDL(str.format("ALTER TABLE {} ADD COLUMN {} {}", table_name, column_name, dataType))
+                    db.engine.execute(add_column)
 
                     errors.append(str.format(u"{} {} was added to {}. "
-                                             u"This error should be gone when you refresh.", columnName, dataType,
-                                             tableName))
+                                             u"This error should be gone when you refresh.", column_name, dataType,
+                                             table_name))
 
                 if "(OperationalError) no such table:" in e:
                     db.create_all()
                     errors.append(str.format(u"The error should be gone if you refresh."))
 
     return render_template("preview_questionnaire.html",
-                           q=jsonData,
+                           q=json_data,
                            errors=errors)
 
 
@@ -294,13 +295,14 @@ def route_questionnaire_html(questionnaireName):
     errors = []
 
     try:
-        f = open(current_app.root_path + '/questionnaires/' + questionnaireName + ".json", 'r')
-        jsonData = f.read()
-        jsonData = json.loads(jsonData)
+        f = open(current_app.get_questionnaire_path(questionnaireName), 'r')
+        json_data = f.read()
+        json_data = json.loads(json_data)
+        f.close()
     except Exception as e:
         errors = list(e.args)
 
-    return render_template("preview_questionnaire_simple.html", q=jsonData)
+    return render_template("preview_questionnaire_simple.html", q=json_data)
 
 
 #@admin.route("/analyze_questionnaire/<questionnaireName>/<tag>")

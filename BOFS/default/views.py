@@ -227,7 +227,7 @@ def route_questionnaire(questionnaireName, tag=""):
 
     return render_template('questionnaire.html',
                            tag=tag,
-                           q=q.jsonData,
+                           q=q.json_data,
                            timeStarted=datetime.datetime.utcnow())
 
 

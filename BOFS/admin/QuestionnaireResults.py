@@ -35,11 +35,11 @@ class QuestionnaireResults(object):
         self.query = None
 
     def run_query(self):
-        self.query = db.session.query(self.questionnaire.dbClass).join(db.Participant).filter(db.Participant.finished)
+        self.query = db.session.query(self.questionnaire.db_class).join(db.Participant).filter(db.Participant.finished)
         self.rows = self.query.all()
 
     def calc_descriptives(self):
-        for field in self.questionnaire.calcFields:
+        for field in self.questionnaire.calc_fields:
             data = []
 
             for row in self.rows:

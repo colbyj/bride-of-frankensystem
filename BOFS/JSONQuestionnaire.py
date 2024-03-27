@@ -9,52 +9,52 @@ from BOFS.util import mean, stdev, std, var, variance, median
 
 
 class QuestionnaireField(object):
-    def __init__(self, id, dataType):
+    def __init__(self, id: str, data_type: str):
         self.id = id
-        self.dataType = dataType
+        self.data_type = data_type
 
 
 class JSONQuestionnaire(object):
-    def __init__(self, fileName):
-        self.fileName = fileName
-        fullPath = os.path.join(current_app.root_path, "questionnaires/" + fileName + ".json")
+    def __init__(self, directory: str, file_name: str ):
+        self.file_name = file_name
+        fullPath = os.path.join(directory, file_name + ".json")
 
         try:
             with open(fullPath) as f:
-                self.jsonData = json.load(f)
+                self.json_data = json.load(f)
         except ValueError as error:
             print("ERROR! Unable to parse `%s` questionnaire. Please check that the file contains valid JSON syntax. "
-                  "Python reports the following error: `%s`" % (fileName, error))
-            self.jsonData = None
+                  "Python reports the following error: `%s`" % (file_name, error))
+            self.json_data = None
 
         self.fields = []
-        self.calcFields = []
-        self.dbClass = None
-        self.fieldCount = 0
+        self.calc_fields = []
+        self.db_class = None
+        self.field_count = 0
 
     def fetch_fields(self):
         self.fields = []
 
-        if not self.jsonData or 'questions' not in self.jsonData:
-            print ("ERROR! `%s` questionnaire contains no questions." % self.fileName)
+        if not self.json_data or 'questions' not in self.json_data:
+            print ("ERROR! `%s` questionnaire contains no questions." % self.file_name)
             return
 
         #print "fetchFields() for " + self.fileName
 
-        for q in self.jsonData['questions']:
+        for q in self.json_data['questions']:
             if not 'id' in list(q.keys()):
                 continue
 
             #try:
-            if q['questiontype'] == "radiogrid":  # Radiogrids will have multiple questions inside of them.
+            if q['questiontype'].lower() == "radiogrid":  # Radiogrids will have multiple questions inside of them.
                 for qt in q['q_text']:
                     self.fields.append(QuestionnaireField(qt['id'], 'integer'))
-            elif q['questiontype'] == "checklist":  # checklists also have multiple questions
+            elif q['questiontype'].lower() == "checklist":  # checklists also have multiple questions
                 for qt in q['questions']:
                     self.fields.append(QuestionnaireField(qt['id'], 'integer'))
-            elif q['questiontype'] == "radiolist":  # will always be integer types
+            elif q['questiontype'].lower() == "radiolist":  # will always be integer types
                 self.fields.append(QuestionnaireField(q['id'], 'string'))
-            elif q['questiontype'] in ["slider", "num_field"]:
+            elif q['questiontype'].lower() in ["slider", "num_field"]:
                 self.fields.append(QuestionnaireField(q['id'], 'integer'))
             else:
                 #print "self.fields.append(QuestionnaireField(" + q['id'] + ", 'string'))"
@@ -64,7 +64,7 @@ class JSONQuestionnaire(object):
 
             #pprint.pprint(q)
 
-        self.fieldCount = len(self.fields)
+        self.field_count = len(self.fields)
         return self.fields
 
     def create_db_class(self):
@@ -73,17 +73,17 @@ class JSONQuestionnaire(object):
         if not self.fields:  # If list is empty
             self.fetch_fields()
 
-        if not self.calcFields:
-            self.calcFields = []
+        if not self.calc_fields:
+            self.calc_fields = []
 
-        tableName = str.format(u"questionnaire_{}", self.fileName)
+        table_name = str.format(u"questionnaire_{}", self.file_name)
 
-        tableAttr = {
-            '__tablename__': tableName,
-            str.format(u'{0}ID', self.fileName): db.Column(db.Integer, primary_key=True, autoincrement=True),
+        table_attr = {
+            '__tablename__': table_name,
+            str.format(u'{0}ID', self.file_name): db.Column(db.Integer, primary_key=True, autoincrement=True),
             'participantID': db.Column(db.Integer, db.ForeignKey("participant.participantID"), nullable=False),
             #'participantID': db.Column(db.Integer),
-            'participant': db.relationship("Participant", backref=tableName),
+            'participant': db.relationship("Participant", backref=table_name),
             'tag': db.Column(db.String(30), nullable=False, default=""),
             'timeStarted': db.Column(db.DateTime, nullable=False, default=db.func.now()),
             'timeEnded': db.Column(db.DateTime, nullable=False, default=db.func.now()),
@@ -91,12 +91,12 @@ class JSONQuestionnaire(object):
         }
 
         for field in self.fields:
-            if field.dataType == "integer":
-                tableAttr[field.id] = db.Column(db.Integer, nullable=False, default=0)
+            if field.data_type == "integer":
+                table_attr[field.id] = db.Column(db.Integer, nullable=False, default=0)
             else:
-                tableAttr[field.id] = db.Column(db.Text, nullable=False, default="")
+                table_attr[field.id] = db.Column(db.Text, nullable=False, default="")
 
-        if "participant_calculations" in self.jsonData:
+        if "participant_calculations" in self.json_data:
             def execute_calculation(self, calculation):
                 try:
                     return eval(calculation)
@@ -107,13 +107,13 @@ class JSONQuestionnaire(object):
                     print(error)
                     raise Exception(error)
 
-            for field_name, calculation in self.jsonData["participant_calculations"].items():
-                self.calcFields.append(field_name)
+            for field_name, calculation in self.json_data["participant_calculations"].items():
+                self.calc_fields.append(field_name)
                 calculation = self.preprocess_calculation_string(calculation)
 
-                tableAttr[field_name] = lambda self, calculation=calculation: execute_calculation(self, calculation)
+                table_attr[field_name] = lambda self, calculation=calculation: execute_calculation(self, calculation)
 
-        self.dbClass = type(self.fileName, (db.Model,), tableAttr)
+        self.db_class = type(self.file_name, (db.Model,), table_attr)
 
     # Replace field_name with self.field_name
     def preprocess_calculation_string(self, calculationString):
@@ -124,7 +124,7 @@ class JSONQuestionnaire(object):
         return calculationString
 
     def create_blank(self):
-        blank = self.dbClass()
+        blank = self.db_class()
 
         for column in blank.__table__.c:
             if column.default:
@@ -136,15 +136,15 @@ class JSONQuestionnaire(object):
 
     def handle_questionnaire(self, tag=""):
         # Check to see if the user has submitted this once already...
-        previous = db.session.query(self.dbClass).filter(
-            self.dbClass.participantID == session['participantID'],
-            self.dbClass.tag == tag
+        previous = db.session.query(self.db_class).filter(
+            self.db_class.participantID == session['participantID'],
+            self.db_class.tag == tag
         ).all()
 
         if previous and len(previous) == 1:
-            newObject = previous[0]
+            new_object = previous[0]
         else:
-            newObject = self.dbClass()
+            new_object = self.db_class()
 
         #print "handleQuestionnaire() for " + self.fileName + "."
 
@@ -154,7 +154,7 @@ class JSONQuestionnaire(object):
             timeStarted = datetime.strptime(request.form['timeStarted'], "%Y-%m-%d %H:%M:%S")
 
         # For some reason we've lost the fields! add them again
-        if not self.fields or len(self.fields) == 0 or len(self.fields) != self.fieldCount:
+        if not self.fields or len(self.fields) == 0 or len(self.fields) != self.field_count:
             self.fetch_fields()
 
         # Log the per-item timing data
@@ -162,24 +162,24 @@ class JSONQuestionnaire(object):
         #request.form['gridItemClicks']
 
         try:
-            for clickEvent in str(request.form['gridItemClicks']).split(";"):
-                if len(clickEvent) == 0:
+            for click_event in str(request.form['gridItemClicks']).split(";"):
+                if len(click_event) == 0:
                     continue  # There is no data (is it the last line?), so skip it.
 
-                clickEvent = clickEvent.replace('\\', "")
-                clickEventDict = json.loads(clickEvent)
+                click_event = click_event.replace('\\', "")
+                click_event_dict = json.loads(click_event)
 
-                parsedTime = datetime.fromtimestamp(float(clickEventDict['time']))
+                parsed_time = datetime.fromtimestamp(float(click_event_dict['time']))
 
-                newLog = db.RadioGridLog()
-                newLog.participantID = session['participantID']
-                newLog.questionnaire = self.fileName
-                newLog.tag = tag
-                newLog.questionID = clickEventDict['id']
-                newLog.timeClicked = parsedTime
-                newLog.value = clickEventDict['value']
+                new_log = db.RadioGridLog()
+                new_log.participantID = session['participantID']
+                new_log.questionnaire = self.file_name
+                new_log.tag = tag
+                new_log.questionID = click_event_dict['id']
+                new_log.timeClicked = parsed_time
+                new_log.value = click_event_dict['value']
 
-                db.session.add(newLog)
+                db.session.add(new_log)
 
             db.session.commit()
 
@@ -192,28 +192,28 @@ class JSONQuestionnaire(object):
             try:
                 value = request.form.get(field.id, None)
                 if value is not None:
-                    setattr(newObject, field.id, value)
+                    setattr(new_object, field.id, value)
                 else:
-                    attr = getattr(self.dbClass, field.id)
+                    attr = getattr(self.db_class, field.id)
                     default = attr.expression.default.arg
-                    setattr(newObject, field.id, default)
+                    setattr(new_object, field.id, default)
             except:
                 print("Could not write field " + str(field.id))
-            #print("value = {}; set value = {};".format(repr(value), repr(getattr(newObject, field.id))))
+            #print("value = {}; set value = {};".format(repr(value), repr(getattr(new_object, field.id))))
 
-        setattr(newObject, 'participantID', session['participantID'])
-        setattr(newObject, 'timeStarted', timeStarted)
-        setattr(newObject, 'timeEnded', datetime.utcnow())
-        setattr(newObject, 'tag', tag)
+        setattr(new_object, 'participantID', session['participantID'])
+        setattr(new_object, 'timeStarted', timeStarted)
+        setattr(new_object, 'timeEnded', datetime.utcnow())
+        setattr(new_object, 'tag', tag)
 
-        db.session.add(newObject)
+        db.session.add(new_object)
         db.session.commit()
 
         if 'ENABLE_LOGGING' in current_app.config and current_app.config['ENABLE_LOGGING'] == True:
             if not os.path.exists("logs"):
                 os.makedirs("logs")
 
-            f = open("logs/" + self.fileName + ".txt", "a+")
+            f = open("logs/" + self.file_name + ".txt", "a+")
             f.write("Time = " + str(timeStarted) + "; pID = " + str(session['participantID']) + ";\n" + pprint.pformat(request.form) + "\n\n")
 
     def get_field(self, id):
@@ -223,10 +223,10 @@ class JSONQuestionnaire(object):
         return None
 
     def fetch_all_data(self):
-        return db.session.query(self.dbClass).all()
+        return db.session.query(self.db_class).all()
 
     def fetch_finished_data(self):
-        return db.session.query(self.dbClass).filter(db.Participant.finished == True).all()
+        return db.session.query(self.db_class).filter(db.Participant.finished == True).all()
 
     # Returns a list of the data for a single column, ordered by
     def fetch_column_data(self, column, condition=0, finishedOnly=True):
@@ -236,10 +236,10 @@ class JSONQuestionnaire(object):
         #else:
         #    q = db.session.query(self.dbClass)
 
-        q = db.session.query(getattr(self.dbClass, column)).\
+        q = db.session.query(getattr(self.db_class, column)).\
             join(db.Participant,
                  db.and_(
-                     getattr(self.dbClass, "participantID") == db.Participant.participantID,
+                     getattr(self.db_class, "participantID") == db.Participant.participantID,
                      db.Participant.condition == condition
                  ))
 

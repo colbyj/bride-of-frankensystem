@@ -42,7 +42,6 @@ class BOFSFlask(Flask):
         self.session_interface = BOFSSessionInterface()
 
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
-        self.add_url_rule("/JSON_questionnaire/<path:filename>", endpoint="JSON_questionnaire", view_func=self.route_JSON_questionnaire)
         self.add_url_rule("/consent.html", endpoint="consent_html", view_func=self.route_consent)
         self.register_error_handler(404, self.page_not_found)
 
@@ -63,6 +62,9 @@ class BOFSFlask(Flask):
         # allows flat_page_list variable to be accessible from all templates
         self.template_context_processors[None].append(self.inject_jinja_vars)
         self.before_request_funcs.setdefault(None, []).append(self.before_request_)
+
+        self.questionnaire_paths = {}
+        self.table_paths = {}
 
     # Overriding this ensures compatibility with existing run.py files regardless of whether socketio is used or not
     def run(self, host=None, port=None, **options) -> None:
@@ -124,7 +126,7 @@ class BOFSFlask(Flask):
             print("Error: Cannot load configuration file.")
 
     def load_blueprint(self, blueprint_path, blueprint_name=None, try_to_load_models=True) -> None:
-        print("Loading blueprint: %s" % blueprint_path)
+        print("Loaded blueprint: %s" % blueprint_path)
 
         if blueprint_name is None:
             blueprint_name = blueprint_path
@@ -174,15 +176,15 @@ class BOFSFlask(Flask):
         except ImportError:
             print("%s: `models.py` not found. Add a `models.py` file to your blueprint folder use this feature." % blueprint_path)
 
-    def load_table(self, filename) -> JSONTable | None:
+    def load_table(self, directory: str, filename: str) -> JSONTable | None:
         if filename in self.db.metadata.tables:
             return None
 
         if filename in self.tables:
             return None
 
-        print(filename)
-        table = JSONTable(filename)
+        print(f"Loaded table: {directory}/{filename}.json")
+        table = JSONTable(directory, filename)
         table.create_db_class()
         exports_dict = table.create_exports_dict()
 
@@ -190,36 +192,59 @@ class BOFSFlask(Flask):
             self.config['EXPORT'] += exports_dict
 
         # Add the table as a database class, if it hasn't been added already.
-        if not hasattr(self.db, table.dbClass.__name__):
-            setattr(self.db, table.dbClass.__name__, table.dbClass)
+        if not hasattr(self.db, table.db_class.__name__):
+            setattr(self.db, table.db_class.__name__, table.db_class)
 
         self.tables[filename] = table
         return table
 
+    def find_files_in_app_and_blueprints(self, folder_name: str, extension: str = ".json") -> dict[str, list[str]]:
+        results: dict[str, list[str]] = {}
+
+        app_path = os.path.join(self.root_path, folder_name)
+
+        if os.path.exists(app_path):  # First find tables from /tables
+            for file_name in os.listdir(app_path):
+                if file_name.endswith(extension):
+                    if app_path not in results:
+                        results[app_path] = []
+
+                    results[app_path].append(file_name.replace(extension, ""))
+
+        # Next find tables from /<blueprint_name>/tables
+        for blueprint_name in self.blueprints:
+            blueprint_path = os.path.join(self.root_path,  blueprint_name, folder_name)
+
+            if os.path.exists(blueprint_path):  # Does this blueprint have a directory we can look through?
+                for q in os.listdir(blueprint_path):
+                    if q.endswith(extension):
+                        if blueprint_path not in results:
+                            results[blueprint_path] = []
+
+                        results[blueprint_path].append(q.replace(".json", ""))
+
+        return results
+
     def load_tables(self) -> None:
-        tableFilenames = []
+        self.table_paths = self.find_files_in_app_and_blueprints("tables")
 
-        if os.path.exists(self.root_path + "/tables"):
-            for q in os.listdir(self.root_path + "/tables"):
-                if q.endswith(".json"):
-                    tableFilenames.append(q.replace(".json", ""))
+        for path in self.table_paths:
+            for table_filename in self.table_paths[path]:
+                self.load_table(path, table_filename)
 
-        for tableFilename in tableFilenames:
-            self.load_table(tableFilename)
-
-    def load_questionnaire(self, filename, add_to_db=False) -> JSONQuestionnaire | None:
+    def load_questionnaire(self, directory:str , filename: str, add_to_db=False) -> JSONQuestionnaire | None:
         if "questionnaire_" + filename in self.db.metadata.tables:
             return None
 
         if filename in self.questionnaires:
             return None
 
-        print(filename)
-        questionnaire = JSONQuestionnaire(filename)
+        print(f"Loaded questionnaire: {filename}, add_to_db={add_to_db}")
+        questionnaire = JSONQuestionnaire(directory, filename)
         questionnaire.create_db_class()
 
         if add_to_db:
-            setattr(self.db, "Questionnaire" + questionnaire.dbClass.__name__, questionnaire.dbClass)
+            setattr(self.db, "Questionnaire" + questionnaire.db_class.__name__, questionnaire.db_class)
 
         self.questionnaires[filename] = questionnaire
         return questionnaire
@@ -227,21 +252,31 @@ class BOFSFlask(Flask):
     def questionnaire_list_is_safe(self) -> bool:
         """
         Checks to see if the questionnaire list has any duplicates.
+
         :return True if a duplicate was found, False otherwise.
         """
         questionnaires = self.page_list.get_questionnaire_list(include_tags=True)
         return len(set(questionnaires)) == len(questionnaires)
 
-    def load_questionnaires(self, add_to_db=False) -> None:
-        for page in self.page_list.get_questionnaire_list():
-            self.load_questionnaire(page, add_to_db)
+    def load_questionnaires(self) -> None:
+        self.questionnaire_paths = self.find_files_in_app_and_blueprints("questionnaires")
+        questionnaires_in_use = self.page_list.get_questionnaire_list()
+
+        for path in self.questionnaire_paths:
+            for questionnaire_filename in self.questionnaire_paths[path]:
+                add_to_db = questionnaire_filename in questionnaires_in_use
+                self.load_questionnaire(path, questionnaire_filename, add_to_db)
+
+    def get_questionnaire_path(self, questionnaire_to_find) -> str | None:
+        for path in self.questionnaire_paths:
+            for questionnaire_filename in self.questionnaire_paths[path]:
+                if questionnaire_to_find == questionnaire_filename:
+                    return str(os.path.join(path, questionnaire_filename + ".json"))
+        return None
 
     # Default routes...
     def route_BOFS_static(self, filename) -> Response:
         return send_from_directory(self.bofs_path + '/static', filename)
-
-    def route_JSON_questionnaire(self, filename) -> Response:
-        return send_from_directory(self.root_path + '/questionnaires', filename)
 
     def route_consent(self) -> Response:
         return send_from_directory(self.root_path, "consent.html")
