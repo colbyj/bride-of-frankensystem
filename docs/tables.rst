@@ -79,15 +79,18 @@ user.
 
 Each export supports the following keys:
 
-==================== =============
-Key                  Description
-==================== =============
-fields (required)    A dictionary of fields to export. This dictionary's keys are the names you want for your column, and the values are the data you want to export. This data can be the database table's column names (e.g., my_column) or column expressions (e.g., sum(my_column)). Note: you will want to include an aggregate function in your field's definition (MIN, MAX, SUM, COUNT, or AVG) unless there is only one row in your table per each participant.
-filter (optional)    This is a SQL WHERE expression. This can be used to omit rows from the table that are not of interest (e.g., my_column > 1 or my_column != 'text').
-group_by (optional)  This a SQL GROUP BY expression. If the table you are exporting from has groups of repeated measures that you want to analyze separately then you will need to make use of this. Each unique entry in the grouped column will have a corresponding column in the export. For example, if you had participants complete a task over multiple days, you could group by day and you will end up with a column for each day (e.g., monday_my_column, tuesday_my_column, etc.). It is also possible to group by multiple columns by specifying a list of column names (each a string).
-order_by (optional)  This is a SQL ORDER BY expression. It determines the order of the columns in the export.
-having (optional)    This a SQL HAVING expression. It can only be used if group_by is used.
-==================== =============
+.. table:: JSON keys for tables
+    :widths: 20,65
+
+    ==================== =============
+    Key                  Description
+    ==================== =============
+    fields (required)    A dictionary of fields to export. This dictionary's keys are the names you want for your column, and the values are the data you want to export. This data can be the database table's column names (e.g., my_column) or column expressions (e.g., sum(my_column)). Note: you will want to include an aggregate function in your field's definition (MIN, MAX, SUM, COUNT, or AVG) unless there is only one row in your table per each participant.
+    filter (optional)    This is a SQL WHERE expression. This can be used to omit rows from the table that are not of interest (e.g., my_column > 1 or my_column != 'text').
+    group_by (optional)  This a SQL GROUP BY expression. If the table you are exporting from has groups of repeated measures that you want to analyze separately then you will need to make use of this. Each unique entry in the grouped column will have a corresponding column in the export. For example, if you had participants complete a task over multiple days, you could group by day and you will end up with a column for each day (e.g., monday_my_column, tuesday_my_column, etc.). It is also possible to group by multiple columns by specifying a list of column names (each a string).
+    order_by (optional)  This is a SQL ORDER BY expression. It determines the order of the columns in the export.
+    having (optional)    This a SQL HAVING expression. It can only be used if group_by is used.
+    ==================== =============
 
 Let's consider a more complicated example. In this example, there are 5 columns, two integers, one float, and two
 strings. What is being measured is progress within a game, with one entry in the table being one level. Multiple

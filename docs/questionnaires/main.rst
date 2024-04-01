@@ -32,17 +32,20 @@ The overall structure of the ``.json`` files that define questionnaires looks li
         "participant_calculations": {}
     }
 
-============================= ========== ====================
-Key                           Data Type  Description of value
-============================= ========== ====================
-``title``                     string     Optional field used to label the questionnaire for reference only. This is never shown to participants and only shows up on the preview in the Administration section.
-``reference``                 string     Optional field to store the citation information for the questionnaire. This is never shown to participants and only shows up on the preview in the Administration section.
-``doi``                       string     Optional field to store the doi string relating to the citation. This is never shown to participants and only shows up as a link on the preview in the Administration section.
-``instructions``              string     Instructions to appear at the top of the form, before any questions are asked. Supports HTML. Optional.
-``code``                      string     For advanced users. JavaScript code to be executed at run time. Optional.
-``questions``                 list       A list of questions. Each question is defined as a dictionary of key-value pairs. Question types are shown below.
-``participant_calculations``  dictionary A dictionary of named calculated fields. The keys are the name of the calculated field and the value is the calculation. The calculation is Python-compatible code that gets executed for the calculation. Question IDs can be used as variables, and the code is not sand-boxed in any way, so some caution is required.
-============================= ========== ====================
+.. table:: Questionnaire JSON keys
+    :widths: 28,13,50
+
+    ============================= ========== ====================
+    Key                           Data Type  Description of value
+    ============================= ========== ====================
+    ``title``                     string     Optional field used to label the questionnaire for reference only. This is never shown to participants and only shows up on the preview in the Administration section.
+    ``reference``                 string     Optional field to store the citation information for the questionnaire. This is never shown to participants and only shows up on the preview in the Administration section.
+    ``doi``                       string     Optional field to store the doi string relating to the citation. This is never shown to participants and only shows up as a link on the preview in the Administration section.
+    ``instructions``              string     Instructions to appear at the top of the form, before any questions are asked. Supports HTML. Optional.
+    ``code``                      string     For advanced users. JavaScript code to be executed at run time. Optional.
+    ``questions``                 list       A list of questions. Each question is defined as a dictionary of key-value pairs. Question types are shown below.
+    ``participant_calculations``  dictionary A dictionary of named calculated fields. The keys are the name of the calculated field and the value is the calculation. The calculation is Python-compatible code that gets executed for the calculation. Question IDs can be used as variables, and the code is not sand-boxed in any way, so some caution is required.
+    ============================= ========== ====================
 
 .. NOTE::
     You can safely add new keys here as desired and they will be ignored by BOFS. This can be used to add relevant
