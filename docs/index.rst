@@ -8,11 +8,17 @@ Welcome to Bride of Frankensystem's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Introduction:
 
    overview
    installation
    quickstart
+   integrating_js
+
+.. toctree::
+   :maxdepth: 2
+   :caption: References:
+
    configuration
    routing/main
    routing/default_routes

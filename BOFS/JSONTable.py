@@ -92,7 +92,10 @@ class JSONTable(object):
         entry = self.db_class()
         entry.participantID = session['participantID']
 
-        data = request.json
+        try:
+            data = request.json
+        except:
+            data = request.form
 
         for column in self.json_data['columns']:
             if column in data:

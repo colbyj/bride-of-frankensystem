@@ -61,7 +61,7 @@
     </div>
 </div>
 
-{% if False and (session.get('loggedIn', False) or debug) and session.get('participantID', False) and request.blueprint != 'admin' %}
+{% if (session.get('loggedIn', False) or debug) and session.get('participantID', False) and request.blueprint != 'admin' %}
 <div class="fixed-bottom debug-menu bg-dark">
     <div class="row">
         <div class="col-sm-2" style="text-align:left;">

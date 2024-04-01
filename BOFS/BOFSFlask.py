@@ -75,18 +75,18 @@ class BOFSFlask(Flask):
         if actual_host != '127.0.0.1':
             print(f"Preview locally at http://127.0.0.1:{actual_port}")
 
-        if self.debug:
+        if self.run_with_debugging:
             print('\033[91m' + '\033[1m')  # Start red text
             print("!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!")
             print(" Debugging mode is enabled. ")
-            print(" If you are deploying online please set app.debug=False")
+            print(" Do not use this as a production web server. ")
             print("!!!!!!!!!!!!!!!!!!!!!!! WARNING !!!!!!!!!!!!!!!!!!!!!!!!")
             print('\033[0m')  # End the red
 
             if not self.run_with_reloader_off:
                 print('Auto-reloading of project when changes are detected is turned ON.')
 
-            super(BOFSFlask, self).run(host, port, use_reloader=not self.reloader_off, **options)
+            super(BOFSFlask, self).run(host, port, use_reloader=not self.run_with_reloader_off, **options)
         else:
             self.eventlet_run(self, host=host, port=port, **options)
 
