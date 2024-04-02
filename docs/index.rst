@@ -13,7 +13,7 @@ Welcome to Bride of Frankensystem's documentation!
    overview
    installation
    quickstart
-   integrating_js
+   integrating_js_task
 
 .. toctree::
    :maxdepth: 2
@@ -26,5 +26,6 @@ Welcome to Bride of Frankensystem's documentation!
    questionnaires/main
    questionnaires/question_types
    instruction_pages
+   simple_pages
    blueprints
    tables

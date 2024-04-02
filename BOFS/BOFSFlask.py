@@ -3,7 +3,7 @@ import json
 import toml
 import os
 import random
-from flask import Flask,  send_from_directory, Response
+from flask import Flask, send_from_directory, Response, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 from BOFS import util
@@ -49,13 +49,13 @@ class BOFSFlask(Flask):
         project_templates_path = os.path.join(self.instance_path, 'templates')
 
         # Allows developers of BOFS deployments to override BOFS templates
-        my_loader = jinja2.ChoiceLoader([
+        self.my_loader = jinja2.ChoiceLoader([
             self.jinja_loader,
             jinja2.FileSystemLoader(default_templates_path),
             jinja2.FileSystemLoader(project_templates_path),
         ])
 
-        self.jinja_loader = my_loader
+        self.jinja_loader = self.my_loader
 
         self.jinja_env.add_extension("jinja2.ext.do")
 
@@ -124,6 +124,17 @@ class BOFSFlask(Flask):
             self.config.from_file(filename, load=json.load)
         else:
             print("Error: Cannot load configuration file.")
+
+    def load_empty_blueprint(self, blueprint_path):
+        print("Creating empty blueprint: %s" % blueprint_path)
+
+        blueprint_var = Blueprint(blueprint_path, blueprint_path,
+                                  static_url_path='/' + blueprint_path,
+                                  template_folder=os.path.join(blueprint_path, 'templates'),
+                                  static_folder=os.path.join(blueprint_path, 'static'))
+
+        self.register_blueprint(blueprint_var)
+        #self.my_loader.loaders.
 
     def load_blueprint(self, blueprint_path, blueprint_name=None, try_to_load_models=True) -> None:
         print("Loaded blueprint: %s" % blueprint_path)

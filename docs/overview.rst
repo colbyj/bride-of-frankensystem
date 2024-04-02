@@ -20,7 +20,7 @@ If you use this for your research, please cite it!
 
 Features
 --------
-BOF includes a number of features relating to deploying online experiments
+BOF includes a number of features relating to deploying online experiments:
 
 * Automatic :doc:`routing <routing/main>` between pages in a pre-defined order.
     * Built-in consent page in which the text can be easily configured.
@@ -34,11 +34,11 @@ BOF includes a number of features relating to deploying online experiments
 
 Dependencies
 ------------
-BOF requires Python 3.9+, along with the following Python packages.
+BOFS requires Python 3.9+, along with the following Python packages.
 
 * ``flask`` - The web framework that BOF is based off of.
 * ``sqlalchemy`` - An object-relational manager that is used for database table definitions and query access.
-* ``flask-sqlalchemy`` - A bridge between Flask and SQLAlchemy/
+* ``flask-sqlalchemy`` - A bridge between Flask and SQLAlchemy.
 * ``eventlet`` - This is used as the production (live) web server, as an alternative to Flask's built in web server or the Apache web server.
 * ``toml`` - The configuration files use the toml format.
 

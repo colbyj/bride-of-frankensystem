@@ -398,8 +398,8 @@ def route_instructions(pageName):
     """
     ``/instructions/<pageName>``
 
-    Generic page to render instructions. The instructions are defined in HTML within a file and rendered in BOF using
-    the template. A button to redirect to the next page in the study is shown after the instructions.
+    Generic route to render instructions. The instructions are defined in HTML within a file and rendered in BOFS using
+    the the templating system. A button to redirect to the next page in the study is shown after the instructions.
 
     Instruction HTML files can be placed in the project root directory's templates folder in
     ``/templates/instructions/...`` or in one of your blueprint's templates folder in
@@ -419,3 +419,33 @@ def route_instructions(pageName):
 
     return render_template("instructions.html", instructions=instructionsHtml)
 
+
+@default.route("/simple/<pageName>", methods=['POST', 'GET'])
+@verify_correct_page
+@verify_session_valid
+def route_simple_html(pageName):
+    """
+    ``/simple/<pageName>``
+
+    Generic route to render simple Jinja 2 templates (or simple HTML pages) that do not need any additional Python code.
+    The pages are defined in HTML/Jinja 2 within a file and rendered in BOFS using the templating system. Unlike the
+    instruction pages, you are responsible for redirecting participants yourself (e.g., via a JavaScript redirect to
+    ``/redirect_next_page``. A generic POST request to this route (such as from a form submission) will also trigger a
+    redirection to the next page.
+
+    Simple HTML files can be placed in the project root directory's templates folder in
+    ``/templates/simple/...`` or in one of your blueprint's templates folder in
+    ``/<my_blueprint>/templates/simple/...``.
+
+    The files must be in HTML format and use the ``.html`` extension. The ``pageName`` specified is the filename for the
+    html file, without the file extension.
+
+    :param pageName: the name of the file to use to render the simple page (without the .html extension)
+    """
+    if request.method == "POST":
+        return redirect(join_urls('/redirect_from_page', request.path))
+
+    jinja = current_app.jinja_env
+    simple_html = jinja.get_or_select_template("simple/%s.html" % pageName).render()
+
+    return render_template("simple.html", simple_contents=simple_html)

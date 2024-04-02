@@ -22,7 +22,6 @@ The minimal example consists of only 4 files:
 File                                          Description
 ============================================  ============
 /minimal_example/questionnaires/example.json  An example questionnaire file demonstrating all of the question types available.
-/minimal_example/__init__.py                  A blank file that is used to indicate that the directory is a Python module.
 /minimal_example/consent.html                 A HTML file that defines how the consent form should look.
 /minimal_example/minimal.toml                 A configuration file that defines many important aspects of the minimal example.
 ============================================  ============

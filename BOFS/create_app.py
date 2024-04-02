@@ -73,11 +73,17 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         considered_path = os.path.join(path, current_path)
 
         if os.path.isdir(considered_path):  # We should try this path..
+            found_views = False
+
             for subpath in os.listdir(considered_path):
                 if subpath == "views.py":
                     app.load_blueprint(current_path, current_path, False)
+                    found_views = True
                 if subpath == "models.py":
                     app.load_models(current_path)
+
+            if not found_views:  # If no views, then create a blank blueprint so we can still search the templates folder, etc.
+                app.load_empty_blueprint(current_path)
 
     app.load_blueprint('BOFS.default', 'default')
 
