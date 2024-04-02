@@ -1,0 +1,18 @@
+{% set labels = question.labels %}
+{% if question.shuffle %}
+    {% do shuffle(question.labels) %}
+{% endif %}
+{% for label in question.labels %}
+<div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
+    <input class="form-check-input"
+           type="radio"
+           name="{{ question.id }}"
+           id="{{ question.id }}{{ loop.index }}"
+           value="{{ label }}"
+           {{ "required" if question.required }}>
+    <label class="form-check-label"
+           for="{{ question.id }}{{ loop.index }}">
+       {{ question.label_html[loop.index0] if question.label_html else label }}
+    </label>
+</div>
+{% endfor %}

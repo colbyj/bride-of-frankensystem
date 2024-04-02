@@ -231,6 +231,24 @@ def route_questionnaire(questionnaireName, tag=""):
                            timeStarted=datetime.datetime.utcnow())
 
 
+@default.route("/questionnaire_question/<questionType>", methods=['POST'])
+def route_questionnaire_question(questionType: str):
+    """
+    ``/questionnaire_question/<questionType>``
+
+    Render a specific question type for the questionnaire. Only accepts POST requests.
+    Data posted to this route must be a JSON object of the question data.
+    """
+    participant = db.Participant.query.get(session['participantID'])
+
+    try:
+        return render_template(f'questions/{questionType}.html',
+                               question=request.json,
+                               participant=participant)
+    except Exception as ex:
+        return f"Exception in <b>{questionType}.html</b>: {ex}"
+
+
 @default.route("/redirect_previous_page")
 def route_redirect_previous_page():
     """

@@ -1,5 +1,5 @@
 {% macro createQuestionnaire(q) -%}
-        {% set default_field_width = 400 %}
+
 
         <input type="hidden" name="timeStarted" value="{{ timeStarted }}">
 
@@ -26,97 +26,11 @@
                         <h3>{{ question.instructions | safe }}</h3>
                     {% endif %}
 
-                    <div>
-                    {% if question.questiontype == "textview" %}
-                        {{ question.text | safe }}
-                    {% endif %}
-
-                    {% if question.questiontype == "radiolist" %}
-                        {% set labels = question.labels %}
-                        {% if question.shuffle %}
-                            {% do shuffle(question.labels) %}
-                        {% endif %}
-                        {% for label in question.labels %}
-                        <div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
-                            <input class="form-check-input" type="radio" name="{{ question.id }}" id="{{ question.id }}{{ loop.index }}" value="{{ label }}" {{ "required" if question.required }}>
-                            <label class="form-check-label" for="{{ question.id }}{{ loop.index }}">{{ question.label_html[loop.index0] if question.label_html else label }}</label>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
-
-                    {% if question.questiontype == "checklist" %}
-                        {% if question.shuffle %}
-                            {% do shuffle(question.questions) %}
-                        {% endif %}
-
-                        {% for check_question in question.questions %}
-                        <div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
-                            <input class="form-check-input" type="checkbox" name="{{ check_question.id }}" id="{{ check_question.id }}" value="1">
-                            <label class="form-check-label" for="{{ check_question.id }}">{{ check_question.text | safe }}</label>
-                        </div>
-                        {% endfor %}
-                    {% endif %}
-
-                    {% if question.questiontype == "slider" %}
-                        <div class="slider-labels" style="width: {{ question.width if question.width else default_field_width }}px;">
-                            <label for="{{ question.id }}">{{ question.left | safe }}</label>
-                            <label for="{{ question.id }}">{{ question.right | safe }}</label>
-                        </div>
-                        <input type="range" name="{{ question.id }}" id="{{ question.id }}" value="{{ question.default }}" min="1" max="{{ question.tick_count }}" style="width: {{ question.width if question.width else default_field_width }}px;">
-                    {% endif %}
-
-                    {% if question.questiontype == "field" %}
-                        <input class="form-control" type="text" name="{{ question.id }}" id="{{ question.id }}" placeholder="{{ question.placeholder }}" style="width: {{ question.width if question.width else default_field_width }}px; height: 36px;" {{ "required" if question.required }}>
-                    {% endif %}
-
-                    {% if question.questiontype == "num_field" %}
-                        <input class="form-control" type="number" name="{{ question.id }}" id="{{ question.id }}" {{ 'min=%s' % question.min if question.min }} {{ 'max=%s' % question.max if question.max }} style="width: {{ question.width if question.width else default_field_width }}px; height: 36px;" {{ "required" if question.required }}>
-                    {% endif %}
-
-                    {% if question.questiontype == "multi_field" %}
-                        <textarea class="form-control" placeholder="{{ question.placeholder }}" name="{{ question.id }}" id="{{ question.id }}" style="width: {{ question.width if question.width else default_field_width }}px; height: {{ question.height if question.height else 80 }}px;" {{ "required" if question.required }}></textarea>
-                    {% endif %}
-
-                    {% if question.questiontype == "drop_down" %}
-                        <select class="form-control" name="{{ question.id }}" id="{{ question.id }}" style="width: {{ question.width if question.width else default_field_width }}px; height: 36px;" {{ "required" if question.required }}>
-                            <option value="" disabled selected>Select an option</option>
-                            {% for item in question["items"] %}
-                            <option>{{ item }}</option>
-                            {% endfor %}
-                        </select>
-                    {% endif %}
-
-                    {% if question.questiontype == "radiogrid" %}
-                        {% if question.shuffle %}
-                            {% do shuffle(question.q_text) %}
-                        {% endif %}
-                        <table width="100%">
-                            <thead>
-                                <tr>
-                                    <th></th>
-                                    {% for label in question.labels %}
-                                    <th scope="col" style="text-align:center;">{{ label }}</th>
-                                    {% endfor %}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for grid_question in question.q_text %}
-                                <tr class="{{ "oddRow" if loop.index % 2 == 0 else "evenRow" }}">
-                                    <td style="width: 30%">{{ grid_question.text }}</td>
-                                    {% for label in question.labels %}
-                                    <td style="text-align: center; width: {{ 70.0 / (question.labels | length) }}%">
-                                        <label style="padding: 0; width: 100%; margin:auto; height: 28px; text-align:center;" class="btn btn-lg btn-default">
-                                            <div class="" style="display:inline;">
-                                                <input class="" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ loop.index }}" required  {{ 'onclick="log_click(\'{}\', {})"'.format(grid_question.id, loop.index) | safe if config["LOG_GRID_CLICKS"] }}>
-                                            </div>
-                                        </label>
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    {% endif %}
+                    <div hx-swap="innerHTML"
+                         hx-trigger="load"
+                         hx-post="/questionnaire_question/{{ question.questiontype }}"
+                         hx-vals='{{ question | tojson }}'
+                         hx-ext="json-enc">
                     </div>
                 </div>
             {% endfor %}

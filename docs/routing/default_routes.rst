@@ -27,6 +27,8 @@ Subsequent Pages
 
 .. autofunction:: BOFS.default.views.route_instructions
 
+.. autofunction:: BOFS.default.views.route_simple_html
+
 .. autofunction:: BOFS.default.views.route_questionnaire
 
 .. autofunction:: BOFS.default.views.route_end
@@ -50,4 +52,6 @@ Developer Routes
 .. autofunction:: BOFS.default.views.route_table
 
 .. autofunction:: BOFS.default.views.submit
+
+.. autofunction:: BOFS.default.views.route_questionnaire_question
 

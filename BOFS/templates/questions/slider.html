@@ -1,0 +1,11 @@
+<div class="slider-labels" style="width: {{ question.width if question.width else default_field_width }}px;">
+    <label for="{{ question.id }}">{{ question.left | safe }}</label>
+    <label for="{{ question.id }}">{{ question.right | safe }}</label>
+</div>
+<input type="range"
+       name="{{ question.id }}"
+       id="{{ question.id }}"
+       value="{{ question.default }}"
+       min="1"
+       max="{{ question.tick_count }}"
+       style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px;">

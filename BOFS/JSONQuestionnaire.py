@@ -45,20 +45,26 @@ class JSONQuestionnaire(object):
             if not 'id' in list(q.keys()):
                 continue
 
-            #try:
+            # Build up the fields list based on the questionnaire
             if q['questiontype'].lower() == "radiogrid":  # Radiogrids will have multiple questions inside of them.
+                if 'questions' in q and 'q_text' not in q:
+                    q['q_text'] = q['questions']
                 for qt in q['q_text']:
-                    self.fields.append(QuestionnaireField(qt['id'], 'integer'))
+                    self.fields.append(QuestionnaireField(qt['id'], 'string'))
             elif q['questiontype'].lower() == "checklist":  # checklists also have multiple questions
                 for qt in q['questions']:
-                    self.fields.append(QuestionnaireField(qt['id'], 'integer'))
+                    self.fields.append(QuestionnaireField(qt['id'], 'string'))
             elif q['questiontype'].lower() == "radiolist":  # will always be integer types
                 self.fields.append(QuestionnaireField(q['id'], 'string'))
             elif q['questiontype'].lower() in ["slider", "num_field"]:
                 self.fields.append(QuestionnaireField(q['id'], 'integer'))
             else:
                 #print "self.fields.append(QuestionnaireField(" + q['id'] + ", 'string'))"
-                self.fields.append(QuestionnaireField(q['id'], 'string'))
+                if 'questions' in q:
+                    for qt in q['questions']:
+                        self.fields.append(QuestionnaireField(qt['id'], 'string'))
+                if 'id' in q:
+                    self.fields.append(QuestionnaireField(q['id'], 'string'))
             #except:
             #    print("A very bad error occurred! Restart the server NOW or risk losing data!")
 

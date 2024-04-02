@@ -1,0 +1,10 @@
+<select class="form-control"
+        name="{{ question.id }}"
+        id="{{ question.id }}"
+        style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: 36px;"
+        {{ "required" if question.required }}>
+    <option value="" disabled selected>Select an option</option>
+    {% for item in question["items"] %}
+    <option>{{ item }}</option>
+    {% endfor %}
+</select>

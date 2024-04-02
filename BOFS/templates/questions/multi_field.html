@@ -1,0 +1,6 @@
+<textarea class="form-control"
+          placeholder="{{ question.placeholder }}"
+          name="{{ question.id }}"
+          id="{{ question.id }}"
+          style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: {{ question.height if question.height else 80 }}px;"
+          {{ "required" if question.required }}></textarea>

@@ -1,0 +1,7 @@
+<input class="form-control"
+       type="number"
+       name="{{ question.id }}"
+       id="{{ question.id }}"
+       {{ 'min=%s' % question.min if question.min }}
+       {{ 'max=%s' % question.max if question.max }}
+       style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: 36px;" {{ "required" if question.required }}>

@@ -1,0 +1,10 @@
+{% if question.shuffle %}
+    {% do shuffle(question.questions) %}
+{% endif %}
+
+{% for check_question in question.questions %}
+<div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
+    <input class="form-check-input" type="checkbox" name="{{ check_question.id }}" id="{{ check_question.id }}" value="1">
+    <label class="form-check-label" for="{{ check_question.id }}">{{ check_question.text | safe }}</label>
+</div>
+{% endfor %}

@@ -1,0 +1,29 @@
+{% if question.shuffle %}
+    {% do shuffle(question.q_text) %}
+{% endif %}
+<table width="100%">
+    <thead>
+        <tr>
+            <th></th>
+            {% for label in question.labels %}
+            <th scope="col" style="text-align:center;">{{ label }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for grid_question in question.q_text %}
+        <tr class="{{ "oddRow" if loop.index % 2 == 0 else "evenRow" }}">
+            <td style="width: 30%">{{ grid_question.text }}</td>
+            {% for label in question.labels %}
+            <td style="text-align: center; width: {{ 70.0 / (question.labels | length) }}%">
+                <label style="padding: 0; width: 100%; margin:auto; height: 28px; text-align:center;" class="btn btn-lg btn-default">
+                    <div class="" style="display:inline;">
+                        <input class="" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ loop.index }}" required  {{ 'onclick="log_click(\'{}\', {})"'.format(grid_question.id, loop.index) | safe if config["LOG_GRID_CLICKS"] }}>
+                    </div>
+                </label>
+            </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

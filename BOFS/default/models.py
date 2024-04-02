@@ -21,6 +21,10 @@ def create(db):
         code = db.Column(db.String(36), nullable=False, default=0)
         lastActiveOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
+        def table(self, name):
+            from BOFS.globals import tables
+
+
         def questionnaire(self, name, tag=""):
             from BOFS.globals import questionnaires
             qResults = getattr(self, "questionnaire_" + name)

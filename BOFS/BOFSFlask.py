@@ -146,6 +146,9 @@ class BOFSFlask(Flask):
         blueprint_var = getattr(blueprint, blueprint_name)
         self.register_blueprint(blueprint_var)
 
+        if 'DEFAULT_FIELD_WIDTH' not in self.config:
+            self.config['DEFAULT_FIELD_WIDTH'] = 400
+
         if 'ADDITIONAL_ADMIN_PAGES' not in self.config:
             self.config['ADDITIONAL_ADMIN_PAGES'] = []
 
@@ -302,13 +305,14 @@ class BOFSFlask(Flask):
         Allows all templates to access several variables/methods used within BOFS.
         :return: a dictionary of variables/methods
         """
-        return dict(
+        template_vars = dict(
             flat_page_list=self.page_list.flat_page_list(),
             debug=self.run_with_debugging,
             shuffle=random.shuffle,
             crumbs=util.create_breadcrumbs(),
             json_dumps=json.dumps
         )
+        return template_vars
 
     def before_request_(self) -> None:
         """

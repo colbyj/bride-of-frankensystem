@@ -1,0 +1,7 @@
+<input class="form-control"
+       type="text"
+       name="{{ question.id }}"
+       id="{{ question.id }}"
+       placeholder="{{ question.placeholder }}"
+       style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: 36px;"
+       {{ "required" if question.required }}>
