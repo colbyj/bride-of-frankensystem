@@ -25,6 +25,7 @@ Welcome to Bride of Frankensystem's documentation!
    conditions
    questionnaires/main
    questionnaires/question_types
+   questionnaires/custom_questions
    instruction_pages
    simple_pages
    blueprints

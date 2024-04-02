@@ -14,7 +14,7 @@ Questionnaires are defined as JSON files and placed within your project under th
 Syntax of a Questionnaire
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Questionnaires are created by defining the structure of the questionnaire within a `.json` file. This stucture is made up of key-value pairs.
+Questionnaires are created by defining the structure of the questionnaire within a ``.json`` file. This stucture is made up of key-value pairs.
 For an introduction to the syntax and structure of JSON and see `this tutorial <https://www.digitalocean.com/community/tutorials/an-introduction-to-json>`_.
 
 The overall structure of the ``.json`` files that define questionnaires looks like this:
@@ -79,7 +79,7 @@ You can perform calculations with the data captured by this questionnaire. These
 per-participant basis. So you can, for example, calculate a participant's score on a set of questions, or work out the
 value associated with a particular scale.
 
-The calculations must be placed within the ```participant_calculations`` dictionary.
+The calculations must be placed within the ``participant_calculations`` dictionary.
 The key is the variable name (this will become the column header in the export) and the value is Python code that
 represents the calculation. The Python code can reference any of the question ``id``s within the questionnaire.
 

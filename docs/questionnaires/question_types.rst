@@ -44,7 +44,7 @@ radiogrid
    boolean: ``true`` or ``false``, default ``false``)
 -  ``labels``: list of strings that represent column headers (required,
    list of strings)
--  ``q_text``: list of dictionaries that describe each individual
+-  ``questions``: list of dictionaries that describe each individual
    question (required)
 
    -  ``id``: unique id of the row of radio buttons (string)
@@ -65,7 +65,7 @@ radiogrid
                "",
                "I love it!"
            ],
-           "q_text": [
+           "questions": [
                {
                    "id": "q_1",
                    "text": "Ham"

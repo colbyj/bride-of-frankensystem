@@ -11,6 +11,9 @@
         </tr>
     </thead>
     <tbody>
+        {% if question.q_text is undefined %}
+            {% set question.q_text = question.questions %}
+        {% endif %}
         {% for grid_question in question.q_text %}
         <tr class="{{ "oddRow" if loop.index % 2 == 0 else "evenRow" }}">
             <td style="width: 30%">{{ grid_question.text }}</td>
