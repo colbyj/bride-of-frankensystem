@@ -131,7 +131,8 @@ def create(db):
             return column_property(
                 db.and_(
                     ~cls.finished,
-                    ((db.func.julianday(datetime.utcnow()) - db.func.julianday(cls.lastActiveOn)) <= (current_app.config['ABANDONED_MINUTES'] / 1440.0))
+                    (1440.0 * (db.func.julianday(db.func.current_timestamp()) - db.func.julianday(cls.lastActiveOn)) <=
+                     current_app.config['ABANDONED_MINUTES'])
                 ).label('is_in_progress')
             )
 
@@ -140,7 +141,8 @@ def create(db):
             return column_property(
                 db.and_(
                     ~cls.finished,
-                    ((db.func.julianday(datetime.utcnow()) - db.func.julianday(cls.lastActiveOn)) > (current_app.config['ABANDONED_MINUTES'] / 1440.0))
+                    (1440.0 * (db.func.julianday(db.func.current_timestamp()) - db.func.julianday(cls.lastActiveOn)) >
+                     current_app.config['ABANDONED_MINUTES'])  # 1440 is minutes per day
                 ).label('is_abandoned')
             )
 
