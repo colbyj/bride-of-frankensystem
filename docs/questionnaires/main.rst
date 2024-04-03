@@ -129,7 +129,7 @@ For example, the ``my_questionnaire.json`` file will have the ``PAGE_LIST`` entr
     ``{'name': 'Questionnaire', 'path': 'questionnaire/my_questionnaire'}``
 
 Doing this signals BOFS that a database table should be created for the questionnaire. Once the study is run, this
-table with get created.
+table will get created.
 
 If changes are made to the questionnaire, the table will `not` get updated to match. This is a problem any time a
 question ID changes or whenever a new question gets added. The easiest way to resolve this is to delete the database

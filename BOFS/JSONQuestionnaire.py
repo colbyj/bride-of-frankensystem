@@ -62,7 +62,8 @@ class JSONQuestionnaire(object):
                 #print "self.fields.append(QuestionnaireField(" + q['id'] + ", 'string'))"
                 if 'questions' in q:
                     for qt in q['questions']:
-                        self.fields.append(QuestionnaireField(qt['id'], 'string'))
+                        if 'id' in qt:
+                            self.fields.append(QuestionnaireField(qt['id'], 'string'))
                 if 'id' in q:
                     self.fields.append(QuestionnaireField(q['id'], 'string'))
             #except:

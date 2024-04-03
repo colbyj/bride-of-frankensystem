@@ -1,5 +1,5 @@
-Defining Questions in JSON Syntax
-=================================
+Built-in Question Types
+=======================
 
 The following attributes are common to every type of question (except
 radiogrid).

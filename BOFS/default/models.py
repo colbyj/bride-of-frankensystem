@@ -151,7 +151,7 @@ def create(db):
             """
 
             if self.timeEnded is None:
-                if self.lastActiveOn > datetime.utcnow() - timedelta(minutes=current_app.config['ABANDONED_MINUTES']):
+                if self.is_in_progress:
                     return "In Progress"
                 else:
                     return "Abandoned"

@@ -327,7 +327,8 @@ def route_end():
     given one. Can also be configured to redirect to an external URL.
     """
     p = db.Participant.query.get(session['participantID'])
-    p.timeEnded = datetime.datetime.utcnow()
+    if p.timeEnded is None:
+        p.timeEnded = datetime.datetime.utcnow()
     p.finished = True
 
     db.session.commit()
