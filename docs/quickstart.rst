@@ -110,6 +110,11 @@ several messages show up.
 The last line of output shows you what URL your survey is available at for previewing it on your local machine. Open
 that URL in your web browser and let's go through each page.
 
+.. TIP::
+    If you add the ``-d`` flag to your BOFS command, you will enable debugging mode. This provides more feedback if
+    something goes wrong and also shows navigation and debugging information at the bottom of pages. For example,
+    ``BOFS minimal.toml -d``.
+
 .. image:: quickstart/minimal/minimal0.png
   :width: 800
   :alt: The consent page.
@@ -163,6 +168,8 @@ through the study, summary statistics relating to completion, and various other 
 Extending the Minimal Example
 -----------------------------
 
+
+
 Please continue reading to learn about the different ways in which this example project can be extended.
 
 * To learn how to assign participants to different conditions, see :doc:`conditions`.
@@ -170,3 +177,8 @@ Please continue reading to learn about the different ways in which this example 
 * To learn more about how to show static content to participants, see :doc:`instruction_pages`.
 * To learn about how to add your own custom pages, see :doc:`blueprints`.
 * To learn how to store your own data to the database, see :doc:`tables`.
+
+
+.. TIP::
+    When developing BOFS projects, you may find it helpful to run the project in a new private/incognito window each
+    time. Alternatively, you can restart your session (and go back to the start of your study) via the ``/restart`` route.

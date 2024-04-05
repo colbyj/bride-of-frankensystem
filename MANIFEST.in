@@ -1,0 +1,4 @@
+graft BOFS
+prune venv
+prune docs
+prune dist

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bride-of-frankensystem"
-version = "1.9.3.2"
+version = "1.9.3.3"
 description = "A framework that allows for the development of custom online experiments and surveys."
 readme = "README.md"
 authors = [{ name = "Colby Johanson", email = "colby.johanson@usask.ca" }]
@@ -27,11 +27,6 @@ requires-python = ">=3.9"
 
 [tool.setuptools.packages.find]
 where = [""]
-
-[tool.setuptools.package-data]
-"BOFS.admin" = ["BOFS/admin/**/*.*"]
-"BOFS.static" = ["BOFS/static/**/*.*"]
-"BOFS.templates" = ["BOFS/templates/*.*"]
 
 [project.urls]
 Homepage = "https://github.com/colbyj/bride-of-frankensystem/"
