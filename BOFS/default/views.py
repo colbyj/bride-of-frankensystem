@@ -239,6 +239,7 @@ def route_questionnaire_question(questionType: str):
     Render a specific question type for the questionnaire. Only accepts POST requests.
     Data posted to this route must be a JSON object of the question data.
     """
+    raise Exception('Colby needs to fix this. If viewing from admin page w/o going through the consent form, the questionnaire doesn\'t work!!')
     participant = db.Participant.query.get(session['participantID'])
 
     try:

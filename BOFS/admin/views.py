@@ -1,5 +1,5 @@
 import sqlalchemy
-from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response
+from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file
 from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count, display_time
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
@@ -40,6 +40,8 @@ def inject_template_vars():
     questionnairesLive = current_app.page_list.get_questionnaire_list(True)
     questionnairesLiveUntagged = sorted(current_app.page_list.get_questionnaire_list())
     questionnairesSystem = sorted(questionnairesSystem)
+    isSqliteDb = current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///')
+
 
     return dict(
         additionalAdminPages=additionalAdminPages,
@@ -48,6 +50,7 @@ def inject_template_vars():
         questionnairesLiveUntagged=questionnairesLiveUntagged,
         questionnairesSystem=questionnairesSystem,
         logGridClicks=current_app.config['LOG_GRID_CLICKS'],
+        isSqliteDb=isSqliteDb,
         condition_num_to_label=condition_num_to_label
     )
 
@@ -393,6 +396,17 @@ def route_table_csv(tableName):
                         "Content-disposition": "attachment; filename=%s.csv" % (
                                     tableName + "_" + datetime.utcnow().strftime("%Y-%m-%d"))
                     })
+
+
+@admin.route("/database_download")
+@verify_admin
+def route_database_download():
+    if not current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///'):
+        return "Not using a SQLite database."
+
+    db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+    # TODO: Do I need to do something special if the database is being written to by users?
+    return send_file(db_uri, as_attachment=True)
 
 @admin.errorhandler(500)
 def internal_error(error):

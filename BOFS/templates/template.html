@@ -14,15 +14,14 @@
 <html>
 <head>
     <title>{% block title %}{{ config['TITLE'] }}{% endblock %}</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.9.0/css/all.min.css" integrity="sha256-UzFD2WYH2U1dQpKDjjZK72VtPeWP50NoJjd26rnAdUI=" crossorigin="anonymous" />
-    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='style.css') }}" type="text/css" />
+    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='style.css') }}">
 
-    <script src="{{ url_for('BOFS_static', filename='js/jquery-3.4.1.min.js') }}"></script>
-    <script src="{{ url_for('BOFS_static', filename='js/popper.min.js') }}"></script>
-    <script src="{{ url_for('BOFS_static', filename='js/bootstrap.min.js') }}"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.11"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/json-enc.js"></script>
+    <script src="{{ url_for('BOFS_static', filename='js/jquery-3.7.1.min.js') }}"></script>
+    <script src="{{ url_for('BOFS_static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('BOFS_static', filename='js/htmx.min.js') }}"></script>
+    <script src="{{ url_for('BOFS_static', filename='js/json-enc.js') }}"></script>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block head %}{% endblock %}
