@@ -57,7 +57,7 @@ def verify_admin(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'loggedIn' not in session or not session['loggedIn']:
-            return redirect(url_for("admin.admin_login"))
+            return redirect(url_for("admin.admin_login") + "?r=" + getattr(f, "__name__", str(f)))
         return f(*args, **kwargs)
     return decorated_function
 

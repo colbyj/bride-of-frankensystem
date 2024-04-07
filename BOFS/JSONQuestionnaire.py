@@ -126,7 +126,7 @@ class JSONQuestionnaire(object):
     def preprocess_calculation_string(self, calculationString):
         for field in self.fields:
             calculationString = re.sub("{}(?=,|\]|\)|-|\+|/|\*| |$)".
-                                       format(field.id), "getattr(self, '{}')".format(field.id), calculationString)
+                                       format(field.id), "float(getattr(self, '{}'))".format(field.id), calculationString)
 
         return calculationString
 

@@ -1,17 +1,11 @@
 :root {
     --contents-width: 967px;
-    --top-bar-color: #8CB737;
-    --font-size-main: 12pt;
-    --font-size-h1: 18pt;
-    --font-size-h3: 13pt;
+    font-size: 11pt;
 }
 
 @media only screen and (max-width: 768px) {
     :root {
         --contents-width: 100vw;
-        --font-size-main: 11pt;
-        --font-size-h1: 16pt;
-        --font-size-h3: 12pt;
     }
 
     .content {
@@ -26,14 +20,6 @@
         max-width: 90vw !important;
     }
 }
-
-body {
-    padding: 0;
-    margin: 0;
-    font-family: 'segoe ui', arial, sans-serif;
-    font-size: var(--font-size-main);
-}
-
 
 .questions {
     /*border: 1px solid #4e4e4e;*/
@@ -62,21 +48,6 @@ body {
 
 #map img {
     position: relative;
-}
-
-h1 {
-    font-size: var(--font-size-h1);
-    margin: 0;
-}
-
-h3 {
-    font-weight: bold;
-    font-size: var(--font-size-h3);
-    margin: 0 0 10px 0;
-}
-
-p {
-    margin-bottom: 0;
 }
 
 .title-bar {
@@ -116,35 +87,14 @@ p {
     background-color: rgba(255, 0, 0, 0.05);
 }
 
+.form-check { padding: 6px 22px; }
+.form-check input {  }
 
-.debug-session pre {
-    display: block; margin: 0;
-}
+ul li { padding-bottom: 4px;  }
 
-.debug-session ul {
-    padding: 0 0 0 12px; margin: 0; list-style-type: none;
-}
-
-.debug-menu {
-    padding: 10px;
-}
-
-.debug-menu button, a {
-    font-size: 10pt !important;
-}
-
-/*a, a:visited { text-decoration: none; color: #1144cc; }
-a:hover { text-decoration: underline; }*/
-
-table { border-spacing: 0; }
 th { padding: 6px; position: sticky; top: 0; background-color: #F7F7F7; border-bottom: 1px solid #EEEEEE; z-index: 1; }
 .evenRow { background-color: #EFEFEF; }
 .evenRow td { padding: 4px; }
 .oddRow td { padding: 4px; }
 .evenRow:hover { background-color: #F4F2DC; }
 .oddRow:hover { background-color: #FEFFE8; }
-
-.form-check { padding: 6px 22px; }
-.form-check input {  }
-
-ul li { padding-bottom: 4px;  }

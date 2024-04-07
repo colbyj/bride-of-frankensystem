@@ -8,6 +8,7 @@ import json
 from .QuestionnaireResults import *
 from datetime import datetime
 from os import path, listdir
+from shutil import copyfile
 
 admin = Blueprint('admin', __name__, template_folder='templates', static_folder='static', url_prefix="/admin")
 
@@ -72,7 +73,15 @@ def admin_login():
             session['loggedIn'] = True
             session.modified = True
 
-        return redirect(url_for("admin.route_progress"))
+        redirect_to = url_for("admin.route_progress")
+
+        try:
+            if request.args.get('r') is not None:
+                redirect_to = url_for("admin." + request.args.get('r'))
+        except:  # Is there a better method here?
+            pass
+
+        return redirect(redirect_to)
     else:
         return render_template("login_admin.html")
 
@@ -407,6 +416,33 @@ def route_database_download():
     db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
     # TODO: Do I need to do something special if the database is being written to by users?
     return send_file(db_uri, as_attachment=True)
+
+
+@admin.route("/database_delete", methods=['GET', 'POST'])
+@verify_admin
+def route_database_delete():
+    if not current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///'):
+        return "Not using a SQLite database."
+
+    if request.method == 'POST':
+        if request.form['password'] != current_app.config['ADMIN_PASSWORD']:
+            return render_template("database_delete.html", message="The password you entered is incorrect.")
+        else:
+            db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+            copyfile(db_uri, db_uri.replace('.db', '') + "_" + datetime.utcnow().strftime("%Y%m%d_%H%M%S") + ".db")  # Make a copy of the db, just in case we didn't truly want to delete everything.
+
+            # now delete everything from the database
+            for tbl in reversed(db.metadata.sorted_tables):
+                db.session.query(tbl).delete()
+            db.session.commit()
+
+        return redirect(url_for("admin.route_progress"))
+
+    return render_template("database_delete.html")
+
+    #db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+    #return send_file(db_uri, as_attachment=True)
+
 
 @admin.errorhandler(500)
 def internal_error(error):

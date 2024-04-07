@@ -1,97 +1,85 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>{% block title %}{{ config['TITLE'] }} &mdash; Administration{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='all.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('BOFS_static', filename='style.css') }}">
-
-    <script src="{{ url_for('BOFS_static', filename='js/jquery-3.7.1.min.js') }}"></script>
-    <script src="{{ url_for('BOFS_static', filename='js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ url_for('BOFS_static', filename='js/htmx.min.js') }}"></script>
-    <script src="{{ url_for('BOFS_static', filename='js/json-enc.js') }}"></script>
-
+    {% include "template_admin_head.html" %}
     {% block head %}{% endblock %}
-    <style>
-        .table td, .table th {
-            padding: .25rem;
-            vertical-align: middle;
-        }
-    </style>
 </head>
 <body style="padding: 65px 20px 20px 20px">
 
 <header data-bs-theme="dark">
     <nav class="navbar navbar-expand-lg fixed-top navbar-dark bg-dark">
-        <a class="navbar-brand" href="/" style="padding-left: 10px;">{{ config['TITLE'] }}</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                  <a class="nav-link" href="{{ url_for('admin.route_progress') }}">Progress</a>
-                </li>
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">{{ config['TITLE'] }}</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                      <a class="nav-link" href="{{ url_for('admin.route_progress') }}">Progress</a>
+                    </li>
 
-                {% if logGridClicks %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Export</a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="{{ url_for('admin.route_export') }}">Questionnaire Data</a>
-                        <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Grid Timing Data</a><
-                    </div>
-                </li>
-                {% else %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('admin.route_export') }}">Export</a>
-                </li>
-                {% endif %}
+                    {% if logGridClicks %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Export</a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for('admin.route_export') }}">Questionnaire Data</a>
+                            <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Grid Timing Data</a><
+                        </div>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.route_export') }}">Export</a>
+                    </li>
+                    {% endif %}
 
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Preview Questionnaires</a>
-                    <div class="dropdown-menu">
-                        <h6 class="dropdown-header">In Use</h6>
-                        {% for q in questionnairesLiveUntagged %}
-                        <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
-                        {% endfor %}
-                        <div class="dropdown-divider"></div>
-                        <h6 class="dropdown-header">In the System</h6>
-                        {% for q in questionnairesSystem %}
-                        <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
-                        {% endfor %}
-                    </div>
-                </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Preview Questionnaires</a>
+                        <div class="dropdown-menu">
+                            <h6 class="dropdown-header">In Use</h6>
+                            {% for q in questionnairesLiveUntagged %}
+                            <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
+                            {% endfor %}
+                            <div class="dropdown-divider"></div>
+                            <h6 class="dropdown-header">In the System</h6>
+                            {% for q in questionnairesSystem %}
+                            <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
+                            {% endfor %}
+                        </div>
+                    </li>
 
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Database</a>
-                    <div class="dropdown-menu">
-                        {% if isSqliteDb %}
-                        <a class="dropdown-item" href="{{ url_for('admin.route_database_download') }}">Download Database</a>
-                        {% endif %}
-                        <h6 class="dropdown-header">Tables</h6>
-                        {% for t in tableNames %}
-                        <a class="dropdown-item" href="{{ url_for('admin.route_table_view', tableName=t) }}">{{ t }}</a>
-                        {% endfor %}
-                    </div>
-                </li>
-
-                {% if additionalAdminPages %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Custom Pages</a>
-                    <div class="dropdown-menu">
-                        {% for page in additionalAdminPages %}
-                            {% if 'route' in page %}
-                            <a class="dropdown-item" href="{{ url_for(page['route']) }}">{{ page['title'] }}</a>
-                            {% elif 'url' in page %}
-                            <a class="dropdown-item" href="{{ page['url'] }}">{{ page['title'] }}</a>
-                            {% else %}
-                            <a class="dropdown-item" href="#">{{ page['title'] }}</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Database</a>
+                        <div class="dropdown-menu">
+                            {% if isSqliteDb %}
+                            <a class="dropdown-item" href="{{ url_for('admin.route_database_delete') }}">Delete Database</a>
+                            <a class="dropdown-item" href="{{ url_for('admin.route_database_download') }}">Download Database</a>
                             {% endif %}
-                        {% endfor %}
-                    </div>
-                </li>
-                {% endif %}
-            </ul>
+                            <h6 class="dropdown-header">Tables</h6>
+                            {% for t in tableNames %}
+                            <a class="dropdown-item" href="{{ url_for('admin.route_table_view', tableName=t) }}">{{ t }}</a>
+                            {% endfor %}
+                        </div>
+                    </li>
+
+                    {% if additionalAdminPages %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Custom Pages</a>
+                        <div class="dropdown-menu">
+                            {% for page in additionalAdminPages %}
+                                {% if 'route' in page %}
+                                <a class="dropdown-item" href="{{ url_for(page['route']) }}">{{ page['title'] }}</a>
+                                {% elif 'url' in page %}
+                                <a class="dropdown-item" href="{{ page['url'] }}">{{ page['title'] }}</a>
+                                {% else %}
+                                <a class="dropdown-item" href="#">{{ page['title'] }}</a>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </nav>
 </header>

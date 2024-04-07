@@ -4,11 +4,14 @@
 
 {% block content %}
 
+    <div class="p-3 border-bottom">
+        <h2>Progress</h2>
+    </div>
+    <div class="p-3">
+        {% include("progress_summary_ajax.html") %}
+    </div>
 
-    {% include("progress_summary_ajax.html") %}
-
-
-    <div class="question padding table-responsive">
+    <div class="p-3">
         {% include("progress_ajax.html") %}
     </div>
 

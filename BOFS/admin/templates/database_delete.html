@@ -1,0 +1,28 @@
+{% extends "template_admin.html" %}
+{% block head %}
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center">
+    <form method="post" class="m-auto">
+
+        <h1>Delete Database</h1>
+        {% if message %}
+            <div class="error-box">
+                <i>{{ message }}</i>
+            </div>
+        {% endif %}
+
+        <h4>Please enter the password to continue</h4>
+
+        <div class="bg-body-tertiary p-3 rounded mt-3">
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" id="password">
+            </div>
+            <input type="submit" id="submit" value="Delete Database" class="btn btn-primary w-100">
+        </div>
+
+    </form>
+</div>
+{% endblock %}
