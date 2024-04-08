@@ -489,7 +489,3 @@ def route_database_delete():
     #return send_file(db_uri, as_attachment=True)
 
 
-@admin.errorhandler(500)
-def internal_error(error):
-    return f"<h1>Internal Server Error (500)</h1> <p>{error.description}</p><pre>{error.original_exception}</pre>"
-

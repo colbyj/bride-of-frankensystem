@@ -1,3 +1,4 @@
+from datetime import datetime
 import jinja2
 import json
 import toml
@@ -44,6 +45,9 @@ class BOFSFlask(Flask):
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
         self.add_url_rule("/consent.html", endpoint="consent_html", view_func=self.route_consent)
         self.register_error_handler(404, self.page_not_found)
+
+        if not self.run_with_debugging:
+            self.register_error_handler(500, self.internal_error)
 
         default_templates_path = os.path.join(self.bofs_path, "templates")
         project_templates_path = os.path.join(self.instance_path, 'templates')
@@ -296,9 +300,21 @@ class BOFSFlask(Flask):
         return send_from_directory(self.root_path, "consent.html")
 
     def page_not_found(self, e) -> tuple[str, int]:
-        return "Could not load the requested page. If you are just starting out, " \
+        return "<h1>File not Found (404)</h1>" \
+               "<p>Could not load the requested page. If you are just starting out, " \
                "please click <a href=\"/restart\"><b>here</b></a> to reset your cookies for this page. " \
                "If that doesn't work, please clear your cookies or switch web browsers.", 404
+
+    def internal_error(self, error):
+        if not self.run_with_debugging:
+            open_mode = 'a'
+            if os.path.exists('error.log'):
+                open_mode = 'w'
+
+            with open('error.log', open_mode) as f:
+                f.write(f"{datetime.now()} - {error}\n")
+
+        return f"<h1>Internal Server Error (500)</h1> <p>{error.description}</p><pre>{error.original_exception}</pre>", 500
 
     def inject_jinja_vars(self) -> dict:
         """
