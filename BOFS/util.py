@@ -220,13 +220,21 @@ def fetch_condition_count():
     return len(current_app.config["CONDITIONS"])
 
 
-# This is useful only after data has been collected.
 def fetch_condition_count_db():
+    """
+    This is useful only after data has been collected.
+    :return:
+    """
     return db.session.query(db.func.max(db.Participant.condition)).one()[0]
 
 
-# This needs to be used inside of a route, otherwise session, request won't work.
-def provide_consent(assignCondition=True, logDisplaySize=True):
+def provide_consent(assignCondition=True, logDisplaySize=False):
+    """
+    This needs to be used inside a route, otherwise session, request won't work.
+    :param assignCondition:
+    :param logDisplaySize:
+    :return:
+    """
     from flask import request, session
     from BOFS.globals import db
     import datetime
@@ -270,6 +278,8 @@ def provide_consent(assignCondition=True, logDisplaySize=True):
 
         db.session.add(entry)
         db.session.commit()
+
+    return p
 
 
 # Provides some error checking for when converting results of form submission

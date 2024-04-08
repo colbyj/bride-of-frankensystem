@@ -1,7 +1,7 @@
 import sqlalchemy
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file
 from BOFS.globals import db, questionnaires, page_list
-from BOFS.util import fetch_condition_count, display_time
+from BOFS.util import fetch_condition_count, display_time, provide_consent, int_or_0
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
 from .export_helpers import *
 import json
@@ -63,6 +63,23 @@ def admin_index():
 
 @admin.route("/login", methods=['GET', 'POST'])
 def admin_login():
+    if 'participantID' not in session:
+        try:
+            p = provide_consent(True)  # Ensure that the previewing user is a valid user
+        except Exception as e:
+            if 'table participant has no column named excludeFromCount' in str(e):  # I added a new column and old databases won't open now. This is a workaround.
+                add_column = db.DDL("ALTER TABLE participant ADD COLUMN excludeFromCount BOOLEAN")
+                with db.engine.connect() as conn:
+                    conn.execute(add_column)
+                    db.session.commit()
+
+                return redirect(url_for("admin.admin_login"))  # This doesn't actually work... but the column gets added.
+            else:
+                raise e
+
+        p.excludeFromCount = True
+        db.session.commit()
+
     if session.get('loggedIn', False):
         return redirect(url_for("admin.route_progress"))
 
@@ -117,6 +134,7 @@ def fetch_progress_summary():
         db.func.sum(db.cast(db.Participant.is_in_progress, db.Integer)).label('countInProgress'),
         db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
         db.func.avg(db.Participant.duration).label('minutes')). \
+        filter(db.or_(~db.Participant.excludeFromCount, db.Participant.excludeFromCount == None)). \
         group_by(db.Participant.condition).all()
 
     summary = db.session.query(
@@ -127,6 +145,7 @@ def fetch_progress_summary():
         db.func.min(db.Participant.duration).label('minSeconds'),
         db.func.max(db.Participant.duration).label('maxSeconds'),
         db.func.avg(db.Participant.duration).label('seconds')). \
+        filter(db.or_(~db.Participant.excludeFromCount, db.Participant.excludeFromCount == None)). \
         one()
 
     return summary_groups, summary
@@ -157,6 +176,16 @@ def route_progress_summary_ajax():
     return render_template("progress_summary_ajax.html",
                            summary_groups=summary_groups, summary=summary, display_time=display_time)
 
+@admin.post("/update_exclude_from_count")
+def route_update_exclude_from_count():
+    if 'participantID' not in request.form or 'excludeFromCount' not in request.form:
+        return ""
+
+    p = db.session.query(db.Participant).get(request.form['participantID'])
+    p.excludeFromCount = not (request.form['excludeFromCount'] == 'True')
+    db.session.commit()
+
+    return Response(status=200, headers={'HX-Trigger': 'excludeChanged'})
 
 @admin.route("/export_item_timing")
 @verify_admin
@@ -205,14 +234,17 @@ def route_export_item_timing():
 def route_export():
     unfinished_count = db.session.query(db.Participant). \
         filter(db.Participant.finished == False).count()  # For display only
+    excluded_count = db.session.query(db.Participant). \
+        filter(db.Participant.excludeFromCount == True).count()  # For display only
 
     include_unfinished = request.args.get('includeUnfinished', False)
     include_missing = request.args.get('includeMissing', True)
+    include_excluded = request.args.get('includeExcluded', False)
 
     column_list = []
     export_data = {}
 
-    query = add_participants_to_export(column_list, export_data, include_unfinished)
+    query = add_participants_to_export(column_list, export_data, include_unfinished, include_excluded)
     add_questionnaires_to_export(column_list, export_data, query, include_missing)
     add_custom_exports_to_export(column_list, export_data, query, include_missing)
 
@@ -229,7 +261,8 @@ def route_export():
         return render_template("export.html",
                                data=csv_string,
                                rowCount=len(export_data),
-                               unfinishedCount=unfinished_count)
+                               unfinishedCount=unfinished_count,
+                               excludedCount=excluded_count)
 
 
 @admin.route("/results")
@@ -250,9 +283,18 @@ def route_results():
     return render_template("results.html", results=results)
 
 
-@admin.route("/preview_questionnaire/<questionnaireName>")
+@admin.route("/preview_questionnaire/<questionnaireName>", methods=["GET", "POST"])
 @verify_admin
 def route_preview_questionnaire(questionnaireName):
+    if request.method == 'POST' and 'condition' in request.form:
+        session['condition'] = int_or_0(request.form['condition'])
+
+        p = db.session.query(db.Participant).get(session['participantID'])
+        p.condition = session['condition']
+
+        db.session.commit()
+
+
     errors = []
 
     try:
@@ -286,7 +328,10 @@ def route_preview_questionnaire(questionnaireName):
                     dataType = db.metadata.tables[table_name].columns[column_name].type
 
                     add_column = db.DDL(str.format("ALTER TABLE {} ADD COLUMN {} {}", table_name, column_name, dataType))
-                    db.engine.execute(add_column)
+
+                    with db.engine.connect() as conn:
+                        conn.execute(add_column)
+                        db.session.commit()
 
                     errors.append(str.format(u"{} {} was added to {}. "
                                              u"This error should be gone when you refresh.", column_name, dataType,

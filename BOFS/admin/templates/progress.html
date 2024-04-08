@@ -7,31 +7,12 @@
     <div class="p-3 border-bottom">
         <h2>Progress</h2>
     </div>
-    <div class="p-3">
+    <div class="p-3" hx-trigger="every 5s, excludeChanged from:body" hx-get="{{ url_for('admin.route_progress_summary_ajax') }}" hx-swap="innerHTML">
         {% include("progress_summary_ajax.html") %}
     </div>
 
-    <div class="p-3">
+    <div class="p-3" hx-trigger="every 5s, excludeChanged from:body" hx-get="{{ url_for('admin.route_progress_ajax') }}" hx-swap="innerHTML">
         {% include("progress_ajax.html") %}
     </div>
-
-    <script>
-    setInterval(function() {
-        $.ajax({
-            url: "{{ url_for('admin.route_progress_ajax') }}",
-            dataType: "html",
-            success: function(data) {
-                $("#progress").html(data);
-            }
-        });
-        $.ajax({
-            url: "{{ url_for('admin.route_progress_summary_ajax') }}",
-            dataType: "html",
-            success: function(data) {
-                $("#summary").html(data);
-            }
-        });
-    }, 15000);
-    </script>
 
 {% endblock %}

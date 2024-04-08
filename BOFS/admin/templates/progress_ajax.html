@@ -9,6 +9,7 @@
             <th scope="col" style="text-align: center; width: 110px;">{{ page['path'].replace("/", " ").replace("_", " ") }}</th>
         {% endfor %}
         <th scope="col" style="text-align: center; width:50px;">Finished</th>
+        <th scope="col" style="text-align: center; width:50px;">Excluded From Count</th>
         <th scope="col" style="text-align: center; width:70px;">Time Taken</th>
     </tr>
     </thead>
@@ -28,6 +29,13 @@
             {% endfor %}
             <td style="text-align: center;">
                 <input type="checkbox" disabled readonly {{ 'checked' if r.Participant.finished }}>
+            </td>
+            <td style="text-align: center;">
+                <form>
+                    <input type="hidden" name="participantID" value="{{ r.Participant.participantID }}">
+                    <input type="hidden" name="excludeFromCount" value="{{ r.Participant.excludeFromCount }}">
+                    <input type="checkbox" {{ 'checked' if r.Participant.excludeFromCount }} hx-post="{{ url_for('admin.route_update_exclude_from_count') }}">
+                </form>
             </td>
             <td style="text-align: center;">{{ r.Participant.display_duration() }}</td>
         </tr>

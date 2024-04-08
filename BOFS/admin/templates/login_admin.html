@@ -5,8 +5,7 @@
 </head>
 <body style="padding: 65px 20px 20px 20px" class="d-flex align-items-center">
 <main class="m-auto">
-    <form method="post">
-
+    <form method="post" style="min-width: 400px;">
         <h1>{{ config['TITLE'] }}</h1>
         {% if message %}
             <div class="error-box">
@@ -23,7 +22,6 @@
             </div>
             <input type="submit" id="submit" value="Login" class="btn btn-primary w-100">
         </div>
-
     </form>
 </main>
 </body>

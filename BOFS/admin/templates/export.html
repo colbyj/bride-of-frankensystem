@@ -12,7 +12,14 @@
             <div class="form-check">
                 <input type="checkbox" class="form-check-input" id="includeUnfinished" name="includeUnfinished" {{ "checked" if request.args.get('includeUnfinished', False) }}>
                 <label class="form-check-label" for="includeUnfinished">
-                    Include participants that did not complete the task (N={{unfinishedCount}})
+                    Include participants who did not complete the task (N={{unfinishedCount}})
+                </label>
+            </div>
+
+            <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="includeExcluded" name="includeExcluded" {{ "checked" if request.args.get('includeExcluded', False) }}>
+                <label class="form-check-label" for="includeExcluded">
+                    Include participants who were excluded from the counts (N={{excludedCount}})
                 </label>
             </div>
 

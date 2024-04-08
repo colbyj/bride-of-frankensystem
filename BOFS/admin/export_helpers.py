@@ -85,7 +85,8 @@ def create_export_base_query(export_dict: dict):
 
 def add_participants_to_export(column_list: list[str],
                                export_data: dict,
-                               include_unfinished=True) -> sqlalchemy.orm.Query:
+                               include_unfinished=True,
+                               include_exluded=True) -> sqlalchemy.orm.Query:
     """
     Add participant columns to column_list and their data to export_data.
     :param column_list: A list of strings that will be the columns in the CSV export.
@@ -95,6 +96,9 @@ def add_participants_to_export(column_list: list[str],
     query_participants = db.session.query(db.Participant)
     if not include_unfinished:
         query_participants = query_participants.filter(db.Participant.finished == True)
+
+    if not include_exluded:
+        query_participants = query_participants.filter(db.or_(db.Participant.excludeFromCount == False, db.Participant.excludeFromCount == None))
 
     column_list.extend([
         "participantID",

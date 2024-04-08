@@ -4,6 +4,26 @@
 {% endblock %}
 {% block content %}
 
+    {% if (config['CONDITIONS'] | length) > 1 %}
+    <div class="bg-body-tertiary p-3 rounded">
+        <form class="row g-3 pt-3" method="post">
+            <div class="col-auto col-form-label">
+                <label for="condition">Condition</label>
+            </div>
+            <div class="col-auto">
+                <select class="form-select" id="condition" name="condition">
+                    {% for condition in config['CONDITIONS'] %}
+                    <option value="{{ loop.index }}" {% if session['condition'] == loop.index %}selected{% endif %}>{{ condition['label'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary mb-3">Override Current Condition</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
     {% if (errors | length) > 0 %}
         <div class="error-box">
             <b>Errors were found</b>

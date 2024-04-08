@@ -18,6 +18,7 @@ def create(db):
         timeStarted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # Starts after consent
         timeEnded = db.Column(db.DateTime, nullable=True)
         finished = db.Column(db.Boolean, nullable=False, default=False)
+        excludeFromCount = db.Column(db.Boolean, nullable=False, default=False)
         code = db.Column(db.String(36), nullable=False, default=0)
         lastActiveOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
@@ -84,18 +85,20 @@ def create(db):
                     # Count the participants that have not abandoned the study.
                     if current_app.config['COUNTS_INCLUDE_ABANDONED']:
                         pCount[condition - 1] = db.session.query(db.Participant).\
-                            filter(db.Participant.condition == condition).\
+                            filter(db.Participant.condition == condition,
+                                   ~db.Participant.excludeFromCount).\
                             count()
                     else:
                         pCount[condition-1] = db.session.query(db.Participant).\
                             filter(
-                                db.and_(db.Participant.condition == condition, ~db.Participant.is_abandoned)
+                                db.and_(db.Participant.condition == condition,
+                                        ~db.Participant.is_abandoned,
+                                        ~db.Participant.excludeFromCount)
                             ).count()
 
                     printText += "{}, ".format(pCount[condition-1])
 
                 pCountSorted = sorted(pCount)
-                conditionAssigned = False
 
                 for count in pCountSorted:
                     idx = pCount.index(count)
