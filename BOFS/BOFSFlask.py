@@ -1,4 +1,5 @@
 from datetime import datetime
+from crawlerdetect import CrawlerDetect
 import jinja2
 import json
 import toml
@@ -33,14 +34,20 @@ class BOFSFlask(Flask):
         self.instance_path = os.path.dirname(os.path.abspath(config_name))  # Get the current working path.
 
         self.db = SQLAlchemy(self)
-        self.db_tables = []
-        self.questionnaires = {}
-        self.tables = {}
+
+        self.questionnaires : dict[str, JSONQuestionnaire] = {}
+        """A generated list of user-defined questionnaires, as found in the config file."""
+
+        self.tables : dict[str, JSONTable] = {}
+        """A generated list of user-defined tables, specifically those found in the tables directories."""
 
         self.compress = Compress(self)
 
-        # Store Flask session in the database.
         self.session_interface = BOFSSessionInterface()
+        """Used to store Flask session in the database."""
+
+        self.crawler_detect = CrawlerDetect()
+        """Used to detect when search engines, etc. are viewing the project."""
 
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
         self.add_url_rule("/consent.html", endpoint="consent_html", view_func=self.route_consent)

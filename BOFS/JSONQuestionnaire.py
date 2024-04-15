@@ -5,13 +5,51 @@ import pprint
 from flask import current_app, request, session, config
 from datetime import datetime
 from .globals import db
-from BOFS.util import mean, stdev, std, var, variance, median
 
 
-class QuestionnaireField(object):
-    def __init__(self, id: str, data_type: str):
-        self.id = id
-        self.data_type = data_type
+class JSONQuestionnaireColumn(object):
+    def __init__(self, definition: dict, question_type: str | None = None):
+        self.id = definition['id']
+        self.data_type = "string"
+        self.default = ""
+
+        if question_type is None and 'questiontype' in definition:
+            question_type = definition['questiontype']
+        else:
+            question_type = "string"
+
+        if question_type.lower() in ["slider", "num_field"]:
+            self.data_type = "integer"
+
+        if 'datatype' in definition:
+            self.data_type = definition['datatype']
+
+        if self.data_type in ["integer", "float"]:
+            self.default = 0
+
+    def get_type_ddl(self):
+        if self.data_type == "integer":
+            return "INTEGER"
+        elif self.data_type == "float":
+            return "NUMERIC"
+        elif self.data_type == "datetime":
+            return "DATETIME"
+        elif self.data_type == "boolean":
+            return "BOOLEAN"
+        else:
+            return "TEXT"
+
+    def generate_db_column(self):
+        if self.data_type == "integer":
+            return db.Column(db.Integer, nullable=False, default=self.default)
+        elif self.data_type == "float":
+            return db.Column(db.Float, nullable=False, default=self.default)
+        elif self.data_type == "datetime":
+            return db.Column(db.DateTime, nullable=False, default=self.default)
+        elif self.data_type == "boolean":
+            return db.Column(db.Boolean, nullable=False, default=self.default)
+        else:
+            return db.Column(db.Text, nullable=False, default=self.default)
 
 
 class JSONQuestionnaire(object):
@@ -27,13 +65,19 @@ class JSONQuestionnaire(object):
                   "Python reports the following error: `%s`" % (file_name, error))
             self.json_data = None
 
-        self.fields = []
-        self.calc_fields = []
-        self.db_class = None
-        self.field_count = 0
+        self.__fields: list["JSONQuestionnaireColumn"] = []
+        self.__calc_fields: list[str] = []
+        self.__field_count = 0
+        self.db_class : db.Model | None = None
 
-    def fetch_fields(self):
-        self.fields = []
+    def get_table_name(self):
+        return self.db_class.__tablename__
+
+    def get_calculated_fields(self) -> list[str]:
+        return self.__calc_fields
+
+    def fetch_fields(self) -> list["JSONQuestionnaireColumn"]:
+        self.__fields: list["JSONQuestionnaireColumn"]= []
 
         if not self.json_data or 'questions' not in self.json_data:
             print ("ERROR! `%s` questionnaire contains no questions." % self.file_name)
@@ -46,42 +90,28 @@ class JSONQuestionnaire(object):
                 continue
 
             # Build up the fields list based on the questionnaire
-            if q['questiontype'].lower() == "radiogrid":  # Radiogrids will have multiple questions inside of them.
-                if 'questions' in q and 'q_text' not in q:
-                    q['q_text'] = q['questions']
-                for qt in q['q_text']:
-                    self.fields.append(QuestionnaireField(qt['id'], 'string'))
-            elif q['questiontype'].lower() == "checklist":  # checklists also have multiple questions
+            if 'q_text' in q and 'questions' not in q:
+                q['questions'] = q['q_text']
+
+            if 'questions' in q:
+                question_type = q['questiontype']
                 for qt in q['questions']:
-                    self.fields.append(QuestionnaireField(qt['id'], 'string'))
-            elif q['questiontype'].lower() == "radiolist":  # will always be integer types
-                self.fields.append(QuestionnaireField(q['id'], 'string'))
-            elif q['questiontype'].lower() in ["slider", "num_field"]:
-                self.fields.append(QuestionnaireField(q['id'], 'integer'))
-            else:
-                #print "self.fields.append(QuestionnaireField(" + q['id'] + ", 'string'))"
-                if 'questions' in q:
-                    for qt in q['questions']:
-                        if 'id' in qt:
-                            self.fields.append(QuestionnaireField(qt['id'], 'string'))
-                if 'id' in q:
-                    self.fields.append(QuestionnaireField(q['id'], 'string'))
-            #except:
-            #    print("A very bad error occurred! Restart the server NOW or risk losing data!")
+                    if 'id' in qt:
+                        self.__fields.append(JSONQuestionnaireColumn(qt, question_type))
+            if 'id' in q:
+                self.__fields.append(JSONQuestionnaireColumn(q))
 
-            #pprint.pprint(q)
-
-        self.field_count = len(self.fields)
-        return self.fields
+        self.__field_count = len(self.__fields)
+        return self.__fields
 
     def create_db_class(self):
         #print "createDBClass() for " + self.fileName
 
-        if not self.fields:  # If list is empty
+        if not self.__fields:  # If list is empty
             self.fetch_fields()
 
-        if not self.calc_fields:
-            self.calc_fields = []
+        if not self.__calc_fields:
+            self.__calc_fields = []
 
         table_name = str.format(u"questionnaire_{}", self.file_name)
 
@@ -91,17 +121,14 @@ class JSONQuestionnaire(object):
             'participantID': db.Column(db.Integer, db.ForeignKey("participant.participantID"), nullable=False),
             #'participantID': db.Column(db.Integer),
             'participant': db.relationship("Participant", backref=table_name),
-            'tag': db.Column(db.String(30), nullable=False, default=""),
+            'tag': db.Column(db.String, nullable=False, default=""),
             'timeStarted': db.Column(db.DateTime, nullable=False, default=db.func.now()),
             'timeEnded': db.Column(db.DateTime, nullable=False, default=db.func.now()),
             'duration': lambda self: (self.timeEnded - self.timeStarted).total_seconds()
         }
 
-        for field in self.fields:
-            if field.data_type == "integer":
-                table_attr[field.id] = db.Column(db.Integer, nullable=False, default=0)
-            else:
-                table_attr[field.id] = db.Column(db.Text, nullable=False, default="")
+        for field in self.__fields:
+            table_attr[field.id] = field.generate_db_column()
 
         if "participant_calculations" in self.json_data:
             def execute_calculation(self, calculation):
@@ -115,7 +142,7 @@ class JSONQuestionnaire(object):
                     raise Exception(error)
 
             for field_name, calculation in self.json_data["participant_calculations"].items():
-                self.calc_fields.append(field_name)
+                self.__calc_fields.append(field_name)
                 calculation = self.preprocess_calculation_string(calculation)
 
                 table_attr[field_name] = lambda self, calculation=calculation: execute_calculation(self, calculation)
@@ -124,7 +151,7 @@ class JSONQuestionnaire(object):
 
     # Replace field_name with self.field_name
     def preprocess_calculation_string(self, calculationString):
-        for field in self.fields:
+        for field in self.__fields:
             calculationString = re.sub("{}(?=,|\]|\)|-|\+|/|\*| |$)".
                                        format(field.id), "float(getattr(self, '{}'))".format(field.id), calculationString)
 
@@ -136,7 +163,7 @@ class JSONQuestionnaire(object):
         for column in blank.__table__.c:
             if column.default:
                 setattr(blank, column.name, column.default.arg)
-            if column.type == db.DateTime:
+            if column.data_type == db.DateTime:
                 setattr(blank, column.name, datetime.min)
 
         return blank
@@ -161,7 +188,7 @@ class JSONQuestionnaire(object):
             timeStarted = datetime.strptime(request.form['timeStarted'], "%Y-%m-%d %H:%M:%S")
 
         # For some reason we've lost the fields! add them again
-        if not self.fields or len(self.fields) == 0 or len(self.fields) != self.field_count:
+        if not self.__fields or len(self.__fields) == 0 or len(self.__fields) != self.__field_count:
             self.fetch_fields()
 
         # Log the per-item timing data
@@ -193,7 +220,7 @@ class JSONQuestionnaire(object):
         except:
             pass
 
-        for field in self.fields:
+        for field in self.__fields:
             #print field
 
             try:
@@ -224,7 +251,7 @@ class JSONQuestionnaire(object):
             f.write("Time = " + str(timeStarted) + "; pID = " + str(session['participantID']) + ";\n" + pprint.pformat(request.form) + "\n\n")
 
     def get_field(self, id):
-        for f in self.fields:
+        for f in self.__fields:
             if f.id == id:
                 return f
         return None

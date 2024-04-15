@@ -3,6 +3,7 @@ from functools import wraps
 from flask import request, session, current_app, render_template, g, redirect, url_for
 from BOFS.globals import db
 import decimal, datetime
+from sqlalchemy.engine import reflection
 
 
 def _datetime_convert(v):
@@ -35,11 +36,11 @@ def sqlalchemy_to_json(inst, cls):
     d = dict()
     for c in cls.columns:
         v = getattr(inst, c.name)
-        if c.type in list(convert.keys()) and v is not None:
+        if c.data_type in list(convert.keys()) and v is not None:
             try:
-                d[c.name] = convert[c.type](v)
+                d[c.name] = convert[c.data_type](v)
             except Exception:
-                d[c.name] = "Error:  Failed to covert using ", str(convert[c.type])
+                d[c.name] = "Error:  Failed to covert using ", str(convert[c.data_type])
         elif v is None:
             d[c.name] = str()
         else:
@@ -98,3 +99,35 @@ def questionnaire_name_and_tag(questionnnaireNameAndTagString):
         qTag = ""
 
     return qName, qTag
+
+
+def check_and_add_column(table_name: str, column_name: str, column_data_type: str, default_value) -> bool:
+    """
+    Check whether a table has been added to a particular table. Table name is not the class name, but the actual
+    name of the table in the database. Only works for SQLite databases.
+
+    :param table_name:
+    :param column_name:
+    :param column_data_type: in SQL DDL format, e.g., BOOLEAN, VARCHAR, TEXT, INTEGER etc.
+    :param default_value: Must be at least a blank string
+    :return:
+    """
+    is_sqlite = current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///')
+
+    if not is_sqlite:
+        return False
+
+    inspector = reflection.Inspector.from_engine(db.engine)
+    inspector.get_columns(table_name)
+
+    for column in inspector.get_columns(table_name):
+        if column['name'] == column_name:
+            return False # The column is already in the database
+
+    add_column = db.DDL(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_data_type} DEFAULT {repr(default_value)}")
+    with db.engine.connect() as conn:
+        conn.execute(add_column)
+        db.session.commit()
+
+    return True
+

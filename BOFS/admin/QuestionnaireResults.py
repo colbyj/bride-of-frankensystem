@@ -39,7 +39,7 @@ class QuestionnaireResults(object):
         self.rows = self.query.all()
 
     def calc_descriptives(self):
-        for field in self.questionnaire.calc_fields:
+        for field in self.questionnaire.get_calculated_fields():
             data = []
 
             for row in self.rows:

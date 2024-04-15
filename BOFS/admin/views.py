@@ -64,19 +64,7 @@ def admin_index():
 @admin.route("/login", methods=['GET', 'POST'])
 def admin_login():
     if 'participantID' not in session:
-        try:
-            p = provide_consent(True)  # Ensure that the previewing user is a valid user
-        except Exception as e:
-            if 'table participant has no column named excludeFromCount' in str(e):  # I added a new column and old databases won't open now. This is a workaround.
-                add_column = db.DDL("ALTER TABLE participant ADD COLUMN excludeFromCount BOOLEAN")
-                with db.engine.connect() as conn:
-                    conn.execute(add_column)
-                    db.session.commit()
-
-                return redirect(url_for("admin.admin_login"))  # This doesn't actually work... but the column gets added.
-            else:
-                raise e
-
+        p = provide_consent(True)  # Ensure that the previewing user is a valid user
         p.excludeFromCount = True
         db.session.commit()
 
@@ -105,7 +93,6 @@ def admin_login():
 
 def fetch_progress():
     pages = current_app.page_list.flat_page_list()
-
     progress = db.session.query(db.Participant)
 
     for page in pages:
@@ -294,7 +281,6 @@ def route_preview_questionnaire(questionnaireName):
 
         db.session.commit()
 
-
     errors = []
 
     try:
@@ -306,40 +292,6 @@ def route_preview_questionnaire(questionnaireName):
         errors = list(e.args)
 
     table_name = "questionnaire_" + questionnaireName
-
-    if questionnaireName in page_list.get_questionnaire_list():
-        try:
-            db.session.query(db.metadata.tables[table_name]).first()
-        except Exception as e:
-            errors.extend(list(e.args))
-            if "(OperationalError) no such column:" in e.args[0]:
-                errors.append("Click <a href=\"?fix_errors\">here</a> if you would like to try to automatically add "
-                              "this column. Alternatively, you can drop the table and it will be recreated.")
-            elif "(OperationalError) no such table:" in e.args[0]:
-                errors.append("Click <a href=\"?fix_errors\">here</a> if you would like to try to automatically create "
-                              "this table. Alternatively, you can restart the server and it will be created.")
-
-        if 'fix_errors' in request.args:
-            # Figure out what column it is by parsing errors.
-            for e in errors:
-                if "(OperationalError) no such column:" in e:
-                    e = e.split(table_name + ".")
-                    column_name = e[len(e) - 1]
-                    dataType = db.metadata.tables[table_name].columns[column_name].type
-
-                    add_column = db.DDL(str.format("ALTER TABLE {} ADD COLUMN {} {}", table_name, column_name, dataType))
-
-                    with db.engine.connect() as conn:
-                        conn.execute(add_column)
-                        db.session.commit()
-
-                    errors.append(str.format(u"{} {} was added to {}. "
-                                             u"This error should be gone when you refresh.", column_name, dataType,
-                                             table_name))
-
-                if "(OperationalError) no such table:" in e:
-                    db.create_all()
-                    errors.append(str.format(u"The error should be gone if you refresh."))
 
     return render_template("preview_questionnaire.html",
                            q=json_data,
@@ -398,16 +350,12 @@ def route_questionnaire_html(questionnaireName):
 
 
 def table_data(tableName):
-    rows = None
-    try:
-        rows = db.session.query(db.metadata.tables[tableName]).all()
-    except Exception as e:
-        return render_template("table_view.html", data="", datafields="", columns="", errors=list(e.args))
+    rows = db.session.query(db.metadata.tables[tableName]).all()
 
     columns = []
 
     for c in db.metadata.tables[tableName].columns:
-        type = str(c.type)
+        type = str(c.data_type)
         if type.startswith("VARCHAR") or type.startswith("TEXT"):
             type = u"string"
 

@@ -1,6 +1,5 @@
 from flask.globals import app_ctx, request, LocalProxy
 
-
 # This code is based on flask's globals.py file
 
 _request_ctx_err_msg = '''\
@@ -68,6 +67,6 @@ def _find_app_page_list():
 
 db = LocalProxy(_find_app_db)
 referrer = LocalProxy(_find_referrer)
-questionnaires = LocalProxy(_find_app_questionnaires)
-tables = LocalProxy(_find_app_tables)
-page_list = LocalProxy(_find_app_page_list)
+questionnaires : dict[str, "JSONQuestionnaire"] = LocalProxy(_find_app_questionnaires)
+tables : dict[str, "JSONTable"]  = LocalProxy(_find_app_tables)
+page_list: "PageList" = LocalProxy(_find_app_page_list)

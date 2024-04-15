@@ -156,12 +156,12 @@ def add_questionnaires_to_export(column_list: list[str],
 
         # Make a list of the columns to later construct the CSV header row
         # This could also be done with questionnaire.fields
-        for column in questionnaire.fields:
+        for column in questionnaire.fetch_fields():
             column_list.append(entry + "_" + column.id)
             columns[entry].append(column.id)
 
         # Similarly, make a list of calculated columns to later be part of the CSV header row.
-        for column in questionnaire.calc_fields:
+        for column in questionnaire.get_calculated_fields():
             column_list.append(entry + "_" + column)
             calculated_columns[entry].append(column)
 

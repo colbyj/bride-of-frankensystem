@@ -30,7 +30,7 @@ class PageList(object):
 
         return pages
 
-    def flat_page_list(self, condition=None):
+    def flat_page_list(self, condition=None) -> list[str]:
         """
         This is the typical access point for the page_list variable.
         By default, it tries to get the current condition from the session variable.
@@ -54,14 +54,14 @@ class PageList(object):
 
         return flat_page_list
 
-    def get_questionnaire_list(self, include_tags=False):
+    def get_questionnaire_list(self, include_tags=False) -> list[str]:
         """
         Returns a list of the questionnaires specified in the config's PAGE_LIST variable.
         :param bool include_tags: if true, then the paths will be in the format <questionnaire>/<tag>.
         :returns: list -- one entry per questionnaire, the filename of the questionnaire (without the .json).
         """
         condition_count = util.fetch_condition_count()
-        questionnaires = list()
+        questionnaires: list[str] = list()
 
         for page in self.unconditional_pages():
             if not page['path'].startswith("questionnaire/"):

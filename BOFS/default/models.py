@@ -11,20 +11,20 @@ def create(db):
         __tablename__ = "participant"
 
         participantID = db.Column(db.Integer, primary_key=True, autoincrement=True)
-        mTurkID = db.Column(db.String(50), nullable=False, default="")
-        ipAddress = db.Column(db.String(32), nullable=False, default="")
-        userAgent = db.Column(db.String(255), nullable=False, default="")
+        mTurkID = db.Column(db.String, nullable=False, default="")
+        ipAddress = db.Column(db.String, nullable=False, default="")
+        userAgent = db.Column(db.String, nullable=False, default="")
         condition = db.Column(db.Integer, nullable=True, default=0)
         timeStarted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # Starts after consent
         timeEnded = db.Column(db.DateTime, nullable=True)
         finished = db.Column(db.Boolean, nullable=False, default=False)
+        isCrawler = db.Column(db.Boolean, nullable=False, default=False)
         excludeFromCount = db.Column(db.Boolean, nullable=False, default=False)
-        code = db.Column(db.String(36), nullable=False, default=0)
+        code = db.Column(db.String, nullable=False, default=0)
         lastActiveOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-        def table(self, name):
-            from BOFS.globals import tables
-
+        #def table(self, name):
+        #    from BOFS.globals import tables
 
         def questionnaire(self, name, tag=""):
             from BOFS.globals import questionnaires
@@ -75,6 +75,9 @@ def create(db):
             return result
 
         def assign_condition(self) -> None:
+            if self.check_useragent_for_crawler():
+                return  # This seems to be a crawler; don't assign a condition
+
             numConditions = len(current_app.config['CONDITIONS'])
             if numConditions > 0:
                 pCount = [0] * numConditions
@@ -111,10 +114,6 @@ def create(db):
                 print(printText)
             else:
                 self.condition = None
-
-        def release_condition(self) -> None:
-            if self.condition is not None and self.condition > 0:
-                self.condition = -self.condition
 
         @hybrid_property
         def duration(self) -> int:
@@ -164,6 +163,10 @@ def create(db):
             else:
                 seconds = (self.timeEnded - self.timeStarted).total_seconds()
                 return display_time(seconds)
+
+        def check_useragent_for_crawler(self):
+            self.isCrawler = current_app.crawler_detect.isCrawler(self.userAgent)
+            return self.isCrawler
 
 
     class Progress(db.Model):

@@ -1,6 +1,7 @@
 import os
 import sys
 from .BOFSFlask import BOFSFlask
+from .admin.util import check_and_add_column
 
 
 def create_app(path, config_name, debug=False, reloader_off=False):
@@ -95,5 +96,28 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         app.load_questionnaires()
         app.load_tables()
         app.db.create_all()
+
+        # Check to see if all the columns are there
+        # These are columns added to newer versions of BOFS
+        check_and_add_column('participant', 'excludeFromCount', 'BOOLEAN', 0)
+        check_and_add_column('participant', 'isCrawler', 'BOOLEAN', 0)
+
+        # Now user-defined questionnaires
+        for q_key in app.questionnaires:
+            q = app.questionnaires[q_key]
+            q_fields = q.fetch_fields()
+            table_name = q.db_class.__tablename__
+
+            for field in q_fields:
+                if check_and_add_column(table_name, field.id, field.get_type_ddl(), field.default):
+                    print(f"Added new column to {table_name}: {field.id}")
+
+        for t_key in app.tables:
+            t = app.tables[t_key]
+            columns = t.get_columns()
+
+            for column in columns:
+                if check_and_add_column(t_key, column.name, column.get_type_ddl(), column.default):
+                    print(f"Added new column to {t_key}: {column.name}")
 
     return app

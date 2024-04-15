@@ -5,11 +5,62 @@ from .globals import db
 from flask import current_app, request, session, config, jsonify
 
 
+class JSONTableColumn:
+    def __init__(self, column_name, column_details):
+        self.name = column_name
+        self.data_type = ""
+        self.default = ""
+
+        if 'type' in column_details:
+            if column_details['type'] == "integer":
+                self.data_type = "integer"
+                self.default = 0 if 'default' not in column_details else column_details['default']
+            elif column_details['type'] == "float":
+                self.data_type = "float"
+                self.default = 0 if 'default' not in column_details else column_details['default']
+            elif column_details['type'] == "datetime":
+                self.data_type = "datetime"
+                self.default = datetime.min if 'default' not in column_details else column_details['default']
+            elif column_details['type'] == "boolean":
+                self.data_type = "boolean"
+                self.default = False if 'default' not in column_details else column_details['default']
+            else:
+                self.data_type = "string"
+                self.default = "" if 'default' not in column_details else column_details['default']
+
+    def get_type_ddl(self):
+        if self.data_type == "integer":
+            return "INTEGER"
+        elif self.data_type == "float":
+            return "NUMERIC"
+        elif self.data_type == "datetime":
+            return "DATETIME"
+        elif self.data_type == "boolean":
+            return "BOOLEAN"
+        else:
+            return "TEXT"
+
+    def generate_db_column(self):
+        if self.data_type == "integer":
+            return db.Column(db.Integer, nullable=False, default=self.default)
+        elif self.data_type == "float":
+            return db.Column(db.Float, nullable=False, default=self.default)
+        elif self.data_type == "datetime":
+            return  db.Column(db.DateTime, nullable=False, default=self.default)
+        elif self.data_type == "boolean":
+            return db.Column(db.Boolean, nullable=False, default=self.default)
+        else:
+            return db.Column(db.Text, nullable=False, default=self.default)
+
+
 class JSONTable(object):
     def __init__(self, directory: str, file_name: str):
+        self.__columns: list["JSONTableColumn"] = []
         self.directory = directory
         self.file_name = file_name
         fullPath = os.path.join(directory, file_name + ".json")
+
+        self.json_data: dict = {}
 
         try:
             with open(fullPath) as f:
@@ -20,6 +71,9 @@ class JSONTable(object):
             self.json_data = None
 
         self.db_class = None
+
+    def get_columns(self) -> list["JSONTableColumn"]:
+        return self.__columns
 
     def create_db_class(self):
         table_name = self.file_name
@@ -33,25 +87,10 @@ class JSONTable(object):
 
         for column in self.json_data['columns']:
             column_details = self.json_data['columns'][column]
-            if 'type' in column_details:
-                if column_details['type'] == "integer":
-                    default = 0 if 'default' not in column_details else column_details['default']
-                    table_attr[column] = db.Column(db.Integer, nullable=False, default=default)
-                elif column_details['type'] == "float":
-                    default = 0 if 'default' not in column_details else column_details['default']
-                    table_attr[column] = db.Column(db.Float, nullable=False, default=default)
-                elif column_details['type'] == "datetime":
-                    default = datetime.min if 'default' not in column_details else column_details['default']
-                    table_attr[column] = db.Column(db.DateTime, nullable=False, default=default)
-                elif column_details['type'] == "boolean":
-                    default = False if 'default' not in column_details else column_details['default']
-                    table_attr[column] = db.Column(db.Boolean, nullable=False, default=default)
-                else:
-                    default = "" if 'default' not in column_details else column_details['default']
-                    table_attr[column] = db.Column(db.Text, nullable=False, default=default)
-            else:
-                default = "" if 'default' not in column_details else column_details['default']
-                table_attr[column] = db.Column(db.Text, nullable=False, default=default)
+            new_column = JSONTableColumn(column, column_details)
+            self.__columns.append(new_column)
+
+            table_attr[column] = new_column.generate_db_column()
 
         self.db_class = type(self.file_name, (db.Model,), table_attr)
 
