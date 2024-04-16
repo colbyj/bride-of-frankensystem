@@ -5,6 +5,7 @@ import pprint
 from flask import current_app, request, session, config
 from datetime import datetime
 from .globals import db
+from BOFS.util import mean, stdev, std, var, variance, median
 
 
 class JSONQuestionnaireColumn(object):
@@ -163,7 +164,7 @@ class JSONQuestionnaire(object):
         for column in blank.__table__.c:
             if column.default:
                 setattr(blank, column.name, column.default.arg)
-            if column.data_type == db.DateTime:
+            if column.type == db.DateTime:
                 setattr(blank, column.name, datetime.min)
 
         return blank

@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, current_app, request, make_response
 from urllib.parse import urlsplit
-
+import traceback
 from BOFS.JSONTable import JSONTable
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
@@ -249,7 +249,12 @@ def route_questionnaire_question(questionType: str):
                                question=request.json,
                                participant=participant)
     except Exception as ex:
-        return f"Exception in <b>{questionType}.html</b>: {ex}"
+        if current_app.run_with_debugging:
+            debugging_info = str(ex) + "<p><pre>" + str(traceback.format_exc()) + "</pre>"
+        else:
+            debugging_info = str(ex)
+
+        return f"Exception in <b>{questionType}.html</b>: {debugging_info}"
 
 
 @default.route("/redirect_previous_page")
