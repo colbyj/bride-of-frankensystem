@@ -61,7 +61,7 @@ class JSONQuestionnaire(object):
             with open(fullPath) as f:
                 self.json_data = json.load(f)
         except ValueError as error:
-            print("ERROR! Unable to parse `%s` questionnaire. Please check that the file contains valid JSON syntax. "
+            raise SyntaxError("ERROR! Unable to parse `%s` questionnaire. Please check that the file contains valid JSON syntax. "
                   "Python reports the following error: `%s`" % (file_name, error))
             self.json_data = None
 

@@ -166,6 +166,10 @@ def create(db):
 
         def check_useragent_for_crawler(self):
             self.isCrawler = current_app.crawler_detect.isCrawler(self.userAgent)
+
+            if self.isCrawler:
+                self.excludeFromCount = True
+
             return self.isCrawler
 
 

@@ -93,7 +93,7 @@ def admin_login():
 
 def fetch_progress():
     pages = current_app.page_list.flat_page_list()
-    progress = db.session.query(db.Participant)
+    progress = db.session.query(db.Participant).filter(db.Participant.isCrawler == False)
 
     for page in pages:
         if page['path'] in ["end", "consent"]:  # Don't show end page, use Participant.finished instead.
@@ -355,7 +355,7 @@ def table_data(tableName):
     columns = []
 
     for c in db.metadata.tables[tableName].columns:
-        type = str(c.data_type)
+        type = str(c.type)
         if type.startswith("VARCHAR") or type.startswith("TEXT"):
             type = u"string"
 

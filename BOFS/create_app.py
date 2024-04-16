@@ -73,7 +73,7 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
         considered_path = os.path.join(path, current_path)
 
-        if os.path.isdir(considered_path):  # We should try this path..
+        if os.path.isdir(considered_path) and not current_path.startswith("."):  # We should try this path..
             found_views = False
 
             for subpath in os.listdir(considered_path):
@@ -93,6 +93,7 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             print("Error! The same questionnaire was specified twice. Please add a tag to your questionnaire if this "
                   "was intentional.")
             return
+
         app.load_questionnaires()
         app.load_tables()
         app.db.create_all()
@@ -100,7 +101,14 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         # Check to see if all the columns are there
         # These are columns added to newer versions of BOFS
         check_and_add_column('participant', 'excludeFromCount', 'BOOLEAN', 0)
-        check_and_add_column('participant', 'isCrawler', 'BOOLEAN', 0)
+
+        if check_and_add_column('participant', 'isCrawler', 'BOOLEAN', 0):
+            # If this column wasn't in there, then also check all prior participants' useragent.
+            participants = app.db.session.query(app.db.Participant).all()
+            for participant in participants:
+                participant.check_useragent_for_crawler()
+            app.db.session.commit()
+            print("Checking participants for web scrapers.")
 
         # Now user-defined questionnaires
         for q_key in app.questionnaires:

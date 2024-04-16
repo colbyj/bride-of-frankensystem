@@ -92,7 +92,7 @@
 
 ul li { padding-bottom: 4px;  }
 
-th { padding: 6px; position: sticky; top: 0; background-color: #F7F7F7; border-bottom: 1px solid #EEEEEE; z-index: 1; }
+th { padding: 6px; position: sticky; top: 52px; background-color: #F7F7F7; border-bottom: 1px solid #EEEEEE; z-index: 1; }
 .evenRow { background-color: #EFEFEF; }
 .evenRow td { padding: 4px; }
 .oddRow td { padding: 4px; }

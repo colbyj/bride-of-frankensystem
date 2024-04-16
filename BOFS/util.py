@@ -248,6 +248,7 @@ def provide_consent(assignCondition=True, logDisplaySize=False):
     p.ipAddress = ip_address  # request.remote_addr
     p.userAgent = request.user_agent.string
     p.timeStarted = datetime.datetime.utcnow()
+    p.check_useragent_for_crawler()
 
     if current_app.config['STATIC_COMPLETION_CODE'] is not None:
         p.code = current_app.config['STATIC_COMPLETION_CODE']
