@@ -315,7 +315,7 @@ class BOFSFlask(Flask):
     def internal_error(self, error):
         if not self.run_with_debugging:
             open_mode = 'a'
-            if os.path.exists('error.log'):
+            if not os.path.exists('error.log'):
                 open_mode = 'w'
 
             with open('error.log', open_mode) as f:
