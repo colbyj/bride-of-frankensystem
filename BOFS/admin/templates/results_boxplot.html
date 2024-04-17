@@ -1,0 +1,25 @@
+{% extends "template_admin.html" %}
+{% block head %}
+    <script src="https://cdn.plot.ly/plotly-2.31.1.min.js" charset="utf-8"></script>
+{% endblock %}
+
+{% block content %}
+
+
+<div id="plot" style="width: 1000px; height: 600px; margin-left: auto; margin-right: auto;"></div>
+
+<script>
+    var data = {{ plot_data | tojson | safe }};
+
+    var layout = {
+        yaxis: {
+            title: '{{ field_name }}',
+            zeroline: false
+        },
+        boxmode: 'group'
+    };
+
+    Plotly.newPlot('plot', data, layout);
+</script>
+
+{% endblock %}

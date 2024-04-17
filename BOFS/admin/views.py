@@ -1,12 +1,12 @@
-import sqlalchemy
+import os
+import pandas as pd
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file
 from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count, display_time, provide_consent, int_or_0
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
 from .Results import Results
-#from .export_helpers import *
 import json
-from .QuestionnaireResults import *
+from .SummaryStats import SummaryStats
 from datetime import datetime
 from os import path, listdir
 from shutil import copyfile
@@ -229,16 +229,6 @@ def route_export():
     include_missing = request.args.get('includeMissing', True)
     include_excluded = request.args.get('includeExcluded', False)
 
-    #column_list = []
-    #export_data = {}
-
-    #query = add_participants_to_export(column_list, export_data, include_unfinished, include_excluded)
-    #add_questionnaires_to_export(column_list, export_data, query, include_missing)
-    #add_custom_exports_to_export(column_list, export_data, query, include_missing)
-
-    #csv_string = build_export_csv(column_list, export_data)
-
-
     if not include_excluded and include_unfinished:
         query_filter = db.or_(db.Participant.excludeFromCount == False, db.Participant.excludeFromCount == None)
     elif not include_excluded:
@@ -268,23 +258,53 @@ def route_export():
                                excludedCount=excluded_count)
 
 
+def calculate_results() -> tuple[Results, pd.DataFrame, dict[str, SummaryStats]]:
+    cache_path = os.path.join(current_app.root_path, 'cached_results.json')
+    results = Results(db.and_(db.Participant.finished == True, db.Participant.excludeFromCount == False), cache_path)
+    df = results.build_data_frame()
+
+    df_grouped = df.groupby(by="condition")
+    summary_stats = {}
+
+    for column in list(df_grouped.head()):
+        dtype = df[column].head().dtype.name
+        if dtype in ['int64', 'float64', 'bool'] and column not in ['participantID', 'condition', 'duration',
+                                                                    'finished']:
+            summary_stats[column] = SummaryStats(df_grouped, column)
+
+    return results, df, summary_stats
+
+
 @admin.route("/results")
 @verify_admin
 def route_results():
-    qList = page_list.get_questionnaire_list(include_tags=True)
-    results = {}
+    results, df, summary_stats = calculate_results()
 
-    for qNameAndTag in qList:
-        qName, qTag = questionnaire_name_and_tag(qNameAndTag)
+    return render_template("results.html", summary_stats=summary_stats)
 
-        qResults = QuestionnaireResults(questionnaires[qName], qTag)
-        qResults.run_query()
-        qResults.calc_descriptives()
+@admin.route("/results_boxplot/<path:field_name>")
+@verify_admin
+def route_results_boxplot(field_name: str):
+    results, df, summary_stats = calculate_results()
 
-        results[qNameAndTag] = qResults
+    unique_conditions = df['condition'].unique().tolist()
+    unique_conditions.sort()
+    plot_data = []
 
-    return render_template("results.html", results=results)
+    for condition in unique_conditions:
+        df_part = df.loc[df.condition == condition]
+        count = df_part.count()
 
+        data = {
+            "y": df_part[field_name].to_list(),
+            #"x": [condition] * count,
+            "name": str(condition),
+            "type": "box",
+            "boxpoints": "Outliers"
+        }
+        plot_data.append(data)
+
+    return render_template("results_boxplot.html", field_name=field_name, plot_data=plot_data)
 
 @admin.route("/preview_questionnaire/<questionnaireName>", methods=["GET", "POST"])
 @verify_admin

@@ -123,9 +123,10 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         for t_key in app.tables:
             t = app.tables[t_key]
             columns = t.get_columns()
+            table_name = t.db_class.__tablename__
 
             for column in columns:
-                if check_and_add_column(t_key, column.name, column.get_type_ddl(), column.default):
+                if check_and_add_column(table_name, column.name, column.get_type_ddl(), column.default):
                     print(f"Added new column to {t_key}: {column.name}")
 
     return app

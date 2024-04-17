@@ -4,18 +4,35 @@ import sqlalchemy
 from .util import escape_csv, questionnaire_name_and_tag, condition_num_to_label
 from flask  import current_app
 import pandas as pd
+import os
+from datetime import datetime
+
+MAX_CACHE_SECONDS = 60 * 2
 
 
 class Results(object):
-    def __init__(self, filter_criterion=None):
+    def __init__(self, filter_criterion=None, cache_path: str | None =None):
+        self.cache_path = cache_path
+        use_cache = False
+
+        if cache_path is not None:
+            if os.path.exists(cache_path):
+                modified_time = datetime.utcfromtimestamp(os.path.getmtime(cache_path))
+                if (datetime.utcnow() - modified_time).total_seconds() < MAX_CACHE_SECONDS:
+                    use_cache = True
+
+        self.df = None
         self.column_list = []
         self.export_data: dict[dict] | dict = {}
         self.query_participants: Query
         self.query_filter_criterion = filter_criterion
 
-        self.handle_participants_table()
-        self.handle_questionnaires()
-        self.handle_custom_exports()
+        if use_cache:
+            self.load_data_frame()
+        else:
+            self.handle_participants_table()
+            self.handle_questionnaires()
+            self.handle_custom_exports()
 
     def handle_participants_table(self) -> None:
         """
@@ -230,12 +247,27 @@ class Results(object):
 
         return levels, fields, baseQuery
 
+    def load_data_frame(self):
+        self.df = pd.read_json(self.cache_path)
+        self.column_list = list(self.df.columns.values)
+
+        for column in self.column_list:
+            self.export_data[column] = list(self.df[column])
+
     def build_data_frame(self) -> "pd.DataFrame":
+        if self.df is not None:
+            return self.df
+
         data = []
         for key in self.export_data:
             data.append(self.export_data[key])
 
-        return pd.DataFrame(data)
+        self.df = pd.DataFrame(data)
+
+        if self.cache_path is not None:
+            self.df.to_json(self.cache_path)
+
+        return self.df
 
     def build_export_csv(self) -> str:
         csv_string = ",".join(self.column_list) + "\n"  # CSV Header

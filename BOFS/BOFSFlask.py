@@ -314,11 +314,12 @@ class BOFSFlask(Flask):
 
     def internal_error(self, error):
         if not self.run_with_debugging:
+            log_path = os.path.join(self.root_path, 'error.log')
             open_mode = 'a'
-            if not os.path.exists('error.log'):
+            if not os.path.exists(log_path):
                 open_mode = 'w'
 
-            with open('error.log', open_mode) as f:
+            with open(log_path, open_mode) as f:
                 f.write(f"{datetime.now()} - {error}\n")
 
         return f"<h1>Internal Server Error (500)</h1> <p>{error.description}</p><pre>{error.original_exception}</pre>", 500
