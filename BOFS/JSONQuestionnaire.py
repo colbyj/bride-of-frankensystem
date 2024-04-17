@@ -87,9 +87,6 @@ class JSONQuestionnaire(object):
         #print "fetchFields() for " + self.fileName
 
         for q in self.json_data['questions']:
-            if not 'id' in list(q.keys()):
-                continue
-
             # Build up the fields list based on the questionnaire
             if 'q_text' in q and 'questions' not in q:
                 q['questions'] = q['q_text']
@@ -99,6 +96,7 @@ class JSONQuestionnaire(object):
                 for qt in q['questions']:
                     if 'id' in qt:
                         self.__fields.append(JSONQuestionnaireColumn(qt, question_type))
+
             if 'id' in q:
                 self.__fields.append(JSONQuestionnaireColumn(q))
 
@@ -114,7 +112,7 @@ class JSONQuestionnaire(object):
         if not self.__calc_fields:
             self.__calc_fields = []
 
-        table_name = str.format(u"questionnaire_{}", self.file_name)
+        table_name = f"questionnaire_{self.file_name}"
 
         table_attr = {
             '__tablename__': table_name,

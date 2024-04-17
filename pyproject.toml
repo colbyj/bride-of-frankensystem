@@ -22,7 +22,8 @@ dependencies = [
     "flask-sqlalchemy>=3.0.0",
     "flask-compress",
     "toml",
-    "crawlerdetect"
+    "crawlerdetect",
+    "pandas"
 ]
 requires-python = ">=3.9"
 

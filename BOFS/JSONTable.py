@@ -76,12 +76,13 @@ class JSONTable(object):
         return self.__columns
 
     def create_db_class(self):
-        table_name = self.file_name
+        table_name = "table_" + self.file_name
 
         table_attr = {
             '__tablename__': table_name,
             str.format(u'{0}ID', self.file_name): db.Column(db.Integer, primary_key=True, autoincrement=True),
             'participantID': db.Column(db.Integer, db.ForeignKey("participant.participantID"), nullable=False),
+            'participant': db.relationship("Participant", backref=table_name),
             'timeSubmitted': db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
         }
 

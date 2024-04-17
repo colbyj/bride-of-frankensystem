@@ -4,8 +4,12 @@
 
 {% block content %}
 
-    <div class="question padding table-responsive">
-        <table class="table table-striped">
+    <div class="p-3 border-bottom">
+        <h2>Results</h2>
+    </div>
+
+    <div class="p-3">
+        <table class="table table-striped border">
             <thead>
             <tr>
                 <th scope="col">Questionniare</th>
@@ -20,8 +24,8 @@
             </tr>
             </thead>
             <tbody>
-            {% for questionnaire, qresults in results.items() %}
-            {% for r in qresults.descriptiveResults %}
+            {% for questionnaire, q_results in results.items() %}
+            {% for r in q_results.descriptiveResults %}
             <tr>
                 <td>{{questionnaire}}</td>
                 <td>{{r.field_name}}</td>

@@ -23,16 +23,17 @@ def create(db):
         code = db.Column(db.String, nullable=False, default=0)
         lastActiveOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-        #def table(self, name):
-        #    from BOFS.globals import tables
+        def table(self, name):
+            return getattr(self, "table_" + name)
+
 
         def questionnaire(self, name, tag=""):
             from BOFS.globals import questionnaires
-            qResults = getattr(self, "questionnaire_" + name)
+            q_results = getattr(self, "questionnaire_" + name)
 
             toConsider = []
 
-            for result in qResults:
+            for result in q_results:
                 if result.tag == tag or (result.tag == u'0' and tag == ''):
                     toConsider.append(result)
 

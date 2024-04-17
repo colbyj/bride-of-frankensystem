@@ -3,7 +3,8 @@ from flask import Blueprint, render_template, current_app, redirect, g, request,
 from BOFS.globals import db, questionnaires, page_list
 from BOFS.util import fetch_condition_count, display_time, provide_consent, int_or_0
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
-from .export_helpers import *
+from .Results import Results
+#from .export_helpers import *
 import json
 from .QuestionnaireResults import *
 from datetime import datetime
@@ -228,17 +229,32 @@ def route_export():
     include_missing = request.args.get('includeMissing', True)
     include_excluded = request.args.get('includeExcluded', False)
 
-    column_list = []
-    export_data = {}
+    #column_list = []
+    #export_data = {}
 
-    query = add_participants_to_export(column_list, export_data, include_unfinished, include_excluded)
-    add_questionnaires_to_export(column_list, export_data, query, include_missing)
-    add_custom_exports_to_export(column_list, export_data, query, include_missing)
+    #query = add_participants_to_export(column_list, export_data, include_unfinished, include_excluded)
+    #add_questionnaires_to_export(column_list, export_data, query, include_missing)
+    #add_custom_exports_to_export(column_list, export_data, query, include_missing)
 
-    csv_string = build_export_csv(column_list, export_data)
+    #csv_string = build_export_csv(column_list, export_data)
+
+
+    if not include_excluded and include_unfinished:
+        query_filter = db.or_(db.Participant.excludeFromCount == False, db.Participant.excludeFromCount == None)
+    elif not include_excluded:
+        query_filter = db.and_(db.Participant.finished == True,
+                               db.or_(db.Participant.excludeFromCount == False, db.Participant.excludeFromCount == None))
+    elif not include_unfinished:
+        query_filter = None
+    else:
+        query_filter = db.and_(db.Participant.finished == True)
+
+    results = Results(query_filter)
+    df = results.build_data_frame()
+
 
     if request.base_url.endswith("/download"):
-        return Response(csv_string,
+        return Response(df.to_csv(),
                         mimetype="text/csv",
                         headers={
                             "Content-disposition": "attachment; filename=%s.csv" %
@@ -246,8 +262,8 @@ def route_export():
                         })
     else:
         return render_template("export.html",
-                               data=csv_string,
-                               rowCount=len(export_data),
+                               data_table=df.to_html(index=False, classes="table table-striped border", justify="left"),
+                               rowCount=len(results.export_data),
                                unfinishedCount=unfinished_count,
                                excludedCount=excluded_count)
 

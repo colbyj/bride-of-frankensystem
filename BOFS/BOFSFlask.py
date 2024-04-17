@@ -97,7 +97,7 @@ class BOFSFlask(Flask):
             if not self.run_with_reloader_off:
                 print('Auto-reloading of project when changes are detected is turned ON.')
 
-            super(BOFSFlask, self).run(host, port, use_reloader=not self.run_with_reloader_off, **options)
+            super(BOFSFlask, self).run(host, port, debug=True, use_reloader=not self.run_with_reloader_off, **options)
         else:
             self.eventlet_run(self, host=host, port=port, **options)
 
