@@ -263,14 +263,16 @@ def calculate_results() -> tuple[Results, pd.DataFrame, dict[str, SummaryStats]]
     results = Results(db.and_(db.Participant.finished == True, db.Participant.excludeFromCount == False), cache_path)
     df = results.build_data_frame()
 
-    df_grouped = df.groupby(by="condition")
     summary_stats = {}
 
-    for column in list(df_grouped.head()):
-        dtype = df[column].head().dtype.name
-        if dtype in ['int64', 'float64', 'bool'] and column not in ['participantID', 'condition', 'duration',
-                                                                    'finished']:
-            summary_stats[column] = SummaryStats(df_grouped, column)
+    if len(df) > 0:
+        df_grouped = df.groupby(by="condition")
+
+        for column in list(df_grouped.head()):
+            dtype = df[column].head().dtype.name
+            if dtype in ['int64', 'float64', 'bool'] and column not in ['participantID', 'condition', 'duration',
+                                                                        'finished']:
+                summary_stats[column] = SummaryStats(df_grouped, column)
 
     return results, df, summary_stats
 

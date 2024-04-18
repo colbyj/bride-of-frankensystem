@@ -69,7 +69,7 @@
             <a href="/redirect_previous_page" class="btn btn-light btn-sm" role="button" style="width: 50px;"><i class="fas fa-arrow-circle-left"></i></a>
         </div>
         <div class="col-sm-2 dropup" style="text-align:center; padding: 0 8px;">
-            <button class="btn btn-light btn-sm dropdown-toggle" style="width: 100%;" data-toggle="dropdown">Skip to page... <i class="fas fa-file"></i></button>
+            <button class="btn btn-light btn-sm dropdown-toggle" style="width: 100%;" data-bs-toggle="dropdown" aria-expanded="false">Skip to page... <i class="fas fa-file"></i></button>
             <div class="dropdown-menu">
                 {% for page in flat_page_list %}
                 <a class="dropdown-item" href="/redirect_to_page/{{ page.path }}">{{ page }}</a>
@@ -83,7 +83,7 @@
             <a href="/admin" class="btn btn-light btn-sm" role="button" style="width: 100%;">Admin Panel <i class="fas fa-tools"></i></a>
         </div>
         <div class="col-sm-2 dropup" style="text-align:center; padding: 0 8px;">
-            <a href="#" class="btn btn-light btn-sm dropdown-toggle" role="button" data-toggle="dropdown" style="width: 100%;">Session Variables <i class="fas fa-clipboard-list"></i></a>
+            <a href="#" class="btn btn-light btn-sm dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 100%;">Session Variables <i class="fas fa-clipboard-list"></i></a>
             <div class="dropdown-menu debug-session">
                 <ul>
                     {% for variable in session %}
