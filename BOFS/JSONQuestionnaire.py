@@ -19,7 +19,7 @@ class JSONQuestionnaireColumn(object):
         else:
             question_type = "string"
 
-        if question_type.lower() in ["slider", "num_field"]:
+        if question_type.lower() in ["slider", "num_field", "checklist"]:
             self.data_type = "integer"
 
         if 'datatype' in definition:
@@ -65,7 +65,6 @@ class JSONQuestionnaire(object):
         except ValueError as error:
             raise SyntaxError("ERROR! Unable to parse `%s` questionnaire. Please check that the file contains valid JSON syntax. "
                   "Python reports the following error: `%s`" % (file_name, error))
-            self.json_data = None
 
         self.__fields: list["JSONQuestionnaireColumn"] = []
         self.__calc_fields: list[str] = []
@@ -83,7 +82,7 @@ class JSONQuestionnaire(object):
 
         if not self.json_data or 'questions' not in self.json_data:
             print ("ERROR! `%s` questionnaire contains no questions." % self.file_name)
-            return
+            return self.__fields
 
         #print "fetchFields() for " + self.fileName
 

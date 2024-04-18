@@ -22,8 +22,9 @@ class Results(object):
                     use_cache = True
 
         self.df = None
-        self.column_list = []
-        self.export_data: dict[dict] | dict = {}
+        self.column_list: list[str] = []
+        self.export_data: dict[str, dict] | dict = {}
+        """Keys are participant IDs, value is a dictionary of all columns."""
         self.query_participants: Query
         self.query_filter_criterion = filter_criterion
 
@@ -191,7 +192,7 @@ class Results(object):
         if 'order_by' in export_definition and export_definition['order_by'] != '':
             orderBy = getattr(table, export_definition['order_by'])
 
-        # determine how many columns to add to the export. If group_by is not used, then it's just one column
+        # Determine how many columns to add to the export. If group_by is not used, then it's just one column
         if 'group_by' in export_definition and export_definition['group_by'] != '':
             if 'having' in export_definition and export_definition['having'] != '':  # Having can only work if group_by is used.
                 having = db.text(export_definition['having'])
@@ -248,11 +249,22 @@ class Results(object):
         return levels, fields, baseQuery
 
     def load_data_frame(self):
-        self.df = pd.read_json(self.cache_path)
-        self.column_list = list(self.df.columns.values)
+        df = pd.read_json(self.cache_path)
+        self.handle_participants_table()
 
-        for column in self.column_list:
-            self.export_data[column] = list(self.df[column])
+        if len(df) != len(self.export_data):
+            # The participant table gets read in just to see if the participant count has changed.
+            # If the counts differ, continue loading as normal.
+            self.handle_questionnaires()
+            self.handle_custom_exports()
+        else:
+            self.df = df
+            self.column_list = self.df.columns.values.tolist()
+
+            for participantID in self.df["participantID"].values.tolist():
+                self.export_data[participantID] = {}
+                for column in self.column_list:
+                    self.export_data[participantID][column] = self.df[df["participantID"] == participantID][column].values.tolist()[0]
 
     def build_data_frame(self) -> "pd.DataFrame":
         if self.df is not None:

@@ -320,7 +320,7 @@ class BOFSFlask(Flask):
                 open_mode = 'w'
 
             with open(log_path, open_mode) as f:
-                f.write(f"{datetime.now()} - {error}\n")
+                f.write(f"{datetime.now()} - {error.description} - {error.original_exception}\n")
 
         return f"<h1>Internal Server Error (500)</h1> <p>{error.description}</p><pre>{error.original_exception}</pre>", 500
 

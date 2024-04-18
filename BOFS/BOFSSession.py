@@ -1,7 +1,9 @@
+from flask import Request
 from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
 from werkzeug.datastructures import CallbackDict
 from uuid import uuid4
 from datetime import datetime, timedelta
+from . import BOFSFlask
 
 
 class BOFSSessionInterface(SessionInterface):
@@ -16,7 +18,7 @@ class BOFSSessionInterface(SessionInterface):
         app.db.session.commit()
         return storedSession
 
-    def open_session(self, app, request):
+    def open_session(self, app: "BOFSFlask", request: "Request"):
         sessionID = request.cookies.get("session")
 
         # No sessionID cookie is set; create a new session.
@@ -48,7 +50,7 @@ class BOFSSessionInterface(SessionInterface):
             # Nope. Something bad happened; send them a blank session
             return BOFSSession(None, sessionID=sessionID, new=True)
 
-    def save_session(self, app, session, response):
+    def save_session(self, app: "BOFSFlask", session, response):
         domain = self.get_cookie_domain(app)
         #path = self.get_cookie_path(app)
         path = "/"  # We'll only ever want one cookie per project.

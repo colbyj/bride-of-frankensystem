@@ -1,8 +1,9 @@
 import os
 import pandas as pd
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file
-from BOFS.globals import db, questionnaires, page_list
-from BOFS.util import fetch_condition_count, display_time, provide_consent, int_or_0
+from .. import BOFSFlask
+from ..globals import db, questionnaires, page_list
+from ..util import fetch_condition_count, display_time, provide_consent, int_or_0
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
 from .Results import Results
 import json
@@ -11,6 +12,8 @@ from datetime import datetime
 from os import path, listdir
 from shutil import copyfile
 
+
+current_app: "BOFSFlask"
 admin = Blueprint('admin', __name__, template_folder='templates', static_folder='static', url_prefix="/admin")
 
 
@@ -316,10 +319,10 @@ def route_preview_questionnaire(questionnaireName):
 
         p = db.session.query(db.Participant).get(session['participantID'])
         p.condition = session['condition']
-
         db.session.commit()
 
     errors = []
+    json_data = None
 
     try:
         f = open(current_app.get_questionnaire_path(questionnaireName), 'r')
@@ -328,8 +331,6 @@ def route_preview_questionnaire(questionnaireName):
         f.close()
     except Exception as e:
         errors = list(e.args)
-
-    table_name = "questionnaire_" + questionnaireName
 
     return render_template("preview_questionnaire.html",
                            q=json_data,
@@ -340,6 +341,7 @@ def route_preview_questionnaire(questionnaireName):
 @verify_admin
 def route_questionnaire_html(questionnaireName):
     errors = []
+    json_data = None
 
     try:
         f = open(current_app.get_questionnaire_path(questionnaireName), 'r')
