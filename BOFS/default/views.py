@@ -149,7 +149,7 @@ def route_external_id():
 
             if allowRetakes:
                 # If allow retakes is True, then don't try to re-load data from past attempts that were completed.
-                pFromMTurkID = pFromMTurkID.filter(db.Participant.finished != True)
+                pFromMTurkID = pFromMTurkID.filter(db.Participant.finished != True, db.Participant.participantID != session['participantID'])
 
             pFromMTurkID = pFromMTurkID.all()
 
