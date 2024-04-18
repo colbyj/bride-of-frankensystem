@@ -265,7 +265,7 @@ class BOFSFlask(Flask):
             return None
 
         print(f"Loaded questionnaire: {filename}, add_to_db={add_to_db}")
-        questionnaire = JSONQuestionnaire(directory, filename)
+        questionnaire = JSONQuestionnaire(directory, filename, add_to_db)
         questionnaire.create_db_class()
 
         if add_to_db:

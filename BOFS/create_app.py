@@ -101,6 +101,7 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         # Check to see if all the columns are there
         # These are columns added to newer versions of BOFS
         check_and_add_column('participant', 'excludeFromCount', 'BOOLEAN', 0)
+        check_and_add_column('participant', 'notes', 'TEXT', '')
 
         if check_and_add_column('participant', 'isCrawler', 'BOOLEAN', 0):
             # If this column wasn't in there, then also check all prior participants' useragent.

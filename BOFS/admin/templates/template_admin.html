@@ -40,14 +40,11 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Preview Questionnaires</a>
                         <div class="dropdown-menu">
-                            <h6 class="dropdown-header">In Use</h6>
-                            {% for q in questionnairesLiveUntagged %}
-                            <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
-                            {% endfor %}
-                            <div class="dropdown-divider"></div>
-                            <h6 class="dropdown-header">In the System</h6>
                             {% for q in questionnairesSystem %}
-                            <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">{{ q }}</a>
+                            <a class="dropdown-item" href="{{ url_for('admin.route_preview_questionnaire', questionnaireName=q) }}">
+                                {{ q }}
+                                {% if q in questionnairesLive %}*{% endif %}
+                            </a>
                             {% endfor %}
                         </div>
                     </li>

@@ -54,7 +54,8 @@ class JSONQuestionnaireColumn(object):
 
 
 class JSONQuestionnaire(object):
-    def __init__(self, directory: str, file_name: str ):
+    def __init__(self, directory: str, file_name: str, is_in_db: bool):
+        self.is_in_db = is_in_db
         self.file_name = file_name
         fullPath = os.path.join(directory, file_name + ".json")
 

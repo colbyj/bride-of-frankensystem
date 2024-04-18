@@ -22,6 +22,7 @@ def create(db):
         excludeFromCount = db.Column(db.Boolean, nullable=False, default=False)
         code = db.Column(db.String, nullable=False, default=0)
         lastActiveOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        notes = db.Column(db.String, nullable=False, default="")
 
         def table(self, name):
             return getattr(self, "table_" + name)

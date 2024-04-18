@@ -32,16 +32,17 @@ def inject_template_vars():
         tableNames.append(t)
 
     questionnairesSystem = []
+    questionnairesLive = []
 
-    if path.exists(current_app.root_path + "/questionnaires"):
-        for q in listdir(current_app.root_path + "/questionnaires"):
-            if q.endswith(".json"):
-                questionnairesSystem.append(q.replace(".json", ""))
+    for q_name in current_app.questionnaires:
+        questionnairesSystem.append(q_name)
 
+        if current_app.questionnaires[q_name].is_in_db:
+            questionnairesLive.append(q_name)
+
+    questionnairesLive.sort()
+    questionnairesSystem.sort()
     tableNames = sorted(tableNames)
-    questionnairesLive = current_app.page_list.get_questionnaire_list(True)
-    questionnairesLiveUntagged = sorted(current_app.page_list.get_questionnaire_list())
-    questionnairesSystem = sorted(questionnairesSystem)
     isSqliteDb = current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///')
 
 
@@ -49,7 +50,6 @@ def inject_template_vars():
         additionalAdminPages=additionalAdminPages,
         tableNames=tableNames,
         questionnairesLive=questionnairesLive,
-        questionnairesLiveUntagged=questionnairesLiveUntagged,
         questionnairesSystem=questionnairesSystem,
         logGridClicks=current_app.config['LOG_GRID_CLICKS'],
         isSqliteDb=isSqliteDb,
