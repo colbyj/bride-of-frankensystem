@@ -1,0 +1,45 @@
+Changes from 1.2 to 2.0
+=======================
+
+Core Changes
+* Removed support for Python 2.7.x
+* Changes to support the lastest Flask version and latest SQLAlchemy.
+* [New documentation](https://docs.frankensystem.net/).
+* Updated all JS libraries.
+* Consent text is now read in from a `consent.html` file next to the configuration file instead of from the configuration file.
+* Added "BOFS" command to start projects instead of needing a separate `run.py` file.
+* No more need for the "app" directory to be a part of the project.
+* Use `flask-compress` to serve brotli and gz files (e.g., for Unity WebGL builds).
+* Improved auto-reload feature that now works with templates.
+* Export code rewritten to minimize the chance of throwing exceptions.
+* Simple error messages will now show up if in production mode, rather than a generic 500 error.
+* If not in debug mode, save any 500 errors to a log file.
+* When project stats, check for missing DB columns from tables and questionnaires and add them (only works with SQLite).
+* Detect web scrapers and if found exclude them from the condition counts and progress page.
+* Many bug fixes.
+
+Project Configuration Options
+* Can now specify a specific completion code, or redirect users to an external URL upon reading `/end`.
+* `/start_mturk` route is now `/external_id`.
+* Can now configure what the prompt on `/external_id` says.
+* If `PROLIFIC_PID` is passed in as a URL parameter, the session variable is set and the input field on `/external_id` is automatically populated with the value passed.
+* Conditions are now defined with labels and can be disabled selectively; labels show on progress page and are used in the export instead of the numbers.
+* Can now configure `ABANDONED_MINUTES` and `COUNTS_INCLUDE_ABANDONED`, relating to ignoring participants who abandoned the task when considering participant counts within conditions.
+
+Administration
+* Can now download SQLite database from admin panel as well as clear it out.
+* Admin panel styling changes.
+* Admin login now redirects user to where they were trying to go instead of always redirecting to the progress page.
+* Added the ability to selectively indicate individual participants to exclude from the participant counts.
+* Added a results page to the admin panel to view summary statistics of any numeric data.
+
+Tables, Questionnaires, and Blueprints
+* Can define custom exports within the [JSON-defined tables](https://docs.frankensystem.net/en/latest/tables.html).
+* Can now use 'HAVING' clauses in custom exports.
+* Can now configure default value of sliders.
+* Some slight improvements to how the questionnaires are rendered on mobile devices.
+* `/table` POST route now understands JSON data.
+* Blueprints no longer need a `views.py` file to be included.
+* Can now have ["simple" html pages](https://docs.frankensystem.net/en/latest/simple_pages.html), that support templates but can be shown without any additional Python code.
+* It is now possible to define [custom question types](https://docs.frankensystem.net/en/latest/questionnaires/custom_questions.html) to use within questionnaires.
+* Can put questionnaire and tables inside of blueprint folders

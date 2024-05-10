@@ -298,7 +298,7 @@ def route_results_boxplot(field_name: str):
 
     for condition in unique_conditions:
         df_part = df.loc[df.condition == condition]
-        count = df_part.count()
+        #count = df_part.count()
 
         data = {
             "y": df_part[field_name].to_list(),
@@ -352,41 +352,6 @@ def route_questionnaire_html(questionnaireName):
         errors = list(e.args)
 
     return render_template("preview_questionnaire_simple.html", q=json_data)
-
-
-#@admin.route("/analyze_questionnaire/<questionnaireName>/<tag>")
-#@admin.route("/analyze_questionnaire/<questionnaireName>")
-#@verify_admin
-#def route_analyze_questionnaire(questionnaireName, tag=0):
-#    questionnaire = questionnaires[questionnaireName]
-#
-#    gridPlotData = {}
-#    gridPlotJSVars = []
-#
-#    numericResults = NumericResults(questionnaire.dbClass, questionnaire.fields, tag)
-#
-#    for condition, valueDict in list(numericResults.dataDescriptive.items()):
-#        gpd = {
-#            'name': condition,
-#            'type': 'bar',
-#            'x': [field for (field, descriptives) in list(valueDict.items())],
-#            'y': [descriptives.mean for (field, descriptives) in list(valueDict.items())],
-#            'error_y': {
-#                'type': 'data',
-#                'visible': True,
-#                'array': [descriptives.sem for (field, descriptives) in list(valueDict.items())]
-#            }
-#        }
-#        gridPlotData[condition] = json.dumps(gpd)
-#        gridPlotJSVars.append("gpd_{}".format(condition))
-#
-#    return render_template("questionnaire_results.html",
-#                           questionnaireName=questionnaireName,
-#                           tag=tag,
-#                           conditionCount=fetch_condition_count(),
-#                           gridPlotData=gridPlotData,
-#                           gridPlotJSVars=json.dumps(gridPlotJSVars).replace('"', ''),
-#                           numericResults=numericResults)
 
 
 def table_data(tableName):
