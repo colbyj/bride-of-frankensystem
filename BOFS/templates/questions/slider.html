@@ -3,6 +3,7 @@
     <label for="{{ question.id }}">{{ question.right | safe }}</label>
 </div>
 <input type="range"
+       class=""
        name="{{ question.id }}"
        id="{{ question.id }}"
        value="{{ question.default }}"

@@ -21,7 +21,7 @@
             <td style="text-align: center; width: {{ 70.0 / (question.labels | length) }}%">
                 <label style="padding: 0; width: 100%; margin:auto; height: 28px; text-align:center;" class="btn btn-lg btn-default">
                     <div class="" style="display:inline;">
-                        <input class="" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ loop.index }}" required  {{ 'onclick="log_click(\'{}\', {})"'.format(grid_question.id, loop.index) | safe if config["LOG_GRID_CLICKS"] }}>
+                        <input class="form-check-input" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ loop.index }}" required  {{ 'onclick="log_click(\'{}\', {})"'.format(grid_question.id, loop.index) | safe if config["LOG_GRID_CLICKS"] }}>
                     </div>
                 </label>
             </td>
