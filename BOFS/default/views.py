@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, current_app, request, make_response
 from urllib.parse import urlsplit
 import traceback
+from BOFS.JSONQuestionnaire import JSONQuestionnaire
 from BOFS.JSONTable import JSONTable
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
@@ -225,36 +226,18 @@ def route_questionnaire(questionnaireName, tag=""):
 
         return redirect(join_urls('/redirect_from_page', request.path))
 
-    return render_template('questionnaire.html',
-                           tag=tag,
-                           q=q.json_data,
-                           timeStarted=datetime.datetime.utcnow())
+    return q.render_questionnaire('questionnaire.html', tag)
 
 
-@default.route("/questionnaire_question/<questionType>", methods=['POST'])
-def route_questionnaire_question(questionType: str):
+@default.route("/questionnaire_question/<question_type>", methods=['POST'])
+def route_questionnaire_question(question_type: str):
     """
     ``/questionnaire_question/<questionType>``
 
     Render a specific question type for the questionnaire. Only accepts POST requests.
     Data posted to this route must be a JSON object of the question data.
     """
-    if 'participantID' not in session:
-        raise Exception('Error: No participantID in session. Did you forget /consent or /create_participant, etc.?')
-
-    participant = db.Participant.query.get(session['participantID'])
-
-    try:
-        return render_template(f'questions/{questionType}.html',
-                               question=request.json,
-                               participant=participant)
-    except Exception as ex:
-        if current_app.run_with_debugging:
-            debugging_info = str(ex) + "<p><pre>" + str(traceback.format_exc()) + "</pre>"
-        else:
-            debugging_info = str(ex)
-
-        return f"Exception in <b>{questionType}.html</b>: {debugging_info}"
+    return JSONQuestionnaire.render_questionnaire_question(question_type, request.json)
 
 
 @default.route("/redirect_previous_page")

@@ -25,12 +25,8 @@
                     {% elif question.instructions %}
                         <h3>{{ question.instructions | safe }}</h3>
                     {% endif %}
-
-                    <div hx-swap="innerHTML"
-                         hx-trigger="load"
-                         hx-post="/questionnaire_question/{{ question.questiontype }}"
-                         hx-vals='{{ question | tojson }}'
-                         hx-ext="json-enc">
+                    <div>
+                        {{ q_html[loop.index0] | safe }}
                     </div>
                 </div>
             {% endfor %}

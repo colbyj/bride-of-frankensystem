@@ -2,7 +2,9 @@ import os
 import json
 import re
 import pprint
-from flask import current_app, request, session, config
+import traceback
+
+from flask import current_app, request, session, config, render_template
 from datetime import datetime
 from .globals import db
 from BOFS.util import mean, stdev, std, var, variance, median
@@ -277,3 +279,41 @@ class JSONQuestionnaire(object):
                  ))
 
         return q.all()
+
+    @staticmethod
+    def render_questionnaire_question(question_type: str, question_data: dict) -> str:
+        if 'participantID' not in session:
+            raise Exception('Error: No participantID in session. Did you forget /consent or /create_participant, etc.?')
+
+        participant = db.Participant.query.get(session['participantID'])
+
+        try:
+            return render_template(f'questions/{question_type}.html',
+                                   question=question_data,
+                                   participant=participant)
+        except Exception as ex:
+            if current_app.run_with_debugging:
+                debugging_info = str(ex) + "<p><pre>" + str(traceback.format_exc()) + "</pre>"
+            else:
+                debugging_info = str(ex)
+
+            return f"Exception in <b>{question_type}.html</b>: {debugging_info}"
+
+    @staticmethod
+    def render_unloaded_questionnaire(json_data: dict, template_name='questionnaire.html', tag="", **kwargs):
+        questions_html = []
+
+        # Render the HTML for each question
+        for question_data in json_data['questions']:
+            question_html = JSONQuestionnaire.render_questionnaire_question(question_data['questiontype'], question_data)
+            questions_html.append(question_html)
+
+        return render_template(template_name,
+                               **kwargs,
+                               tag=tag,
+                               q=json_data,
+                               q_html=questions_html,
+                               timeStarted=datetime.utcnow())
+
+    def render_questionnaire(self, template_name='questionnaire.html', tag=""):
+        return JSONQuestionnaire.render_unloaded_questionnaire(self.json_data, template_name, tag)
