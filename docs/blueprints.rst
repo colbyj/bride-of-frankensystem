@@ -56,8 +56,8 @@ Creating Routes
 Routes define the actual pages that users can visit. This documentation will not go into much detail as to how routes
 work, so if you have further questions, do visit the Flask documentation and see if your questions are answered there.
 
-Python Code
-~~~~~~~~~~~
+Writing Code
+~~~~~~~~~~~~
 
 In BOFS, your routes will look something like this (this route is directly from the `advanced example <https://github.com/colbyj/bride-of-frankensystem-examples/blob/master/advanced_example/my_blueprint/views.py>`_):
 
@@ -111,6 +111,53 @@ Database Tables
 
 This example makes use of a database table. For more information on how to use database tables in your custom routes,
 see :doc:`tables`.
+
+Accessing Questionnaire Data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It is possible to access the responses a participant has given to your questionnaires from within your custom code.
+At the top of your ``views.py`` file, ensure that you are importing ``db`` from ``BOFS.globals``:
+
+.. code-block:: python
+
+    from BOFS.globals import db
+
+Then inside of your custom route's function, you can access the data for the participant who is viewing your route.
+
+.. code-block:: python
+
+    participant = db.Participant.query.get(session['participantID'])
+
+This gives you an instance of the the Participant class (defined in `/BOFS/default/models.py <https://github.com/colbyj/bride-of-frankensystem/blob/master/BOFS/default/models.py>`_),
+with which you can access the attributes associated with that participant. There is a ``questionnaire()`` method that is relevant.
+It takes in as arguments the name of the questionnaire (the filename without the ``.json`` extension) and the tag (which is often just a blank string ``""``).
+
+Calling this method will return an instance of the related questionnaire, whose attributes are defined by the ``id`` used within the questionnaire.
+
+Therefore, for a questionnaire named "demographics" and a question id of "age", you can get the age of the participant via:
+
+.. code-block:: python
+
+    participant = db.Participant.query.get(session['participantID'])
+    age = participant.questionnaire('demographics').age
+
+
+Redirecting Participants
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to redirect participants, then it is crucial that you set the related session variable, ``currentUrl``.
+
+For example, to redirect a participant to ``questionnaire/example``, you can use the following code within your route:
+
+.. code-block:: python
+
+    new_url = 'questionnaire/example'
+    session['currentUrl'] = new_url
+    return redirect('/' + new_url)
+
+Keep in mind that the new URL should be defined somewhere inside of your ``PAGE_LIST`` configuration variable, otherwise
+the system may redirect the participant somewhere else.
+
 
 Templates (HTML) and Static Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
