@@ -47,5 +47,8 @@ Running BOFS
 Once installed via ``pip``, you can run your project by executing the ``BOFS <your_config_file>`` command in your project directory.
 You can use the ``-d`` flag to enable debugging mode. If you installed BOFS via venv as suggested, then you will need to activate the virtual environment via step 2 of the installation instructions.
 
+If you're not sure how to start with creating your project, then try running the `examples <https://github.com/colbyj/bride-of-frankensystem-examples>`_.
+In particular, you can try running the ``minimal.toml`` config file inside of the minimal example. Then continue your reading with the :doc:`quickstart`.
+
 .. NOTE::
-    If you are using PyCharm, then you can run it by adding a custom run configuration with `BOFS` as the module name and your config file as the parameter.
+    If you are using PyCharm, then you can run it by adding a custom run configuration with ``BOFS`` as the module name and your config file as the parameter.
