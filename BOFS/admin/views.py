@@ -288,6 +288,7 @@ def route_results():
 
     return render_template("results.html", summary_stats=summary_stats)
 
+
 @admin.route("/results_boxplot/<path:field_name>")
 @verify_admin
 def route_results_boxplot(field_name: str):
@@ -312,6 +313,7 @@ def route_results_boxplot(field_name: str):
 
     return render_template("results_boxplot.html", field_name=field_name, plot_data=plot_data)
 
+
 @admin.route("/preview_questionnaire/<questionnaireName>", methods=["GET", "POST"])
 @verify_admin
 def route_preview_questionnaire(questionnaireName):
@@ -330,7 +332,6 @@ def route_preview_questionnaire(questionnaireName):
         json_data = f.read()
         json_data = json.loads(json_data)
         f.close()
-
 
     except Exception as e:
         errors = list(e.args)
