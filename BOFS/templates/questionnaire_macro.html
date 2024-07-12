@@ -19,16 +19,19 @@
 
         <div id="q_s">
             {% for question in q.questions %}
+                {% if question and (not question.for_conditions or session['condition'] in question.for_conditions)%}
+                {% if question.title %}
+                    <div class="question-title">{{ question.title | safe }}</div>
+                {% endif %}
                 <div class="question padding">
-                    {% if question.title %}
-                        <h3>{{ question.title | safe }}</h3>
-                    {% elif question.instructions %}
-                        <h3>{{ question.instructions | safe }}</h3>
+                    {% if question.instructions %}
+                        <div class="question-instructions">{{ question.instructions | safe }}</div>
                     {% endif %}
-                    <div>
+                    <div class="question-inputs">
                         {{ q_html[loop.index0] | safe }}
                     </div>
                 </div>
+                {% endif %}
             {% endfor %}
         </div>
 

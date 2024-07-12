@@ -3,16 +3,44 @@
     {% do shuffle(question.labels) %}
 {% endif %}
 {% for label in question.labels %}
-<div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
-    <input class="form-check-input"
-           type="radio"
-           name="{{ question.id }}"
-           id="{{ question.id }}{{ loop.index }}"
-           value="{{ label }}"
-           {{ "required" if question.required }}>
-    <label class="form-check-label"
-           for="{{ question.id }}{{ loop.index }}">
-       {{ question.label_html[loop.index0] if question.label_html else label }}
-    </label>
-</div>
+    <div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
+        <input class="form-check-input"
+               type="radio"
+               name="{{ question.id }}"
+               id="{{ question.id }}{{ loop.index }}"
+               value="{{ label }}"
+               {{ "required" if question.required }}>
+        <label class="form-check-label"
+               for="{{ question.id }}{{ loop.index }}">
+           {{ question.label_html[loop.index0] if question.label_html else label }}
+        </label>
+    </div>
 {% endfor %}
+{% if question.required_selection %}
+    <div id="{{ question.id }}-feedback" class="invalid-feedback">
+        You must select "{{ question.required_selection }}" to continue.
+    </div>
+    {% set loop_index = question.labels.index(question.required_selection) + 1 %}
+    <script>
+        // Example starter JavaScript for disabling form submissions if there are invalid fields
+        (function () {
+            'use strict';
+            window.addEventListener('load', function () {
+                // Fetch all the forms we want to apply custom Bootstrap validation styles to
+                let form = document.getElementById('form');
+                let required_selection = document.getElementById('{{ question.id }}{{ loop_index }}');
+                let feedback = document.getElementById('{{ question.id }}-feedback');
+
+                form.addEventListener('submit', function (event) {
+                    if (required_selection.checked !== true) {
+                        feedback.style.display = 'block';
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                }, false);
+
+            }, false);
+        })();
+    </script>
+
+{% endif %}

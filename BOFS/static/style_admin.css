@@ -1,6 +1,13 @@
 :root {
     --contents-width: 967px;
     font-size: 11pt;
+    --font-size-main: 12pt;
+    --font-size-h1: 18pt;
+    --font-size-h2: 16pt;
+    --font-size-h3: 13pt;
+    --font-size-h4: 11pt;
+    --question-title-font-size: 13pt;
+    --question-instructions-font-size: 11pt;
 }
 
 @media only screen and (max-width: 768px) {
@@ -26,11 +33,28 @@
 }
 
 .question {
-    margin-top: 15px;
+    margin-top: 8px;
+    margin-bottom: 16px;
     border: 1px solid #EEEEEE;
     background-color: #F7F7F7;
     border-radius: 8px;
     /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
+}
+
+.question-title {
+    font-weight: bold;
+    font-size: var(--question-title-font-size);
+    margin-top: 0;
+}
+
+.question-instructions {
+    font-weight: bold;
+    font-size: var(--question-instructions-font-size);
+}
+
+.question-inputs {
+    margin-top: 4px;
+    margin-bottom: 4px;
 }
 
 .navigation {

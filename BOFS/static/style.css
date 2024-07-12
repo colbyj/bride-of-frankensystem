@@ -3,7 +3,12 @@
     --top-bar-color: #8CB737;
     --font-size-main: 12pt;
     --font-size-h1: 18pt;
+    --font-size-h2: 16pt;
     --font-size-h3: 13pt;
+    --font-size-h4: 11pt;
+    --question-title-font-size: 13pt;
+    --question-instructions-font-size: 11pt;
+    --bs-border-color: black;
 }
 
 @media only screen and (max-width: 768px) {
@@ -11,7 +16,12 @@
         --contents-width: 100vw;
         --font-size-main: 11pt;
         --font-size-h1: 16pt;
+        --font-size-h2: 14pt;
         --font-size-h3: 12pt;
+        --font-size-h4: 10pt;
+        --question-title-font-size: 12pt;
+        --question-instructions-font-size: 10pt;
+        --bs-border-color: black;
     }
 
     .content {
@@ -34,17 +44,33 @@ body {
     font-size: var(--font-size-main);
 }
 
-
 .questions {
     /*border: 1px solid #4e4e4e;*/
 }
 
 .question {
-    margin-top: 15px;
+    margin-top: 8px;
+    margin-bottom: 16px;
     border: 1px solid #EEEEEE;
     background-color: #F7F7F7;
     border-radius: 8px;
     /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
+}
+
+.question-title {
+    font-weight: bold;
+    font-size: var(--question-title-font-size);
+    margin-top: 0;
+}
+
+.question-instructions {
+    font-weight: bold;
+    font-size: var(--question-instructions-font-size);
+}
+
+.question-inputs {
+    margin-top: 4px;
+    margin-bottom: 4px;
 }
 
 .navigation {
@@ -66,17 +92,18 @@ body {
 
 h1 {
     font-size: var(--font-size-h1);
-    margin: 0;
+}
+
+h2 {
+    font-size: var(--font-size-h2);
 }
 
 h3 {
-    font-weight: bold;
     font-size: var(--font-size-h3);
-    margin: 0 0 10px 0;
 }
 
-p {
-    margin-bottom: 0;
+h4 {
+    font-size: var(--font-size-h4);
 }
 
 .title-bar {
