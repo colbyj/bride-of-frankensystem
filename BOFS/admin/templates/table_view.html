@@ -18,6 +18,10 @@
 
     {% else %}
 
+    <div class="padding">
+        <a href="{{ url_for('admin.route_table_csv', tableName=tableName) }}" class="btn btn-dark" role="button">Export as CSV <i class="fas fa-file-csv"></i></a>
+    </div>
+
     <div class="p-3">
         <h2>{{ tableName }}</h2>
     </div>
@@ -25,9 +29,6 @@
         {% include "table_ajax.html" %}
     </div>
 
-    <div class="padding">
-        <a href="{{ url_for('admin.route_table_csv', tableName=tableName) }}" class="btn btn-dark" role="button">Export as CSV <i class="fas fa-file-csv"></i></a>
-    </div>
 
     {% endif %}
 
