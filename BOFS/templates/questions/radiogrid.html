@@ -18,7 +18,7 @@
         {% endif %}
         {% for grid_question in questions %}
         <tr class="{{ "oddRow" if loop.index % 2 == 0 else "evenRow" }}">
-            <td style="width: 30%">{{ grid_question.text }}</td>
+            <td style="width: 30%">{{ grid_question.text | safe }}</td>
             {% for label in question.labels %}
             <td style="text-align: center; width: {{ 70.0 / (question.labels | length) }}%">
                 <label style="padding: 0; width: 100%; margin:auto; height: 28px; text-align:center;" class="btn btn-lg btn-default">
