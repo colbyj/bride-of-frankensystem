@@ -111,10 +111,10 @@ def redirect_and_set_next_path(current_path=None):
     return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
 
 
-def redirect_next_page(request):
+def redirect_next_page():
     """
-    Like redirect_and_set_next_path but takes in the Flask request variable instead.
-    :param request:
+    Like redirect_and_set_next_path but uses the Flask request variable instead.
+    Needs a valid app context to work.
     :return:
     """
     session['currentUrl'] = current_app.page_list.next_path(request.url_rule.rule)

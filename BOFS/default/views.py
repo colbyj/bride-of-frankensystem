@@ -260,11 +260,13 @@ def route_redirect_next_page():
 
     This is the preferred way of sending a user to the next page.
     """
-    if not request is None and not request.referrer is None:
-        parsed = urlsplit(request.referrer)
-        current_page = parsed.path
-        #currentPage = str.replace(str(request.referrer), request.host_url, "")
-
+    if request is not None:
+        if request.url_rule is not None:
+            current_page = request.url_rule.rule
+        elif request.referrer is not None:
+            parsed = urlsplit(request.referrer)
+            current_page = parsed.path
+            #currentPage = str.replace(str(request.referrer), request.host_url, "")
     else:
         current_page = session['currentUrl']
 
