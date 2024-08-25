@@ -30,3 +30,4 @@ Welcome to Bride of Frankensystem's documentation!
    simple_pages
    blueprints
    tables
+   util

@@ -6,6 +6,7 @@ import math
 import datetime
 import uuid
 from posixpath import join as urljoin
+from typing import Union, Any
 
 
 # Decorator to help views verify whether the user is on the right page
@@ -115,7 +116,7 @@ def redirect_next_page():
     """
     Like redirect_and_set_next_path but uses the Flask request variable instead.
     Needs a valid app context to work.
-    :return:
+    Redirects user to the next page based on their present URL (from the request).
     """
     session['currentUrl'] = current_app.page_list.next_path(request.url_rule.rule)
     return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
@@ -184,7 +185,7 @@ def create_breadcrumbs():
     return crumbs
 
 
-def fetch_attr(obj, attribute, *args):
+def fetch_attr(obj, attribute, *args) -> Any:
     """
     Returns attribute value, or calls a method. Can handle attributes nested with dots (.)
 
@@ -203,7 +204,10 @@ def fetch_attr(obj, attribute, *args):
         return attr
 
 
-def fetch_current_condition():
+def fetch_current_condition() -> Union[int, None]:
+    """
+    :return: The participant's current condition, as an integer (or None)
+    """
     try:
         # If session exists, and condition is a key, then let's grab the current condition!
         if not session is None and 'condition' in session:
@@ -216,7 +220,7 @@ def fetch_current_condition():
         return None  # This is almost definitely a "Working outside of request context" error
 
 
-def fetch_condition_count():
+def fetch_condition_count() -> int:
     return len(current_app.config["CONDITIONS"])
 
 
@@ -230,10 +234,11 @@ def fetch_condition_count_db():
 
 def provide_consent(assignCondition=True, logDisplaySize=False):
     """
-    This needs to be used inside a route, otherwise session, request won't work.
+    This needs to be used inside a route, otherwise session and request won't work.
+
     :param assignCondition:
     :param logDisplaySize:
-    :return:
+    :return: A Participant object
     """
     from flask import request, session
     from BOFS.globals import db
@@ -284,7 +289,13 @@ def provide_consent(assignCondition=True, logDisplaySize=False):
 
 
 # Provides some error checking for when converting results of form submission
-def float_or_0(value):
+def float_or_0(value) -> float:
+    """
+    Cast the value to a float if it can, otherwise return 0.0.
+
+    :param value: value to be cast
+    :return: the value as a float (or 0.0)
+    """
     value = float(value)
 
     if math.isnan(value):
@@ -292,7 +303,13 @@ def float_or_0(value):
     return value
 
 
-def int_or_0(value):
+def int_or_0(value) -> int:
+    """
+    Cast the value to an int if it can, otherwise return 0.
+
+    :param value: value to be cast
+    :return: the value as a int (or 0)
+    """
     value = int(value)
 
     if math.isnan(value):
