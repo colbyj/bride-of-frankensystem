@@ -3,7 +3,7 @@ import json
 import re
 import pprint
 import traceback
-
+from typing import Union
 from flask import current_app, request, session, config, render_template
 from datetime import datetime
 from .globals import db
@@ -11,7 +11,7 @@ from BOFS.util import mean, stdev, std, var, variance, median
 
 
 class JSONQuestionnaireColumn(object):
-    def __init__(self, definition: dict, question_type: str | None = None):
+    def __init__(self, definition: dict, question_type: Union[str, None] = None):
         self.id = definition['id']
         self.data_type = "string"
         self.default = ""

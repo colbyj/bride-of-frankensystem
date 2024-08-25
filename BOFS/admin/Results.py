@@ -6,12 +6,13 @@ from flask  import current_app
 import pandas as pd
 import os
 from datetime import datetime
+from typing import Union
 
 MAX_CACHE_SECONDS = 60 * 2
 
 
 class Results(object):
-    def __init__(self, filter_criterion=None, cache_path: str | None =None):
+    def __init__(self, filter_criterion=None, cache_path: Union[str, None] =None):
         self.cache_path = cache_path
         use_cache = False
 
@@ -23,7 +24,7 @@ class Results(object):
 
         self.df = None
         self.column_list: list[str] = []
-        self.export_data: dict[str, dict] | dict = {}
+        self.export_data: Union[dict[str, dict], dict] = {}
         """Keys are participant IDs, value is a dictionary of all columns."""
         self.query_participants: Query
         self.query_filter_criterion = filter_criterion

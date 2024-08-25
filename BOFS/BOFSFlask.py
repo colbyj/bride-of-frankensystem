@@ -5,6 +5,7 @@ import json
 import toml
 import os
 import random
+from typing import Union
 from flask import Flask, send_from_directory, Response, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
@@ -201,7 +202,7 @@ class BOFSFlask(Flask):
         except ImportError:
             print("%s: `models.py` not found. Add a `models.py` file to your blueprint folder use this feature." % blueprint_path)
 
-    def load_table(self, directory: str, filename: str) -> JSONTable | None:
+    def load_table(self, directory: str, filename: str) -> Union[JSONTable, None]:
         if filename in self.db.metadata.tables:
             return None
 
@@ -257,7 +258,7 @@ class BOFSFlask(Flask):
             for table_filename in self.table_paths[path]:
                 self.load_table(path, table_filename)
 
-    def load_questionnaire(self, directory:str , filename: str, add_to_db=False) -> JSONQuestionnaire | None:
+    def load_questionnaire(self, directory:str , filename: str, add_to_db=False) -> Union[JSONQuestionnaire, None]:
         if "questionnaire_" + filename in self.db.metadata.tables:
             return None
 
@@ -292,7 +293,7 @@ class BOFSFlask(Flask):
                 add_to_db = questionnaire_filename in questionnaires_in_use
                 self.load_questionnaire(path, questionnaire_filename, add_to_db)
 
-    def get_questionnaire_path(self, questionnaire_to_find) -> str | None:
+    def get_questionnaire_path(self, questionnaire_to_find) -> Union[str, None]:
         for path in self.questionnaire_paths:
             for questionnaire_filename in self.questionnaire_paths[path]:
                 if questionnaire_to_find == questionnaire_filename:
