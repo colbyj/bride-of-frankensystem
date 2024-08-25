@@ -90,5 +90,24 @@
 {% endblock %}
 </main>
 
+<script>
+    function check_logged_in() {
+        // make Ajax call here, inside the callback call:
+        setTimeout(check_logged_in, 5000);
+        $.ajax({
+            url: '/admin/logged_in',
+            type: 'GET',
+            dataType: 'text',
+            success: function(res, status) {
+              if (res !== "True") {
+                  location.reload();  // Reload the page, which should bring up the log-in screen.
+              }
+            }
+        });
+    }
+
+    check_logged_in();
+</script>
+
 </body>
 </html>

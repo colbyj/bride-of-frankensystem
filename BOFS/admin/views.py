@@ -66,6 +66,11 @@ def admin_index():
     return redirect(url_for("admin.admin_login"))
 
 
+@admin.route("/logged_in")
+def admin_logged_in():
+    return str(not ('loggedIn' not in session or not session['loggedIn']))
+
+
 @admin.route("/login", methods=['GET', 'POST'])
 def admin_login():
     if 'participantID' not in session:
