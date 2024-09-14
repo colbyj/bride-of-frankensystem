@@ -1,5 +1,5 @@
-Utility Functions
-=================
+Helper Functions
+================
 
 The ``BOFS.util`` package contains several functions that you might find useful.
 

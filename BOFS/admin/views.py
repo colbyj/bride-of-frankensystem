@@ -319,6 +319,25 @@ def route_results_boxplot(field_name: str):
     return render_template("results_boxplot.html", field_name=field_name, plot_data=plot_data)
 
 
+@admin.route("/preview_procedure", methods=["GET", "POST"])
+@verify_admin
+def route_preview_procedure():
+    #questionnaires = current_app.page_list.parse_list_into_procedure()
+    mermaid_string = current_app.page_list.to_mermaid()
+
+    #try:
+    #    f = open(current_app.get_questionnaire_path(questionnaireName), 'r')
+    #    json_data = f.read()
+    #    json_data = json.loads(json_data)
+    #    f.close()
+    #
+    #except Exception as e:
+    #    errors = list(e.args)
+    #
+    #return JSONQuestionnaire.render_unloaded_questionnaire(json_data, "preview_questionnaire.html", errors=errors)
+
+    return render_template("procedure.html", mermaid_string=mermaid_string)
+
 @admin.route("/preview_questionnaire/<questionnaireName>", methods=["GET", "POST"])
 @verify_admin
 def route_preview_questionnaire(questionnaireName):

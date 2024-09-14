@@ -40,6 +40,8 @@ radiogrid
 
 -  ``instructions``: any text that is needed directly above the
    radiogrid (optional, string)
+-  ``required``: whether or not responses to this radio grid are required to submit form
+   (optional, boolean: ``true`` or ``false``, default is ``false``)
 -  ``shuffle``: should the question order be shuffled? (optional,
    boolean: ``true`` or ``false``, default ``false``)
 -  ``labels``: list of strings that represent column headers (required,
@@ -88,19 +90,24 @@ radiolist
 
 **Properties**
 
--  ``id``: unique id for checklist (required, string)
--  ``instructions``: text needed to describe what slider input
+-  ``id``: Unique id for checklist (required, string)
+-  ``instructions``: Text needed to describe what slider input
    represents (optional, string)
 -  ``required``: whether or not this input is required to submit form
    (optional, boolean: ``true`` or ``false``, default is ``false``)
--  ``shuffle``: whether or not the possible response labels should be
+-  ``shuffle``: Whether or not the possible response labels should be
    shuffled (optional, boolean: ``true`` or ``false``, default is
    ``false``)
--  ``horizontal``: should be options be listed vertically (default) or
+-  ``horizontal``: Should the options be listed vertically (default) or
    horizontally? (optional, boolean: ``true`` or ``false``, default is
    ``true``)
 -  ``labels``: A list. One entry per each radio button. (required, list
    of strings)
+-  ``other_enabled``: Show an "other" option as one of the options in the list.
+   (optional, boolean: ``true`` or ``false``, default is ``false``)
+-  ``other_text_prompt``: Specify the text to indicate what the "other" option means (optional, string).
+-  ``other_input_width``: How wide the input field for the "other" option should be (optional, integer).
+-  ``other_input_hides``: Should the input field for the "other" hide if not selected (optional, boolean, default ``false``)?
 
 **Example**
 
@@ -126,15 +133,19 @@ checklist
 
 **Properties**
 
--  ``id``: unique id for checklist (required, string)
 -  ``instructions``: text needed to describe what slider input
    represents (optional, string)
 -  ``shuffle``: should the order of the responses be shuffled?
    (optional, boolean: ``true`` or ``false``, default is ``false``)
 -  ``horizontal``: should be options be listed vertically? (optional,
    boolean: ``true`` or ``false``, default is ``true``)
--  ``questions``: one for each checkbox. Each needs text and a unique
-   ID. (required)
+-  ``questions``: one for each checkbox, a list of dictionaries, each with the following keys.
+
+   - ``id``: Must be unique within the questionnaire (required, integer).
+   - ``text``: The label for the option (required, string).
+   - ``text_entry``: Are users allowed to enter custom text to be associated with this checkbox (optional, boolean, default ``false``)?
+   - ``text_entry_hides``: Does the text input area hide if the option is not selected (optional, boolean, default ``false``)?
+   - ``text_entry_width``: How wide the input field for the text entry should be (optional, integer).
 
 **Example**
 
@@ -143,7 +154,6 @@ checklist
        {
            "questiontype":"checklist",
            "instructions":"choose any options...",
-           "id":"checklist_1",
            "shuffle":true,
            "horizontal": false,
            "questions":[

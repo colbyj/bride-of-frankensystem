@@ -1,4 +1,4 @@
-{% macro createQuestionnaire(q) -%}
+{% macro createQuestionnaire(q, q_html, print_ids=False) -%}
 
 
         <input type="hidden" name="timeStarted" value="{{ timeStarted }}">
@@ -27,7 +27,7 @@
                     {% endif %}
                     <div class="question padding">
                         {% if question.instructions %}
-                            <div class="question-instructions">{{ question.instructions | safe }}</div>
+                            <div class="question-instructions">{% if print_ids and 'id' in question %}[{{ question.id }}] {% endif %}{{ question.instructions | safe }}</div>
                         {% endif %}
                         <div class="question-inputs">
                             {{ q_html[loop.index0] | safe }}

@@ -3,8 +3,42 @@
 
 {% from "questionnaire_macro.html" import createQuestionnaire with context %}
 
+<style>
+    :root {
+        --question-title-font-size: 13pt;
+        --question-instructions-font-size: 11pt;
+    }
+
+    .question {
+        padding: 10px;
+    }
+
+    .question-title {
+        font-weight: bold;
+        font-size: var(--question-title-font-size);
+        margin-top: 0;
+    }
+
+    .question-instructions {
+        margin-bottom: 10px;
+        font-weight: bold;
+        font-size: var(--question-instructions-font-size);
+    }
+
+    .question-inputs {
+        margin-top: 4px;
+        margin-bottom: 4px;
+    }
+
+    .slider-labels {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+    }
+</style>
+
 <form id="form">
 
-{{ createQuestionnaire(q) }}
+{{ createQuestionnaire(q, q_html, True) }}
 
 </form>

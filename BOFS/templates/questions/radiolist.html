@@ -9,13 +9,55 @@
                name="{{ question.id }}"
                id="{{ question.id }}{{ loop.index }}"
                value="{{ label }}"
-               {{ "required" if question.required }}>
+               {{ "required" if question.required }}
+               {% if question.other_enabled and question.other_input_hides %}
+               onchange="handle_radio_button_click_{{ question.id }}()"
+               {% endif %}>
         <label class="form-check-label"
                for="{{ question.id }}{{ loop.index }}">
            {{ question.label_html[loop.index0] if question.label_html else label }}
         </label>
     </div>
 {% endfor %}
+{% if question.other_enabled %}
+    <div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
+        <div style="display:grid; grid-template-columns: 0 auto; align-items: center;">
+            <input class="form-check-input"
+                   style="grid-column: 1; grid-row: 1 / span 2;"
+                   type="radio"
+                   name="{{ question.id }}"
+                   id="{{ question.id }}_other"
+                   value=""
+                   {{ "required" if question.required }}
+                   {% if question.other_input_hides %}
+                   onchange="handle_radio_button_click_{{ question.id }}()"
+                   {% endif %}>
+            <label class="form-check-label"
+                   style="grid-column: 2;"
+                   for="{{ question.id }}_other">
+               {{ question.other_text_prompt }}
+            </label>
+            <input
+                style="grid-column: 2; width: {{ question.other_input_width if question.other_input_width else config['DEFAULT_FIELD_WIDTH'] }}px; {% if question.other_input_hides %}display: none;{% endif %}"
+                type="text"
+                name="{{ question.id }}_other_text_prompt"
+                id="{{ question.id }}_other_text_prompt"
+                onchange="{ $('#{{ question.id }}_other').val($('#{{ question.id }}_other_text_prompt').val()); }"
+                aria-label="custom text entry">
+            {% if question.other_input_hides %}
+            <script>
+                function handle_radio_button_click_{{ question.id }}() {
+                    if ($('#{{ question.id }}_other').is(':checked')) {
+                        $('#{{ question.id }}_other_text_prompt').css('display', 'inline')
+                    } else {
+                        $('#{{ question.id }}_other_text_prompt').css('display', 'none')
+                    }
+                }
+            </script>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
 {% if question.required_selection %}
     <div id="{{ question.id }}-feedback" class="invalid-feedback">
         You must select "{{ question.required_selection }}" to continue.
@@ -38,7 +80,6 @@
                         event.stopPropagation();
                     }
                 }, false);
-
             }, false);
         })();
     </script>

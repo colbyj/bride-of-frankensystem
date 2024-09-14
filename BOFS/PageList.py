@@ -1,12 +1,16 @@
+from typing import Union
 from flask import current_app, request
 from BOFS import util
+from urllib.parse import urlsplit
 
 
 class PageList(object):
     page_list = []
+    procedure = []
 
     def __init__(self, page_list):
         self.page_list = page_list
+        #self.procedure = self.parse_list_into_procedure()
 
     def unconditional_pages(self):
         pages = []
@@ -29,6 +33,15 @@ class PageList(object):
                         break  # once a match has been found, then we're done
 
         return pages
+
+    @staticmethod
+    def extract_questionnaire_from_path(path, include_tag=False):
+        questionnaire = path.replace("questionnaire/", "", 1)
+
+        if not include_tag:
+            questionnaire_name = questionnaire.split("/")[0]
+
+        return questionnaire
 
     def flat_page_list(self, condition=None) -> list[str]:
         """
@@ -67,11 +80,7 @@ class PageList(object):
             if not page['path'].startswith("questionnaire/"):
                 continue  # Not a questionnaire
 
-            questionnaire_name = page['path'].replace("questionnaire/", "", 1)
-
-            if not include_tags:
-                questionnaire_name = questionnaire_name.split("/")[0]
-
+            questionnaire_name = self.extract_questionnaire_from_path(page['path'], include_tags)
             questionnaires.append(questionnaire_name)
 
         for condition in range(1, condition_count+1):
@@ -89,6 +98,149 @@ class PageList(object):
                     questionnaires.append(questionnaire_name)
 
         return questionnaires
+
+    def parse_list_into_procedure(self) -> list[Union[str, dict]]:
+        procedure = []
+        for entry in self.page_list:
+            if 'conditional_routing' not in entry:
+                #questionnaire_name = self.extract_questionnaire_from_path(entry['path'], False)
+                procedure.append(entry)
+            else:
+                # Need to work out the page list lengths for each condition, so I don't end up accessing an invalid index.
+                page_list_lengths = {}
+                max_length = 0
+                for cr_option in entry['conditional_routing']:
+                    list_length = len(cr_option['page_list'])
+                    page_list_lengths[cr_option['condition']] = list_length
+
+                    if list_length > max_length:
+                        max_length = list_length
+
+                for i in range(max_length):
+                    new_sub_list = {}
+                    for cr_option in entry['conditional_routing']:
+                        cr_condition = cr_option['condition']
+                        new_sub_list[cr_condition] = None
+
+                        if page_list_lengths[cr_condition] > i:  # Then it's safe to access the page entry
+                            #questionnaire_name = self.extract_questionnaire_from_path(cr_option['page_list'][i]['path'], False)
+                            new_sub_list[cr_condition] = cr_option['page_list'][i]
+
+                    procedure.append(new_sub_list)
+
+        return procedure
+
+    def to_mermaid(self):
+        def mermaid_entry_to_syntax(entry) -> str:
+            return f"{entry['name']}(\"<b>{entry['header']}</b><br>{entry['text']}\")"
+
+        def parse_until_cr(page_list, mermaid_entries, name_prefix=""):
+            index_reached = 0
+
+            if mermaid_entries is None:
+                mermaid_entries = []
+
+            for entry in page_list:
+                if "conditional_routing" in entry:
+                    break  # End early
+
+                idx = len(mermaid_entries)
+                path = entry['path'].replace("questionnaire/", "")
+
+                if len(mermaid_entries) > 0 and 'header' in mermaid_entries[-1] and mermaid_entries[-1]['header'] == entry['name']:
+                    mermaid_entries[-1]['text'] += f"<br>{path}"
+                else:
+                    mermaid_entries.append({'name': f"{name_prefix}{idx}", 'header': entry['name'], 'text': path})
+                index_reached += 1
+
+            return page_list[index_reached:]  # Return the remaining pages
+
+        mermaid_entries = []
+        page_list_copy = self.page_list[:]
+
+        while len(page_list_copy) > 0:
+            if "conditional_routing" in page_list_copy[0]:
+
+                conditional_entries = {}
+                for cr in page_list_copy[0]['conditional_routing']:
+                    name_prefix = f"{len(mermaid_entries)}_cr_{cr['condition']}_"
+                    conditional_entries[cr["condition"]] = []
+
+                    parse_until_cr(cr['page_list'], conditional_entries[cr["condition"]], name_prefix)
+
+                page_list_copy = page_list_copy[1:]
+
+                    #sub_idx = 0
+                    #conditional_entries[cr["condition"]] = []
+                    #
+                    #for cr_entry in cr['page_list']:
+                    #    name = f"{idx}_{sub_idx}_{cr['condition']}"
+                    #    conditional_entries[cr["condition"]].append({
+                    #        'name': name,
+                    #        'text': entry_to_mermaid_syntax(name, cr_entry)
+                    #    })
+                    #    sub_idx += 1
+
+                mermaid_entries.append(conditional_entries)
+            #idx += 1
+
+            page_list_copy = parse_until_cr(page_list_copy, mermaid_entries)
+
+        # for entry in self.page_list:
+        #     if "conditional_routing" not in entry:
+        #         entry_text = entry_to_mermaid_syntax(idx, entry)
+        #         mermaid_entries.append({'name': idx, 'text': entry_text})
+        #
+        #     else:
+        #         conditional_entries = {}
+        #         for cr in entry['conditional_routing']:
+        #             sub_idx = 0
+        #             conditional_entries[cr["condition"]] = []
+        #
+        #             for cr_entry in cr['page_list']:
+        #                 name = f"{idx}_{sub_idx}_{cr['condition']}"
+        #                 conditional_entries[cr["condition"]].append({
+        #                     'name': name,
+        #                     'text': entry_to_mermaid_syntax(name, cr_entry)
+        #                 })
+        #                 sub_idx += 1
+        #         mermaid_entries.append(conditional_entries)
+        #     idx += 1
+
+        output_str = "flowchart TB\n"
+
+        first = True
+        last_entry = None
+        cr_idx = 0
+
+        for entry in mermaid_entries:
+            if 'text' in entry:
+                if not first:
+                    output_str += "-->"
+                output_str += mermaid_entry_to_syntax(entry)
+                first = False
+                last_entry = entry
+            else:
+                #output_str += f"\nsubgraph conditional_routing_{cr_idx}"
+                #cr_idx += 1
+                last_ids = {}
+
+                for condition in entry:
+                    output_str += "\n"
+                    output_str += f"{last_entry['name']}"
+
+                    for subidx, subentry in enumerate(entry[condition]):
+                        output_str += "-->"
+                        output_str += mermaid_entry_to_syntax(subentry)
+                        last_ids[condition] = subentry['name']
+
+                #output_str += "\nend\n"
+                output_str += "\n"
+                output_str += " & ".join(last_ids.values())
+
+        #output_str += "-->".join([entry['text'] for entry in mermaid_entries])
+
+        return output_str
 
     def get_index(self, path):
         """
@@ -115,8 +267,11 @@ class PageList(object):
         """
         if current_path is None:
             current_path = request.path
+        if current_path == '/redirect_next_page':
+            parsed = urlsplit(request.referrer)
+            current_path = parsed.path
         if current_path.startswith("/"):
-            path = current_path[1:]
+            current_path = current_path[1:]
         current_index = self.get_index(current_path)
         flat_page_list = self.flat_page_list()
 
