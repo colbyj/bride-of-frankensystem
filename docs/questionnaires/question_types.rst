@@ -1,15 +1,24 @@
 Built-in Question Types
 =======================
 
-The following attributes are common to every type of question (except
-radiogrid).
+The following attributes are common to every type of question.
 
--  ``id``: string - Your field's unique id. **This must be completely
-   unique within each questionnaire.**
+-  ``id``: string - Your field's unique id.
+
+   - **This must be completely unique within each questionnaire.**
+   - This can be omitted for question types which contain ``id``
+     fields for each item in the question (e.g., radiogrid and checklist)
+
 -  ``questiontype``: string - Defines the type of question/input field
    this is
 -  ``instructions``: string - Appears directly above the field to
    indicate what the user should enter inside the field.
+-  ``title``: string - Add text above the question, outside the question's
+   box.
+
+Note: Many of the attributes that accept strings support HTML, such as
+``instructions`` and ``title``. However, JSON does not support line breaks, so
+any HTML needs to appear on one line.
 
 Currently, the following types of input are supported:
 
@@ -95,6 +104,7 @@ radiolist
    represents (optional, string)
 -  ``required``: whether or not this input is required to submit form
    (optional, boolean: ``true`` or ``false``, default is ``false``)
+-  ``required_selection``: If specified, force the user to select the specified value before the form can be submitted (optional, string).
 -  ``shuffle``: Whether or not the possible response labels should be
    shuffled (optional, boolean: ``true`` or ``false``, default is
    ``false``)
