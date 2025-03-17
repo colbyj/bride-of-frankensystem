@@ -25,6 +25,9 @@ def verify_correct_page(f):
 
         if 'PROLIFIC_PID' in request.args:
             session['mTurkID'] = request.args['PROLIFIC_PID']
+            
+        if 'external_id' in request.args:
+            session['mTurkID'] = request.args['external_id']
 
         # Don't allow users to skip things or go back. Redirect to the correct page if they try.
         if 'currentUrl' in session and currentUrl != session['currentUrl']:

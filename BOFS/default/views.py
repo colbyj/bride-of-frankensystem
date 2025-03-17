@@ -269,6 +269,9 @@ def route_redirect_next_page():
             #currentPage = str.replace(str(request.referrer), request.host_url, "")
     else:
         current_page = session['currentUrl']
+        
+    if current_page.strip('/') == 'redirect_next_page':
+        current_page = session['currentUrl']
 
     if current_page == "end":
         return redirect(current_app.config["APPLICATION_ROOT"] + "/end")

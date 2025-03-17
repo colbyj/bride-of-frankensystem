@@ -47,7 +47,8 @@ Running BOFS
 Once installed via ``pip``, you can run your project by executing the ``BOFS <your_config_file>`` command in your project directory.
 You can use the ``-d`` flag to enable debugging mode. If you installed BOFS via venv as suggested, then you will need to activate the virtual environment via step 2 of the installation instructions.
 
-If you're not sure how to start with creating your project, then try running the `examples <https://github.com/colbyj/bride-of-frankensystem-examples>`_.
+If you're not sure how to start with creating your project, then download and running the example projects from `here <https://github.com/colbyj/bride-of-frankensystem-examples/archive/refs/heads/master.zip>`_.
+You can also preview the code on `on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/minimal_example>`_.
 In particular, you can try running the ``minimal.toml`` config file inside of the minimal example. Then continue your reading with the :doc:`quickstart`.
 
 .. NOTE::
