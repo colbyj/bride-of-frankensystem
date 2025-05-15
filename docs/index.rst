@@ -12,6 +12,10 @@ Welcome to Bride of Frankensystem's documentation! If you're just getting starte
 
 BOF is built using Flask and is intended to be used as a Python library. Because it is built with Flask, all Flask extensions and features are supported, and it is relatively straightforward to extend the project with your own custom web pages and tasks.
 
+.. note::
+    If you need additional help, please `join us on Discord <https://discord.gg/XzXtUKFCJA>`_.
+
+
 .. toctree::
    :maxdepth: 2
    :caption: Introduction:
