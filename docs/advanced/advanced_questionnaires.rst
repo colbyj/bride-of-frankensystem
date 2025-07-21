@@ -56,6 +56,7 @@ Calculations are defined in the ``participant_calculations`` section of your que
 **Python Expressions**
 
 Calculations can use any valid Python expression, including:
+
 - Arithmetic operations: ``+``, ``-``, ``*``, ``/``
 - Conditional expressions: ``value if condition else other_value``
 - Comparisons: ``>``, ``<``, ``==``, ``!=``

@@ -76,14 +76,20 @@ If you prefer a simpler approach (though less recommended for multiple projects)
 
 This installs BOFS system-wide but may cause issues if you work on multiple BOFS projects over time.
 
-Step 3: Get a Text Editor (Optional but Recommended)
-----------------------------------------------------
+Step 3: Get a Text Editor or IDE
+--------------------------------
 
 You'll need to edit text files (configuration files, HTML templates). While you can use basic text editors like Notepad, these editors make the process much easier:
 
 - **Visual Studio Code** (free, excellent for beginners): https://code.visualstudio.com
 - **Sublime Text**: https://www.sublimetext.com
 - **Atom**: https://atom.io
+
+These editors can be extended via plugins to better support Python code, but this isn't strictly necessary.
+
+Alternatively, download a fully-featured IDE such as PyCharm, which is specifically designed to work with Python projects.
+
+- **PyCharm**: https://www.jetbrains.com/pycharm/
 
 Step 4: Try Your First Experiment
 ----------------------------------
@@ -101,6 +107,7 @@ Step 4: Try Your First Experiment
 You should see a working experiment! Press Ctrl+C in the command line to stop it.
 
 **What Just Happened?**
+
 - BOFS read the ``minimal.toml`` configuration file
 - It started a local web server on your computer
 - You accessed your experiment through your web browser
@@ -115,8 +122,10 @@ Next Steps
 
 **Troubleshooting**
 
-- **"python not found"**: Make sure Python is installed and added to your system PATH
-- **"BOFS not found"**: Make sure you activated your virtual environment (Step 2.3)
-- **"Permission denied"**: Try running your command line as administrator (Windows) or using ``sudo`` (Mac/Linux)
+- **"python not found"**: Make sure Python is installed and added to your system PATH.
+- **"pip not found"**: If on Windows, make sure you allowed the installer to allow Python to your PATH. If on Linux, you may need to install ``pip`` separately.
+- **"BOFS not found"**: Make sure you activated your virtual environment (Step 2.3) and that BOFS was installed via ``pip``. You can also try the ``python -m BOFS`` command, which is equivalent.
+- **"Permission denied"**: Try running your command line as administrator (Windows) or using ``sudo`` (Mac/Linux).
+- **"Address Already in Use"**: Try configuring your project to work with a different port (by editing the ``.toml`` config file).
 
 **Remember**: Each time you want to work with BOFS, you'll need to activate your virtual environment first (Step 2.3).

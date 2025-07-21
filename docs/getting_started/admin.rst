@@ -33,6 +33,11 @@ Progress Monitoring
 
 The progress dashboard (``/admin/progress``) provides real-time monitoring of participant progress through your experiment.
 
+.. image:: /examples/quickstart/minimal/minimal_admin.png
+  :width: 800
+  :alt: The admin page.
+
+
 Real-time Dashboard
 ^^^^^^^^^^^^^^^^^^^
 
@@ -72,6 +77,7 @@ Export Questionnaire Data
 The main export feature (``/admin/export``) allows you to download all questionnaire responses as CSV files.
 
 Export Options:
+
 - **Include Unfinished**: Option to include participants who haven't completed the experiment
 - **Include Excluded**: Option to include participants marked as excluded
 - **Preview Mode**: View data in HTML table format before downloading
@@ -170,10 +176,12 @@ SQLite-specific Features
 For SQLite databases, additional management options are available:
 
 Database Download (``/admin/database_download``):
+
 - Direct download of the complete SQLite database file
 - Useful for backup and offline analysis
 
 Database Delete (``/admin/database_delete``):
+
 - Password-protected database clearing functionality
 - Automatic backup creation before deletion
 - Preserves table structure while clearing data

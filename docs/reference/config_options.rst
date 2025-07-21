@@ -15,7 +15,7 @@ This page includes a description of each of the options within a project's confi
     TITLE                        string                What users see at the top of the page.
     ADMIN_PASSWORD               string                Used to log in to the admin pages at ``/admin``.
     USE_ADMIN                    boolean               Enable/disable the admin panel entirely (default: True).
-    ADDITIONAL_ADMIN_PAGES       list of dictionaries  Custom admin pages from blueprints. See :doc:`admin`.
+    ADDITIONAL_ADMIN_PAGES       list of dictionaries  Custom admin pages from blueprints. See :doc:`/getting_started/admin`.
     USE_BREADCRUMBS              boolean               Show breadcrumbs-style progress bar.
     PORT                         integer               Configure what port the project will be accessible at.
     RETRIEVE_SESSIONS            boolean               If ID entered at ``/external_id`` was already used, then attempt to load a participant's progress from the database and redirect them to where they last were.
@@ -31,5 +31,5 @@ This page includes a description of each of the options within a project's confi
     COMPLETION_CODE_MESSAGE      string                For example, "Please copy and paste this code into the MTurk form:".
     OUTGOING_URL                 string                On the ``/end`` route, participants can be optionally redirected to an external page instead of being given a code. Specify the URL here.
     PAGE_LIST                    list of dictionaries  See :doc:`../getting_started/project_configuration`.
-    EXPORT                       dictionary            Custom export definitions for blueprint tables. See :doc:`admin`.
+    EXPORT                       dictionary            Custom export definitions for blueprint tables (deprecated).
     ============================ ===================== ==================

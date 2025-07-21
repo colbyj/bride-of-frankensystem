@@ -163,6 +163,10 @@ Consent Forms
 
 When you include ``{name="Consent", path="consent"}`` in your PAGE_LIST, BOFS will display a consent form to participants. You need to create a ``consent.html`` file in your project root directory (next to your ``.toml`` configuration file) that contains your consent text.
 
+.. image:: /examples/quickstart/minimal/minimal0.png
+  :width: 800
+  :alt: The consent page.
+
 **Basic Consent Setup**
 
 .. code-block:: bash
