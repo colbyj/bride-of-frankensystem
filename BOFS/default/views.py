@@ -431,9 +431,14 @@ def route_instructions(pageName):
     if request.method == "POST":
         return redirect(join_urls('/redirect_from_page', request.path))
 
+    if 'participantID' in session:
+        participant = db.session.query(db.Participant).get(session['participantID'])
+    else:
+        participant = None
+
     jinja = current_app.jinja_env
     instructionsTemplate = jinja.get_or_select_template("instructions/%s.html" % pageName)
-    instructionsHtml = instructionsTemplate.render()
+    instructionsHtml = instructionsTemplate.render(participant=participant)
 
     return render_template("instructions.html", instructions=instructionsHtml)
 
@@ -463,7 +468,12 @@ def route_simple_html(pageName):
     if request.method == "POST":
         return redirect(join_urls('/redirect_from_page', request.path))
 
+    if 'participantID' in session:
+        participant = db.session.query(db.Participant).get(session['participantID'])
+    else:
+        participant = None
+
     jinja = current_app.jinja_env
-    simple_html = jinja.get_or_select_template("simple/%s.html" % pageName).render()
+    simple_html = jinja.get_or_select_template("simple/%s.html" % pageName).render(participant=participant)
 
     return render_template("simple.html", simple_contents=simple_html)

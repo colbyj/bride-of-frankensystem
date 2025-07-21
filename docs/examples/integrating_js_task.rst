@@ -1,8 +1,8 @@
 Integrating a JavaScript Task
 =============================
 The next step up in terms of project complexity from the project demonstrated in the :doc:`quickstart guide <quickstart>`
-is to integrate a simple JavaScipt task within your study. This requires the use of a :doc:`blueprint <blueprints>`
-(which further involve Jinja 2 templating and static files) and a custom database :doc:`table <tables>`.
+is to integrate a simple JavaScipt task within your study. This requires the use of a :doc:`blueprint <../advanced/advanced_custom_pages>`
+(which further involve Jinja 2 templating and static files) and a custom database :doc:`table <../advanced/database_tables>`.
 
 This guide will walk you through the steps of doing this. First, let's create a new project directory called `p5_example`
 and populate that directory with several subdirectories.
@@ -36,7 +36,7 @@ In the screenshot below, you can see the complete listing of files your project 
 
 Python Code (``views.py``)
 --------------------------
-For more complex integrations you will need to write Python code inside of a ``views.py`` file, see :doc:`blueprints`.
+For more complex integrations you will need to write Python code inside of a ``views.py`` file, see :doc:`../advanced/advanced_custom_pages`.
 For this example you do not! We will use the features built into BOFS to handle the required logic.
 
 The Task (``my_task.js``)
@@ -87,7 +87,7 @@ defined as a ``.json`` file and placed in ``/p5_example/my_task/tables/``.
 
 The Table (``my_task.json``)
 ----------------------------
-The database table is defined by following a specific ``.JSON`` specification, as described in :doc:`tables`.
+The database table is defined by following a specific ``.JSON`` specification, as described in :doc:`../advanced/database_tables`.
 
 .. code-block:: json
     :caption: /p5_example/my_task/tables/my_task.json

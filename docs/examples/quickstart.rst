@@ -2,7 +2,7 @@ Quickstart Guide (The Minimal Example)
 ======================================
 
 To get started using Bride of Frankensystem (BOFS), the first thing you need to do is ensure that it is installed
-on your computer. Please follow the instructions on :doc:`installation` and then come back to this page to continue the
+on your computer. Please follow the instructions on :doc:`/getting_started/installation` and then come back to this page to continue the
 quickstart guide.
 
 In this guide, we will go over a simple example project to demonstrate how to get started with a BOFS project and to
@@ -30,12 +30,12 @@ File                                          Description
 Let's go through each file to understand what each is doing.
 
 
-.. literalinclude:: questionnaires/example.json
+.. literalinclude:: /questionnaires/example.json
     :caption: example.json
     :language: JSON
 
 This file describes a questionnaire that will be used within the study.
-This is the same example questionnaire as is shown on :doc:`questionnaires/main`. It includes 9 different question
+This is the same example questionnaire as is shown on :doc:`/getting_started/basic_questionnaires`. It includes 9 different question
 types:
 
 * A text view
@@ -49,19 +49,19 @@ types:
 * A multi-line text entry field
 
 
-.. literalinclude:: quickstart/minimal/consent.html
+.. literalinclude:: /examples/quickstart/minimal/consent.html
     :caption: consent.html
     :language: html
 
 This file demonstrates how consent text is defined within a project.
 
 
-.. literalinclude:: quickstart/minimal/minimal.toml
+.. literalinclude:: /examples/quickstart/minimal/minimal.toml
     :caption: minimal.toml
     :language: toml
 
 This file is the configuration of the study. It is where all of the important aspects of the study are defined. This
-quickstart only covers some of the options -- for a complete description of every option, see :doc:`configuration`.
+quickstart only covers some of the options -- for a complete description of every option, see :doc:`../reference/config_options`.
 
 Let's go over some of the variables in the configuration:
 
@@ -83,7 +83,7 @@ In general, pages are given a ``name``, which is what shows up on the title of t
 tab on the web browser), and a ``path``, which is the url that the user will be taken to (without the preceding ``/``).
 
 There are many paths built into BOFS, for display things like consent forms, instruction pages, and questionnaires. See
-:doc:`routing/default_routes` for a list of valid, built-in routes. For a more general overview of routing, see :doc:`routing/main`.
+:doc:`../reference/default_routes` for a list of valid, built-in routes. For a more general overview of routing, see :doc:`../getting_started/project_configuration`.
 
 
 Running the Example
@@ -113,22 +113,22 @@ that URL in your web browser and let's go through each page.
 .. TIP::
     If you add the ``-d`` flag to your BOFS command, you will enable debugging mode. This provides more feedback if
     something goes wrong and also shows navigation and debugging information at the bottom of pages. For example,
-    ``BOFS minimal.toml -d``.
+    ``BOFS minimal.toml -d``. See the :doc:`../reference/cli-reference` for all available command-line options.
 
-.. image:: quickstart/minimal/minimal0.png
+.. image:: /examples/quickstart/minimal/minimal0.png
   :width: 800
   :alt: The consent page.
 
 The first page that shows up is the consent page (``/consent``). Click "Continue" to go to the next page.
 
-.. image:: quickstart/minimal/minimal1.png
+.. image:: /examples/quickstart/minimal/minimal1.png
   :width: 800
   :alt: The external ID page.
 
 The second page is the external ID entry page (``/external_id``). The user gets prompted to enter an external ID and then
 needs to press "Continue" to move on to the next page.
 
-.. image:: quickstart/minimal/minimal2.png
+.. image:: /examples/quickstart/minimal/minimal2.png
   :width: 800
   :alt: The questionnaire page.
 
@@ -137,7 +137,7 @@ continue on to the next page, the user needs to provide responses to the questio
 
 The fourth page is the same questionnaire being shown a second time.
 
-.. image:: quickstart/minimal/minimal3.png
+.. image:: /examples/quickstart/minimal/minimal3.png
   :width: 800
   :alt: The end page.
 
@@ -152,7 +152,7 @@ example, this will be accessible at ``http://127.0.0.1:5001/admin``. Going to th
 password. This password is defined inside of the configuration file (``minimal.toml`` for this project). For the
 example, the password is ``example``.
 
-.. image:: quickstart/minimal/minimal_admin.png
+.. image:: /examples/quickstart/minimal/minimal_admin.png
   :width: 800
   :alt: The admin page.
 
@@ -164,6 +164,8 @@ through the study, summary statistics relating to completion, and various other 
 * **Preview Questionnaires**, which gives you the ability to preview questionnaires used in the study, as well as any questionnaires on the file system.
 * **Database Tables**, which lets you explore the underlying database and the data you've collected.
 
+For comprehensive documentation of all admin panel features, including advanced monitoring, data analysis tools, and configuration options, see the :doc:`/getting_started/admin` guide.
+
 
 Extending the Minimal Example
 -----------------------------
@@ -172,11 +174,12 @@ Extending the Minimal Example
 
 Please continue reading to learn about the different ways in which this example project can be extended.
 
-* To learn how to assign participants to different conditions, see :doc:`conditions`.
-* To learn more about questionnaires, see :doc:`questionnaires/main`.
-* To learn more about how to show static content to participants, see :doc:`instruction_pages`.
-* To learn about how to add your own custom pages, see :doc:`blueprints`.
-* To learn how to store your own data to the database, see :doc:`tables`.
+* To learn more about questionnaires, see :doc:`../getting_started/basic_questionnaires`.
+* To learn more about how to show simple custom pages to participants, see :doc:`../getting_started/simple_custom_pages`.
+* To learn how to implement different kinds of experimental designs in BOFS, see the conditional routing section in :doc:`../getting_started/project_configuration`.
+* To learn more about configuring BOFS projects, see :doc:`../getting_started/project_configuration`.
+* To learn about how to add advanced custom pages with programming, see :doc:`../advanced/advanced_custom_pages`.
+* To learn how to store your own data to the database, see :doc:`../advanced/database_tables`.
 
 
 .. TIP::

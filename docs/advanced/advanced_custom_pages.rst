@@ -1,13 +1,25 @@
-Adding Custom Routes (Blueprints)
-=================================
+Advanced Custom Pages
+=====================
 
-Custom web pages and functionality can be added to your Bride of Frankensystem projects by making use of Flask
-Blueprints. The Flask documentation describes `blueprints <https://flask.palletsprojects.com/en/latest/tutorial/views/>`_
-as a way to organize groups of related views and other code ("view" refers to the web page seen by end users). You may
-find it helpful to look through Flask's documentation to see code for some example pages.
+For complex interactive pages that go beyond simple HTML content, BOFS uses Flask Blueprints. This allows you to create fully custom pages with Python logic, dynamic content, data processing, and complex user interactions.
 
-The code you write for BOFS Blueprints is like any other Flask blueprint, with the exception that your files must
-be structured in a specific way. BOFS blueprints must be in their own directory inside of your project's root directory.
+.. note::
+    This section requires basic Python programming knowledge. If you just need simple instruction or content pages, see :doc:`../getting_started/simple_custom_pages` instead.
+
+**When to Use Advanced Custom Pages**
+
+- Interactive tasks (games, experiments, simulations)
+- Pages that need to process form data
+- Dynamic content based on participant responses
+- Integration with external APIs or services
+- Complex data validation or calculations
+
+Flask Blueprints in BOFS
+------------------------
+
+BOFS uses Flask's blueprint system to organize custom functionality. The Flask documentation describes `blueprints <https://flask.palletsprojects.com/en/latest/tutorial/views/>`_ as a way to organize groups of related views and other code.
+
+Your custom blueprints must be structured in a specific way and placed in their own directory inside your project's root directory.
 
 For example, consider a blueprint called "my_blueprint":
 
@@ -110,7 +122,7 @@ Database Tables
 ~~~~~~~~~~~~~~~
 
 This example makes use of a database table. For more information on how to use database tables in your custom routes,
-see :doc:`tables`.
+see :doc:`database_tables`.
 
 Accessing Questionnaire Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -140,6 +152,9 @@ Therefore, for a questionnaire named "demographics" and a question id of "age", 
 
     participant = db.Participant.query.get(session['participantID'])
     age = participant.questionnaire('demographics').age
+
+
+For more details, please see :doc:`/reference/accessing_participant_data`.
 
 
 Redirecting Participants
