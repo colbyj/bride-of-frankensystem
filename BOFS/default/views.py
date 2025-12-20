@@ -132,8 +132,10 @@ def route_external_id():
         if not current_app.config['RETRIEVE_SESSIONS']:
             return redirect(join_urls('/redirect_from_page', request.path))
 
+        # The assumption at this stage is that the user will have no session data with their MTurkID, and if there is
+        # any, then it would be associated with a different participantID.
         sessionFromMTurkID = db.session.query(db.SessionStore).\
-            filter(db.SessionStore.mTurkID == p.mTurkID).\
+            filter(db.SessionStore.mTurkID == p.mTurkID, db.SessionStore.participantID != p.participantID).\
             order_by(db.desc(db.SessionStore.createdOn)).all()
 
         allowRetakes = current_app.config['ALLOW_RETAKES']
@@ -149,7 +151,7 @@ def route_external_id():
                 )
 
             if allowRetakes:
-                # If allow retakes is True, then don't try to re-load data from past attempts that were completed.
+                # If `ALLOW_RETAKES` is `True`, then don't try to re-load data from past attempts that were completed.
                 pFromMTurkID = pFromMTurkID.filter(db.Participant.finished != True, db.Participant.participantID != session['participantID'])
 
             pFromMTurkID = pFromMTurkID.all()

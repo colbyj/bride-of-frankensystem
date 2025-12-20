@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bride-of-frankensystem"
-version = "2.0.0.8"
+version = "2.0.0.9"
 description = "A framework that allows for the development of custom online experiments and surveys."
 readme = "README.md"
-authors = [{ name = "Colby Johanson", email = "colby.johanson@usask.ca" }]
+authors = [{ name = "Colby Johanson", email = "colby.g.j@gmail.com" }]
 license = { file = "LICENSE" }
 classifiers = [
     "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
