@@ -1,0 +1,85 @@
+{% macro btnContinue(includeDiv=true) -%}
+    {% if includeDiv %}
+        <div class="navigation padding">
+            <div style="float: right">
+    {% endif %}
+                <input class="btn btn-light" style="width: 160px;" id="btnNext" type="submit" value="Continue">
+    {% if includeDiv %}
+            </div>
+            <div style="clear: both"></div>
+        </div>
+    {% endif %}
+{%- endmacro %}
+
+{% macro adminControls() -%}
+    {% if (session.get('loggedIn', False) or debug) and session.get('participantID', False) and request.blueprint != 'admin' %}
+    <div class="fixed-bottom debug-menu bg-dark">
+        <div class="row">
+            <div class="col-sm-2" style="text-align:left;">
+                <a href="/redirect_previous_page" class="btn btn-light btn-sm" role="button" style="width: 50px;"><i class="fas fa-arrow-circle-left"></i></a>
+            </div>
+            <div class="col-sm-2 dropup" style="text-align:center; padding: 0 8px;">
+                <button class="btn btn-light btn-sm dropdown-toggle" style="width: 100%;" data-bs-toggle="dropdown" aria-expanded="false">Skip to page... <i class="fas fa-file"></i></button>
+                <div class="dropdown-menu">
+                    {% for page in flat_page_list %}
+                    <a class="dropdown-item" href="/redirect_to_page/{{ page.path }}">{{ page }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="col-sm-2" style="text-align:center; padding: 0 8px;">
+                <a href="/restart" class="btn btn-light btn-sm" role="button" style="width: 100%;">Restart <i class="fas fa-redo"></i></a>
+            </div>
+            <div class="col-sm-2" style="text-align:center; padding: 0 8px;">
+                <a href="/admin" class="btn btn-light btn-sm" role="button" style="width: 100%;">Admin Panel <i class="fas fa-tools"></i></a>
+            </div>
+            <div class="col-sm-2 dropup" style="text-align:center; padding: 0 8px;">
+                <a href="#" class="btn btn-light btn-sm dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 100%;">Session Variables <i class="fas fa-clipboard-list"></i></a>
+                <div class="dropdown-menu debug-session">
+                    <ul>
+                        {% for variable in session %}
+                            <li>{{ variable }}: <pre>{{ session[variable] }}</pre></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="col-sm-2" style="text-align:right;">
+                <a href="/redirect_next_page" class="btn btn-light btn-sm" role="button" style="width: 50px;"><i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{%- endmacro %}
+
+{% macro checkUserActive() %}
+    <script type="text/javascript">
+    {% if 'currentUrl' in session and session['currentUrl'] %}
+        setInterval(function() {
+            $.ajax({
+                url: "{{ url_for('default.route_user_active') }}",
+                dataType: "html",
+                success: function(data) {}
+            });
+        }, 30000);
+
+        // Redirect user to the correct page if they are on the wrong page.
+        window.onload = function() {
+            if (window.location.pathname.includes("admin")) {
+                return;
+            }
+
+            var xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function () {
+                if (this.readyState === 4 && this.status === 200) {
+                    if (window.location.pathname.substr(1) != this.responseText)  {
+                        window.location.href = "/" + this.responseText;
+                    }
+                }
+            };
+            xhttp.open("GET", "/current_url", true);
+            xhttp.send();
+        };
+        window.onunload = function(){};
+    {% endif %}
+</script>
+
+{%- endmacro %}

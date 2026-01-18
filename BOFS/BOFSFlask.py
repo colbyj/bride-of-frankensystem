@@ -6,7 +6,7 @@ import toml
 import os
 import random
 from typing import Union
-from flask import Flask, send_from_directory, Response, Blueprint
+from flask import Flask, send_from_directory, Response, Blueprint, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 from BOFS import util
@@ -330,7 +330,14 @@ class BOFSFlask(Flask):
         Allows all templates to access several variables/methods used within BOFS.
         :return: a dictionary of variables/methods
         """
+        style_url = url_for('BOFS_static', filename='style.css')
+
+        # if there's another style.css at /static/style.css, then use that one instead.
+        if os.path.exists(os.path.join(self.root_path, 'static', 'style.css')):
+            style_url = url_for('static', filename='style.css')
+
         template_vars = dict(
+            style_url=style_url,
             flat_page_list=self.page_list.flat_page_list(),
             debug=self.run_with_debugging,
             shuffle=random.shuffle,
