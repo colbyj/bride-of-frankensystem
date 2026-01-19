@@ -23,7 +23,8 @@ dependencies = [
     "flask-compress",
     "toml",
     "crawlerdetect",
-    "pandas"
+    "pandas",
+    "questionary>=2.1.0"
 ]
 requires-python = ">=3.9"
 
