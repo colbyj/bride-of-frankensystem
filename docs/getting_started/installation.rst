@@ -100,7 +100,7 @@ Step 4: Try Your First Experiment
 
 3. **Activate BOFS** (if you used the virtual environment): Run the activation command from Step 2.3 above.
 
-4. **Run the Example**: Type ``BOFS minimal.toml -d``
+4. **Run the Example**: Type ``BOFS run minimal.toml -d``
 
 5. **View Your Experiment**: Open a web browser and go to ``http://localhost:5000``
 
@@ -124,7 +124,7 @@ Next Steps
 
 - **"python not found"**: Make sure Python is installed and added to your system PATH.
 - **"pip not found"**: If on Windows, make sure you allowed the installer to allow Python to your PATH. If on Linux, you may need to install ``pip`` separately.
-- **"BOFS not found"**: Make sure you activated your virtual environment (Step 2.3) and that BOFS was installed via ``pip``. You can also try the ``python -m BOFS`` command, which is equivalent.
+- **"BOFS not found"**: Make sure you activated your virtual environment (Step 2.3) and that BOFS was installed via ``pip``. You can also try ``python -m BOFS run config.toml``, which is equivalent.
 - **"Permission denied"**: Try running your command line as administrator (Windows) or using ``sudo`` (Mac/Linux).
 - **"Address Already in Use"**: Try configuring your project to work with a different port (by editing the ``.toml`` config file).
 

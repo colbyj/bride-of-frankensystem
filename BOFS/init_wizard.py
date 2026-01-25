@@ -4,6 +4,7 @@ BOFS Init Wizard - Interactive project scaffolding for BOFS experiments.
 This module provides an interactive CLI wizard for creating new BOFS projects
 with customizable features. The feature system is designed for easy extension.
 """
+from __future__ import annotations
 
 import html
 import os
@@ -668,9 +669,62 @@ def run_wizard() -> Optional[Path]:
         print(line)
 
     print()
-    print("Next steps:")
-    print(f"  cd {name}")
-    print("  BOFS config.toml -d")
-    print()
+
+    # Ask if user wants to start the project
+    start_now = questionary.confirm(
+        "Would you like to start your project now?",
+        default=True
+    ).ask()
+
+    if start_now:
+        import sys
+        import webbrowser
+        import threading
+        from .create_app import create_app
+
+        config_file = "config.toml"
+        project_dir = str(project_path)
+
+        print()
+        print("Starting project in debug mode...")
+
+        app = create_app(project_dir, config_file, debug=True, reloader_off=False)
+        port = app.config.get("PORT", 5000)
+        url = f"http://localhost:{port}"
+
+        # Open browser after a short delay to let the server start
+        def open_browser():
+            import time
+            time.sleep(1.5)
+            webbrowser.open(url)
+
+        browser_thread = threading.Thread(target=open_browser, daemon=True)
+        browser_thread.start()
+
+        print(f"Opening {url} in your browser...")
+        print("Press Ctrl+C to stop the server.")
+        print()
+
+        # Modify sys.argv so the reloader restarts with the correct arguments.
+        # Without this, the reloader would try to run 'init' again instead of 'run'.
+        sys.argv = [sys.argv[0], 'run', '-d', '--path', project_dir, config_file]
+
+        # Ensure PYTHONPATH includes the BOFS package location so the reloader
+        # subprocess can find it after os.chdir() changes the working directory.
+        import BOFS
+        bofs_parent_dir = os.path.dirname(os.path.dirname(BOFS.__file__))
+        current_pythonpath = os.environ.get('PYTHONPATH', '')
+        if bofs_parent_dir not in current_pythonpath:
+            if current_pythonpath:
+                os.environ['PYTHONPATH'] = bofs_parent_dir + os.pathsep + current_pythonpath
+            else:
+                os.environ['PYTHONPATH'] = bofs_parent_dir
+
+        app.run('0.0.0.0', port)
+    else:
+        print("To start your project later:")
+        print(f"  cd {name}")
+        print("  BOFS run config.toml -d")
+        print()
 
     return project_path

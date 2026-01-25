@@ -13,7 +13,6 @@ def create_app(path, config_name, debug=False, reloader_off=False):
                     root_path=path,
                     run_with_debugging=debug,
                     run_with_reloader_off=reloader_off)
-    app.load_config(config_name, silent=False)
 
     if 'USE_ADMIN' not in app.config or app.config['USE_ADMIN'] is True:
         app.load_blueprint('BOFS.admin', 'admin')

@@ -7,17 +7,48 @@ from .create_app import create_app
 def run_server(args):
     """Run the BOFS server with the specified configuration."""
     if args.path:
-        path = args.path
+        path = os.path.abspath(args.path)
+        config_name = args.config
     else:
         # Set the path based on the path of the config file.
-        path = os.path.dirname(os.path.abspath(args.config))
-        args.config = os.path.basename(args.config)
+        abs_config = os.path.abspath(args.config)
+        path = os.path.dirname(abs_config)
+        config_name = os.path.basename(abs_config)
 
-    app = create_app(path, args.config, args.debug, args.reloader_off)
+    # Default to current directory if path is empty (config file in current dir)
+    if not path:
+        path = os.getcwd()
+
+    try:
+        app = create_app(path, config_name, args.debug, args.reloader_off)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if app is None:
+        sys.exit(1)
+
     port = 5000  # Default to port 5000 if it's not set.
 
     if "PORT" in app.config:
         port = app.config["PORT"]
+
+    # Update sys.argv with resolved paths so the reloader works correctly.
+    # When Flask's reloader restarts, it uses sys.argv, and after os.chdir()
+    # in create_app, relative paths in the original argv may no longer be valid.
+    if args.debug and not args.reloader_off:
+        sys.argv = [sys.argv[0], 'run', '-d', '--path', path, config_name]
+
+        # Ensure PYTHONPATH includes the BOFS package location so the reloader
+        # subprocess can find it after os.chdir() changes the working directory.
+        import BOFS
+        bofs_parent_dir = os.path.dirname(os.path.dirname(BOFS.__file__))
+        current_pythonpath = os.environ.get('PYTHONPATH', '')
+        if bofs_parent_dir not in current_pythonpath:
+            if current_pythonpath:
+                os.environ['PYTHONPATH'] = bofs_parent_dir + os.pathsep + current_pythonpath
+            else:
+                os.environ['PYTHONPATH'] = bofs_parent_dir
 
     app.run('0.0.0.0', port)
 

@@ -29,6 +29,13 @@ class BOFSFlask(Flask):
         self.load_config(config_name)
         self.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+        # Validate required config values
+        if 'PAGE_LIST' not in self.config:
+            raise ValueError(
+                f"Configuration file '{config_name}' is missing required 'PAGE_LIST' setting.\n"
+                f"Please add a PAGE_LIST to define your experiment's page flow."
+            )
+
         self.page_list = PageList(self.config['PAGE_LIST'])
 
         self.bofs_path = os.path.dirname(__file__)  # Get the path to where the BOFS files (like this file) are
@@ -106,8 +113,11 @@ class BOFSFlask(Flask):
     # (https://github.com/miguelgrinberg/Flask-SocketIO/blob/master/flask_socketio/__init__.py)
     # MIT License, Copyright holder Miguel Grinberg
     def eventlet_run(self, app, host=None, port=None, **kwargs) -> None:
+        import threading
+        import time
         import eventlet.wsgi
         import eventlet.green
+
         addresses = eventlet.green.socket.getaddrinfo(host, port)
         if not addresses:
             raise RuntimeError('Could not resolve host to a valid address')
@@ -125,17 +135,46 @@ class BOFSFlask(Flask):
             ssl_params['server_side'] = True  # Listening requires true
             eventlet_socket = eventlet.wrap_ssl(eventlet_socket, **ssl_params)
 
-        eventlet.wsgi.server(eventlet_socket, app, **kwargs)
+        # Run server in daemon thread so main thread can handle Ctrl+C
+        server_thread = threading.Thread(
+            target=eventlet.wsgi.server,
+            args=(eventlet_socket, app),
+            kwargs=kwargs,
+            daemon=True
+        )
+        server_thread.start()
+
+        try:
+            while server_thread.is_alive():
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            pass
 
     def load_config(self, filename, silent=False) -> None:
+        # Check if the file exists first
+        if not os.path.exists(filename):
+            raise FileNotFoundError(
+                f"Configuration file not found: '{filename}'\n"
+                f"Make sure the file exists and you're running BOFS from the correct directory."
+            )
+
         if filename.endswith(".cfg"):
             self.config.from_pyfile(filename, silent=silent)
         elif filename.endswith(".toml"):
-            self.config.from_file(filename, load=toml.load)
+            try:
+                self.config.from_file(filename, load=toml.load)
+            except toml.TomlDecodeError as e:
+                raise ValueError(f"Invalid TOML syntax in '{filename}': {e}")
         elif filename.endswith(".json"):
-            self.config.from_file(filename, load=json.load)
+            try:
+                self.config.from_file(filename, load=json.load)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON syntax in '{filename}': {e}")
         else:
-            print("Error: Cannot load configuration file.")
+            raise ValueError(
+                f"Unsupported configuration file format: '{filename}'\n"
+                f"BOFS supports .toml, .json, and .cfg configuration files."
+            )
 
     def load_empty_blueprint(self, blueprint_path):
         print("Creating empty blueprint: %s" % blueprint_path)

@@ -3,19 +3,84 @@ CLI Reference
 
 This page provides comprehensive documentation for the Bride of Frankensystem (BOFS) command-line interface.
 
-Basic Usage
------------
+Commands Overview
+-----------------
 
-The basic syntax for running a BOFS project is:
+BOFS provides two main commands:
+
+- ``BOFS init`` - Create a new project interactively
+- ``BOFS run <config>`` (or simply ``BOFS <config>``) - Run an existing project
+
+init Command
+------------
+
+The ``init`` command launches an interactive wizard that guides you through creating a new BOFS project.
 
 .. code-block:: bash
 
-    BOFS config_file.toml [OPTIONS]
+    BOFS init
+
+The wizard will prompt you for:
+
+1. **Project name** - The directory name for your project (alphanumeric, hyphens, and underscores only)
+2. **Project title** - The title displayed to participants in the browser
+3. **Admin password** - Password for accessing the admin panel at ``/admin``
+4. **Features** - Optional features to include in your project:
+
+   - External ID page (MTurk/Prolific participant tracking)
+   - Instructions page
+   - Simple custom page
+   - Multiple conditions (experimental groups)
+   - Pre/post questionnaires
+   - Custom blueprint (Python routes)
+   - Example questionnaires
+   - Example JSON tables
+
+After creating the project, the wizard will ask if you want to start it immediately. If you choose yes, BOFS will start the server in debug mode and open your default web browser to the project URL.
+
+Example session:
+
+.. code-block:: text
+
+    $ BOFS init
+
+    BOFS Project Initialization Wizard
+    ========================================
+
+    ? Project name (directory name): my_experiment
+    ? Project title (displayed to participants): My Experiment
+    ? Admin password (default: admin): ********
+    ? Select features to include: (Space to select, Enter to confirm)
+      ❯ ◉ Example questionnaires - Include demo questionnaires showing different question types
+        ◯ External ID page (MTurk/Prolific) - Collect participant IDs from recruitment platforms
+        ...
+
+    Creating project...
+
+    Created: my_experiment/
+        |-- config.toml
+        |-- consent.html
+        `-- questionnaires/
+            `-- survey.json
+
+    ? Would you like to start your project now? Yes
+    Starting project in debug mode...
+    Opening http://localhost:5000 in your browser...
+
+run Command
+-----------
+
+The ``run`` command starts a BOFS project server. For backward compatibility, you can omit the ``run`` keyword.
+
+.. code-block:: bash
+
+    BOFS run config_file.toml [OPTIONS]
+    BOFS config_file.toml [OPTIONS]  # Equivalent (backward compatible)
 
 Where ``config_file.toml`` is the path to your TOML configuration file that defines your experiment setup.
 
-Command Line Options
---------------------
+run Command Options
+-------------------
 
 config (Required)
 ~~~~~~~~~~~~~~~~~
@@ -26,8 +91,8 @@ The name or path of the configuration file to load. This should be a TOML file c
 
 .. code-block:: bash
 
-    BOFS minimal.toml
-    BOFS /path/to/my/experiment.toml
+    BOFS run minimal.toml
+    BOFS run /path/to/my/experiment.toml
 
 --debug, -d
 ~~~~~~~~~~~
@@ -43,8 +108,8 @@ Toggles debug mode, which provides enhanced development features:
 
 .. code-block:: bash
 
-    BOFS config.toml --debug
-    BOFS config.toml -d
+    BOFS run config.toml --debug
+    BOFS run config.toml -d
 
 .. warning::
     Debug mode should **never** be used in production environments as it can expose sensitive information and security vulnerabilities.
@@ -58,10 +123,15 @@ Specifies the working directory for your BOFS project. This is useful when your 
 
 .. code-block:: bash
 
-    BOFS config.toml --path /path/to/project
-    BOFS config.toml -p ./my_experiment
+    BOFS run config.toml --path /path/to/project
+    BOFS run config.toml -p ./my_experiment
 
 If not specified, BOFS will use the directory containing the configuration file as the working directory.
+
+Stopping the Server
+~~~~~~~~~~~~~~~~~~~
+
+To stop a running BOFS server, press **Ctrl+C** in the terminal. The server will shut down gracefully.
 
 --reloader-off, -r
 ~~~~~~~~~~~~~~~~~~~
@@ -72,8 +142,8 @@ When running in debug mode, disables the automatic reloader feature. The reloade
 
 .. code-block:: bash
 
-    BOFS config.toml --debug --reloader-off
-    BOFS config.toml -d -r
+    BOFS run config.toml --debug --reloader-off
+    BOFS run config.toml -d -r
 
 This option is only meaningful when used in combination with ``--debug`` mode.
 
@@ -87,7 +157,7 @@ For standard development work:
 
 .. code-block:: bash
 
-    BOFS experiment.toml -d
+    BOFS run experiment.toml -d
 
 This enables debug mode with auto-reloading for rapid development.
 
@@ -98,7 +168,7 @@ For testing in a production-like environment:
 
 .. code-block:: bash
 
-    BOFS experiment.toml
+    BOFS run experiment.toml
 
 This runs without debug mode, similar to how it would run in production.
 
@@ -109,7 +179,7 @@ When your project files are in a specific directory:
 
 .. code-block:: bash
 
-    BOFS config.toml -p /home/researcher/experiments/study1
+    BOFS run config.toml -p /home/researcher/experiments/study1
 
 Debug Without Auto-reload
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,7 +188,7 @@ For debugging without automatic restarts (useful when testing session persistenc
 
 .. code-block:: bash
 
-    BOFS experiment.toml -d -r
+    BOFS run experiment.toml -d -r
 
 Running as Python Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -127,8 +197,8 @@ You can also run BOFS as a Python module:
 
 .. code-block:: bash
 
-    python -m BOFS config.toml
-    python -m BOFS config.toml -d
+    python -m BOFS run config.toml
+    python -m BOFS run config.toml -d
 
 This is particularly useful in environments where the ``BOFS`` command is not in your PATH.
 
@@ -144,15 +214,15 @@ When using virtual environments, activate your environment first:
 
     # Linux/Mac
     source bofs_venv/bin/activate
-    BOFS experiment.toml -d
+    BOFS run experiment.toml -d
 
     # Windows (Command Prompt)
     .\bofs_venv\Scripts\activate.bat
-    BOFS experiment.toml -d
+    BOFS run experiment.toml -d
 
     # Windows (PowerShell)
     .\bofs_venv\Scripts\Activate.ps1
-    BOFS experiment.toml -d
+    BOFS run experiment.toml -d
 
 IDE Integration
 ~~~~~~~~~~~~~~~
@@ -162,7 +232,7 @@ IDE Integration
 1. Go to Run → Edit Configurations
 2. Add a new Python configuration
 3. Set Module name to: ``BOFS``
-4. Set Parameters to: ``your_config.toml -d``
+4. Set Parameters to: ``run your_config.toml -d``
 5. Set Working directory to your project path
 
 **VS Code Configuration:**
@@ -179,7 +249,7 @@ Add to your ``.vscode/launch.json``:
                 "type": "python",
                 "request": "launch",
                 "module": "BOFS",
-                "args": ["config.toml", "-d"],
+                "args": ["run", "config.toml", "-d"],
                 "cwd": "${workspaceFolder}",
                 "console": "integratedTerminal"
             }
@@ -222,7 +292,7 @@ Ensure your configuration file path is correct and the file exists:
 .. code-block:: bash
 
     ls -la config.toml  # Check if file exists
-    BOFS ./config.toml  # Use relative path
+    BOFS run ./config.toml  # Use relative path
 
 **Port already in use:**
 
@@ -241,7 +311,7 @@ Use debug mode to see detailed error messages:
 
 .. code-block:: bash
 
-    BOFS config.toml -d
+    BOFS run config.toml -d
 
 **Check configuration:**
 
