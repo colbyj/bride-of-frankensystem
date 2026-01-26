@@ -1,5 +1,5 @@
 Basic Questionnaires
-===================
+====================
 
 BOFS includes a powerful questionnaire system for collecting survey data from participants. Questionnaires are defined using JSON files, making them easy to create, modify, and share across projects.
 
@@ -53,17 +53,17 @@ Key Components
 
 **Questionnaire Properties**
 
-======================== ========== ===========================================
-Property                 Required   Description
-======================== ========== ===========================================
-``title``               No         Display name (admin panel only)
-``reference``            No         Citation information (admin panel only)
-``doi``                  No         DOI link (admin panel only) 
-``instructions``         No         Text shown above questions (supports HTML)
-``code``                 No         JavaScript code executed at runtime
-``questions``            Yes        List of question objects
-``participant_calculations`` No     Advanced calculations (see advanced guide)
-======================== ========== ===========================================
+============================ ========== ===========================================
+Property                     Required   Description
+============================ ========== ===========================================
+``title``                    No         Display name (admin panel only)
+``reference``                No         Citation information (admin panel only)
+``doi``                      No         DOI link (admin panel only)
+``instructions``             No         Text shown above questions (supports HTML)
+``code``                     No         JavaScript code executed at runtime
+``questions``                Yes        List of question objects
+``participant_calculations`` No         Advanced calculations (see advanced guide)
+============================ ========== ===========================================
 
 .. note::
     You can add custom properties to questionnaires for your own reference - BOFS will ignore any unrecognized keys.
@@ -224,7 +224,7 @@ Additional Radiogrid Options:
 
 .. note::
 
-    For more details about configuring the different types of questions, see :doc:`../questionnaires/question_types`.
+    For more details about configuring the different types of questions, see :doc:`../reference/question_types`.
 
 
 Adding Questionnaires to Your Experiment
@@ -259,7 +259,7 @@ The preview will:
 - Offer to add new database columns if needed
 
 Required vs Optional Questions
------------------------------
+------------------------------
 
 By default, all questions are optional. To make a question required:
 
@@ -308,11 +308,11 @@ When you have real participant data, you have several options:
 - Always backup your database before making changes
 
 .. warning::
-    If you change a questionnaires, restart your BOFS application to ensure you've loaded in the updated questionnaires.
+    If you change a questionnaire, restart your BOFS application to ensure you've loaded in the updated questionnaires.
 
 Next Steps
 ----------
 
 - For radio button grids and custom question types, see :doc:`../advanced/advanced_questionnaires`
 - For examples of questionnaires in complete experiments, see :doc:`../examples/ab_experiment`
-- For all available question types and their options, see :doc:`../questionnaires/question_types`
+- For all available question types and their options, see :doc:`../reference/question_types`

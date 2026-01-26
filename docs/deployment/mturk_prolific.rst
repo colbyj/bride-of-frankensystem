@@ -45,11 +45,11 @@ Add these settings to your TOML configuration file for MTurk integration:
     RETRIEVE_SESSIONS = true  # Load a user's session via their Worker ID if they try to access the task from the start again
     ALLOW_RETAKES = false     # Prevent a worker from completing the task twice
 
-.. image:: /examples/quickstart/minimal/minimal1.png
+.. image:: /examples/quickstart/page_external_id.png
   :width: 800
   :alt: The external ID page.
 
-.. image:: /examples/quickstart/minimal/minimal3.png
+.. image:: /examples/quickstart/page_end.png
   :width: 800
   :alt: The end page.
 

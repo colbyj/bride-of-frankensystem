@@ -66,6 +66,11 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     if 'CONDITIONS' not in app.config:
         app.config['CONDITIONS'] = []
 
+    # Flask defaults APPLICATION_ROOT to '/', but that causes issues with URL concatenation
+    # (e.g., "/" + "/" + "consent" = "//consent" which is interpreted as a protocol-relative URL)
+    if 'APPLICATION_ROOT' not in app.config or app.config['APPLICATION_ROOT'] == '/':
+        app.config['APPLICATION_ROOT'] = ''
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
             continue

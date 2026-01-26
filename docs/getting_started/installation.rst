@@ -83,7 +83,6 @@ You'll need to edit text files (configuration files, HTML templates). While you 
 
 - **Visual Studio Code** (free, excellent for beginners): https://code.visualstudio.com
 - **Sublime Text**: https://www.sublimetext.com
-- **Atom**: https://atom.io
 
 These editors can be extended via plugins to better support Python code, but this isn't strictly necessary.
 

@@ -33,7 +33,7 @@ Progress Monitoring
 
 The progress dashboard (``/admin/progress``) provides real-time monitoring of participant progress through your experiment.
 
-.. image:: /examples/quickstart/minimal/minimal_admin.png
+.. image:: /examples/quickstart/page_admin.png
   :width: 800
   :alt: The admin page.
 

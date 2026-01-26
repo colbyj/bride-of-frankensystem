@@ -96,7 +96,7 @@ full control over when participants can proceed.</p>
                 "Agree",
                 "Strongly agree"
             ],
-            "q_text": [
+            "questions": [
                 {
                     "id": "item1",
                     "text": "The treatment was effective"
@@ -224,7 +224,7 @@ def example():
                 "",
                 "Strongly agree"
             ],
-            "q_text": [
+            "questions": [
                 {
                     "id": "clear_instructions",
                     "text": "The instructions were clear"
@@ -486,7 +486,7 @@ def build_survey_json() -> str:
                 "Agree",
                 "Strongly agree"
             ],
-            "q_text": [
+            "questions": [
                 {
                     "id": "item1",
                     "text": "Statement 1"

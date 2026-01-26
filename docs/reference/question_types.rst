@@ -276,7 +276,7 @@ multi_field
 
 -  Multi-line text field.
 
-**Properites**
+**Properties**
 
 -  ``id``: unique id for number field (required, string)
 -  ``instructions``: text needed to describe what field input should be

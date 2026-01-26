@@ -57,6 +57,6 @@ Welcome to Bride of Frankensystem's documentation! If you're just getting starte
    reference/cli-reference
    reference/accessing_participant_data
    reference/config_options
-   questionnaires/question_types
+   reference/question_types
    reference/default_routes
    reference/util

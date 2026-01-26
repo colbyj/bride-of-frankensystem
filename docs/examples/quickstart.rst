@@ -141,7 +141,7 @@ Questionnaires are defined in JSON format. Here's the structure of the generated
                 "instructions": "Rate your agreement with the following statements.",
                 "id": "agreement",
                 "labels": ["Strongly disagree", "Disagree", "Neutral", "Agree", "Strongly agree"],
-                "q_text": [
+                "questions": [
                     {"id": "item1", "text": "Statement 1"},
                     {"id": "item2", "text": "Statement 2"},
                     {"id": "item3", "text": "Statement 3"}

@@ -15,7 +15,7 @@
                 "",
                 "Strongly agree"
             ],
-            "q_text":[
+            "questions":[
                 {
                     "id":"q1",
                     "text":"This example is fantastic"
