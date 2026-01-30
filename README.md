@@ -42,7 +42,9 @@ BOF requires Python 3.9+, along with the following Python packages.
 
 Installing and Running BOFS
 ===========================
-Please refer to the [installation instructions](https://bride-of-frankensystem.readthedocs.io/en/latest/installation.html) in the documentation.
+Please refer to the [installation instructions](https://docs.frankensystem.net/en/latest/getting_started/installation.html) in the documentation.
+
+Once installed, use `BOFS init` to initialize a new project.
 
 
 Further Help
