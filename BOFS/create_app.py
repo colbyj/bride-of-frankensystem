@@ -1,7 +1,7 @@
 import os
 import sys
 from .BOFSFlask import BOFSFlask
-from .admin.util import check_and_add_column
+from .admin.util import check_and_add_column, make_columns_nullable
 
 
 def create_app(path, config_name, debug=False, reloader_off=False):
@@ -100,6 +100,25 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
         app.load_questionnaires()
         app.load_tables()
+
+        # Make orphaned DB columns nullable (before db.create_all so the model matches)
+        for q_key in app.questionnaires:
+            q = app.questionnaires[q_key]
+            orphaned = getattr(q, '_orphaned_columns', None) or []
+            if orphaned:
+                orphaned_names = [col['name'] for col in orphaned]
+                make_columns_nullable(q.db_class.__tablename__, orphaned_names)
+
+        # Print validation summary (JSON-level errors only; schema warnings come later)
+        fatal_errors = [e for e in app.validation_errors if e.severity == "error"]
+        warnings = [e for e in app.validation_errors if e.severity == "warning"]
+        if fatal_errors:
+            print(f"\n{'='*60}")
+            print(f"QUESTIONNAIRE VALIDATION: {len(fatal_errors)} error(s), {len(warnings)} warning(s)")
+            print(f"The experiment will NOT be accessible until these errors are fixed.")
+            print(f"Open the app in a browser to see detailed error descriptions.")
+            print(f"{'='*60}\n")
+
         app.db.create_all()
 
         # Check to see if all the columns are there
@@ -115,14 +134,15 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             app.db.session.commit()
             print("Checking participants for web scrapers.")
 
-        # Now user-defined questionnaires
+        # Now user-defined questionnaires (only those that passed validation)
+        # New columns are added as nullable — existing rows will have NULL
         for q_key in app.questionnaires:
             q = app.questionnaires[q_key]
             q_fields = q.fetch_fields()
             table_name = q.db_class.__tablename__
 
             for field in q_fields:
-                if check_and_add_column(table_name, field.id, field.get_type_ddl(), field.default):
+                if check_and_add_column(table_name, field.id, field.get_type_ddl()):
                     print(f"Added new column to {table_name}: {field.id}")
 
         for t_key in app.tables:
@@ -133,5 +153,15 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             for column in columns:
                 if check_and_add_column(table_name, column.name, column.get_type_ddl(), column.default):
                     print(f"Added new column to {t_key}: {column.name}")
+
+        # Check for DB-vs-JSON schema mismatches and generate warnings
+        from .validation import validate_db_schema
+        for q_key in app.questionnaires:
+            q = app.questionnaires[q_key]
+            schema_warnings = validate_db_schema(q, q_key)
+            if schema_warnings:
+                app.validation_errors.extend(schema_warnings)
+                for w in schema_warnings:
+                    print(w)
 
     return app

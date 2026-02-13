@@ -1,5 +1,123 @@
-import pytest
+import json
+import os
 
+import pytest
+import toml
+
+
+# ===========================================================================
+# Tier 2 fixtures — minimal BOFS app with in-memory SQLite
+# ===========================================================================
+
+@pytest.fixture
+def bofs_app(tmp_path):
+    """
+    Create a minimal BOFS Flask app backed by in-memory SQLite.
+
+    Yields the app with an active application context pushed.
+    Restores the original working directory on teardown.
+    """
+    # Write a minimal config.toml
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test Experiment",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": False,
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    # Create required directories
+    (tmp_path / "questionnaires").mkdir()
+
+    # Write a minimal consent.html (required by BOFSFlask URL rule)
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    # Save and restore the working directory (create_app does os.chdir)
+    original_cwd = os.getcwd()
+
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=True)
+
+    ctx = app.app_context()
+    ctx.push()
+    app.db.create_all()
+
+    yield app
+
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
+@pytest.fixture
+def invalid_questionnaires():
+    """Sample invalid questionnaire JSON data for validation testing."""
+    return {
+        "missing_questions_key": {
+            "title": "Bad Questionnaire",
+            "instructions": "This has no questions key",
+        },
+        "invalid_question_type": {
+            "questions": [{"questiontype": "magical_widget", "id": "test"}]
+        },
+        "duplicate_ids": {
+            "questions": [
+                {"questiontype": "field", "id": "duplicate"},
+                {"questiontype": "field", "id": "duplicate"},
+            ]
+        },
+        "unsafe_field_id": {
+            "questions": [
+                {"questiontype": "field", "id": "123invalid"},
+                {"questiontype": "field", "id": "has-dash"},
+                {"questiontype": "field", "id": "has space"},
+            ]
+        },
+        "reserved_column": {
+            "questions": [{"questiontype": "field", "id": "participantID"}]
+        },
+        "broken_calculation": {
+            "questions": [{"questiontype": "slider", "id": "q1"}],
+            "participant_calculations": {"total": "q1 + nonexistent_field"},
+        },
+    }
+
+
+# ===========================================================================
+# Tier 2 helper — write a questionnaire JSON to the app's questionnaires dir
+# ===========================================================================
+
+def write_questionnaire_file(app, name, data):
+    """
+    Write a questionnaire JSON into the app's questionnaires/ directory
+    and load it into the app. Returns the JSONQuestionnaire instance.
+    """
+    q_dir = os.path.join(app.root_path, "questionnaires")
+    filepath = os.path.join(q_dir, f"{name}.json")
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+    from BOFS.JSONQuestionnaire import JSONQuestionnaire
+    q = JSONQuestionnaire(q_dir, name, is_in_db=True)
+    q.create_db_class()
+
+    # Register the model on the db so SQLAlchemy knows about it
+    setattr(app.db, "Questionnaire" + q.db_class.__name__, q.db_class)
+    app.questionnaires[name] = q
+    app.db.create_all()
+
+    return q
+
+
+# ===========================================================================
+# Tier 1 fixtures — pure data, no Flask context
+# ===========================================================================
 
 @pytest.fixture
 def simple_page_list_data():

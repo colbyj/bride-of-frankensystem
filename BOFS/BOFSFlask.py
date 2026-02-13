@@ -6,7 +6,7 @@ import toml
 import os
 import random
 from typing import Union
-from flask import Flask, send_from_directory, Response, Blueprint, url_for
+from flask import Flask, send_from_directory, Response, Blueprint, url_for, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 from BOFS import util
@@ -56,6 +56,9 @@ class BOFSFlask(Flask):
 
         self.crawler_detect = CrawlerDetect()
         """Used to detect when search engines, etc. are viewing the project."""
+
+        self.validation_errors: list = []
+        """Questionnaire validation errors collected during startup."""
 
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
         self.add_url_rule("/consent.html", endpoint="consent_html", view_func=self.route_consent)
@@ -297,15 +300,46 @@ class BOFSFlask(Flask):
             for table_filename in self.table_paths[path]:
                 self.load_table(path, table_filename)
 
-    def load_questionnaire(self, directory:str , filename: str, add_to_db=False) -> Union[JSONQuestionnaire, None]:
+    def load_questionnaire(self, directory:str , filename: str, add_to_db=False,
+                           valid_question_types=None) -> Union[JSONQuestionnaire, None]:
+        from .validation import validate_questionnaire
+
         if "questionnaire_" + filename in self.db.metadata.tables:
             return None
 
         if filename in self.questionnaires:
             return None
 
+        # Try to load the JSON file
+        try:
+            questionnaire = JSONQuestionnaire(directory, filename, add_to_db)
+        except (SyntaxError, FileNotFoundError, IOError) as e:
+            from .validation import ValidationResult
+            self.validation_errors.append(ValidationResult(
+                "error", filename, str(e),
+                "Check that the file exists and contains valid JSON syntax."
+            ))
+            print(f"  ERROR loading questionnaire '{filename}': {e}")
+            return None
+
+        # Validate the questionnaire JSON before creating the DB class
+        errors = validate_questionnaire(questionnaire.json_data, filename, valid_question_types)
+        fatal_errors = [e for e in errors if e.severity == "error"]
+        warnings = [e for e in errors if e.severity == "warning"]
+
+        for w in warnings:
+            print(w)
+        self.validation_errors.extend(warnings)
+
+        if fatal_errors:
+            self.validation_errors.extend(fatal_errors)
+            for err in fatal_errors:
+                print(err)
+            print(f"  Skipping questionnaire '{filename}' due to {len(fatal_errors)} error(s).")
+            return None
+
+        # Validation passed — create the DB class
         print(f"Loaded questionnaire: {filename}, add_to_db={add_to_db}")
-        questionnaire = JSONQuestionnaire(directory, filename, add_to_db)
         questionnaire.create_db_class()
 
         if add_to_db:
@@ -324,13 +358,27 @@ class BOFSFlask(Flask):
         return len(set(questionnaires)) == len(questionnaires)
 
     def load_questionnaires(self) -> None:
+        from .validation import validate_page_list_references, discover_question_types
+
         self.questionnaire_paths = self.find_files_in_app_and_blueprints("questionnaires")
         questionnaires_in_use = self.page_list.get_questionnaire_list()
+
+        # Discover all valid question types (built-in + project + blueprints)
+        valid_question_types = discover_question_types(self)
 
         for path in self.questionnaire_paths:
             for questionnaire_filename in self.questionnaire_paths[path]:
                 add_to_db = questionnaire_filename in questionnaires_in_use
-                self.load_questionnaire(path, questionnaire_filename, add_to_db)
+                self.load_questionnaire(path, questionnaire_filename, add_to_db, valid_question_types)
+
+        # Check that all PAGE_LIST questionnaire references have matching files
+        page_list_errors = validate_page_list_references(
+            self.config['PAGE_LIST'], self.questionnaire_paths
+        )
+        if page_list_errors:
+            self.validation_errors.extend(page_list_errors)
+            for err in page_list_errors:
+                print(err)
 
     def get_questionnaire_path(self, questionnaire_to_find) -> Union[str, None]:
         for path in self.questionnaire_paths:
@@ -347,10 +395,14 @@ class BOFSFlask(Flask):
         return send_from_directory(self.root_path, "consent.html")
 
     def page_not_found(self, e) -> tuple[str, int]:
-        return "<h1>File not Found (404)</h1>" \
-               "<p>Could not load the requested page. If you are just starting out, " \
-               "please click <a href=\"/restart\"><b>here</b></a> to reset your cookies for this page. " \
-               "If that doesn't work, please clear your cookies or switch web browsers.", 404
+        return render_template('error.html',
+            title="Page Not Found",
+            heading="File Not Found (404)",
+            message="Could not load the requested page.",
+            help_text='If you are just starting out, please click <a href="/restart"><b>here</b></a> '
+                      'to reset your cookies for this page. If that doesn\'t work, please clear your '
+                      'cookies or switch web browsers.'
+        ), 404
 
     def internal_error(self, error):
         if not self.run_with_debugging:
@@ -362,7 +414,12 @@ class BOFSFlask(Flask):
             with open(log_path, open_mode) as f:
                 f.write(f"{datetime.now()} - {error.description} - {error.original_exception}\n")
 
-        return f"<h1>Internal Server Error (500)</h1> <p>{error.description}</p><pre>{error.original_exception}</pre>", 500
+        return render_template('error.html',
+            title="Internal Server Error",
+            heading="Internal Server Error (500)",
+            message=str(error.description),
+            help_text=f"<pre>{error.original_exception}</pre>"
+        ), 500
 
     def inject_jinja_vars(self) -> dict:
         """
@@ -385,9 +442,30 @@ class BOFSFlask(Flask):
         )
         return template_vars
 
-    def before_request_(self) -> None:
+    def before_request_(self):
         """
         If running the server in debug mode, turn off Jinja caching.
+        If there are validation errors, show the error page instead of normal content.
         """
         if self.run_with_debugging:
             self.jinja_env.cache = {}
+
+        # If there are fatal validation errors, redirect all non-static routes to the error page
+        from flask import request
+        if self.validation_errors and not request.path.startswith('/BOFS_static'):
+            has_fatal = any(e.severity == "error" for e in self.validation_errors)
+            if has_fatal:
+                return render_template('error.html',
+                    title="Questionnaire Configuration Errors",
+                    heading="Questionnaire Configuration Errors",
+                    message="BOFS found issues with your questionnaire definitions that must be fixed before the experiment can run.",
+                    details=self.validation_errors,
+                    help_text='<h3>How to fix</h3>'
+                              '<ol>'
+                              '<li>Check each error above and follow the suggestion.</li>'
+                              '<li>Save your questionnaire JSON file(s).</li>'
+                              '<li>Restart BOFS to re-validate.</li>'
+                              '</ol>'
+                              '<p>If you need help with questionnaire format, see the '
+                              '<a href="https://bride-of-frankensystem.readthedocs.io/">BOFS documentation</a>.</p>'
+                )

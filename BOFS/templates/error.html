@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title|default("Error") }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --contents-width: 967px;
+        }
+        @media only screen and (max-width: 768px) {
+            :root { --contents-width: 100vw; }
+            .content { padding: 0 10px; }
+        }
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: 'segoe ui', arial, sans-serif;
+            font-size: 12pt;
+            color: #333;
+        }
+        .content {
+            width: var(--contents-width);
+            margin: 0 auto;
+            padding: 20px 0;
+        }
+        h1 { font-size: 18pt; margin-bottom: 8px; }
+        p.subtitle { color: #666; margin-top: 0; }
+        .error-item {
+            padding: 12px 16px;
+            margin: 8px 0;
+            border: 1px solid rgba(0,0,0,0.15);
+            border-left-width: 4px;
+            border-radius: 4px;
+        }
+        .error-item.error {
+            border-left-color: #d9534f;
+            background-color: rgba(217, 83, 79, 0.06);
+        }
+        .error-item.warning {
+            border-left-color: #f0ad4e;
+            background-color: rgba(240, 173, 78, 0.06);
+        }
+        .error-item .message { font-weight: 600; }
+        .error-item .suggestion {
+            margin-top: 6px; color: #555; font-size: 11pt;
+        }
+        .error-item .suggestion code {
+            background: #f0f0f0;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 10pt;
+        }
+        .error-group { margin-bottom: 24px; }
+        .error-group h2 {
+            font-size: 14pt;
+            margin-bottom: 4px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #ddd;
+        }
+        .hint {
+            overflow: auto;
+            margin-top: 30px;
+            padding: 16px;
+            background: #f7f7f7;
+            border-radius: 6px;
+            font-size: 11pt;
+            color: #555;
+        }
+        .hint h3 { font-size: 13pt; margin-top: 0; }
+        a { color: #1144cc; }
+    </style>
+</head>
+<body>
+
+<div class="content">
+    <h1>{{ heading }}</h1>
+    {% if message %}
+    <p class="subtitle">{{ message }}</p>
+    {% endif %}
+
+    {% if details %}
+        {# Group details by questionnaire if they have that attribute #}
+        {% set ns = namespace(grouped=false) %}
+        {% for item in details %}
+            {% if item.questionnaire is defined %}
+                {% set ns.grouped = true %}
+            {% endif %}
+        {% endfor %}
+
+        {% if ns.grouped %}
+            {# Collect unique questionnaire names in order #}
+            {% set seen = namespace(names=[]) %}
+            {% for item in details %}
+                {% set qname = item.questionnaire|default("General") %}
+                {% if qname not in seen.names %}
+                    {% set seen.names = seen.names + [qname] %}
+                {% endif %}
+            {% endfor %}
+
+            {% for qname in seen.names %}
+            <div class="error-group">
+                <h2>{{ qname }}</h2>
+                {% for item in details %}
+                    {% if item.questionnaire|default("General") == qname %}
+                    <div class="error-item {{ item.severity|default('error') }}">
+                        <div class="message">{{ item.message }}</div>
+                        {% if item.suggestion %}
+                        <div class="suggestion">{{ item.suggestion }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% else %}
+            {% for item in details %}
+            <div class="error-item {{ item.severity|default('error') }}">
+                {% if item is string %}
+                <div class="message">{{ item }}</div>
+                {% else %}
+                <div class="message">{{ item.message }}</div>
+                {% if item.suggestion %}
+                <div class="suggestion">{{ item.suggestion }}</div>
+                {% endif %}
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endif %}
+
+    {% if help_text %}
+    <div class="hint">
+        {{ help_text|safe }}
+    </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

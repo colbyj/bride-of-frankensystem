@@ -6,8 +6,42 @@ import traceback
 from typing import Union
 from flask import current_app, request, session, config, render_template
 from datetime import datetime
+from sqlalchemy import inspect as sa_inspect
 from .globals import db
 from BOFS.util import mean, stdev, std, var, variance, median
+
+
+def _normalize_type_name(sa_type) -> str:
+    """Normalize a SQLAlchemy reflected type to a canonical name for comparison."""
+    type_name = type(sa_type).__name__.upper()
+    if type_name in ('INTEGER', 'SMALLINTEGER', 'BIGINTEGER'):
+        return 'INTEGER'
+    elif type_name in ('FLOAT', 'REAL', 'NUMERIC', 'DECIMAL'):
+        return 'FLOAT'
+    elif type_name in ('TEXT', 'VARCHAR', 'STRING', 'NVARCHAR', 'CHAR'):
+        return 'TEXT'
+    elif type_name in ('DATETIME', 'TIMESTAMP'):
+        return 'DATETIME'
+    elif type_name == 'BOOLEAN':
+        return 'BOOLEAN'
+    return type_name
+
+
+# Maps JSONQuestionnaireColumn.data_type to normalized type names
+_JSON_TYPE_TO_NORMALIZED = {
+    'integer': 'INTEGER',
+    'float': 'FLOAT',
+    'string': 'TEXT',
+    'datetime': 'DATETIME',
+    'boolean': 'BOOLEAN',
+}
+
+
+def _types_compatible(db_type, json_data_type: str) -> bool:
+    """Check if a reflected DB column type is compatible with a JSON field's data_type."""
+    db_normalized = _normalize_type_name(db_type)
+    json_normalized = _JSON_TYPE_TO_NORMALIZED.get(json_data_type, 'TEXT')
+    return db_normalized == json_normalized
 
 
 class JSONQuestionnaireColumn(object):
@@ -148,6 +182,37 @@ class JSONQuestionnaire(object):
                 calculation = self.preprocess_calculation_string(calculation)
 
                 table_attr[field_name] = lambda self, calculation=calculation: execute_calculation(self, calculation)
+
+        # Detect orphaned columns and type mismatches by reflecting the existing DB table
+        self._orphaned_columns = []
+        self._type_mismatches = []
+        try:
+            inspector = sa_inspect(db.engine)
+            if table_name in inspector.get_table_names():
+                db_columns = {col['name']: col for col in inspector.get_columns(table_name)}
+                json_field_names = {field.id for field in self.__fields}
+
+                for col_name, col_info in db_columns.items():
+                    # Skip columns that are in the model (standard cols, fields, or calc properties)
+                    if col_name in table_attr:
+                        continue
+
+                    # This column is in the DB but not in the model — it's orphaned
+                    self._orphaned_columns.append(col_info)
+                    table_attr[col_name] = db.Column(col_info['type'], nullable=True)
+
+                # Check for type mismatches on fields present in both DB and JSON
+                for field in self.__fields:
+                    if field.id in db_columns:
+                        db_col = db_columns[field.id]
+                        if not _types_compatible(db_col['type'], field.data_type):
+                            self._type_mismatches.append({
+                                'field_id': field.id,
+                                'db_type': _normalize_type_name(db_col['type']),
+                                'json_type': field.data_type,
+                            })
+        except Exception:
+            pass  # Skip if reflection fails (e.g., new database, table doesn't exist yet)
 
         self.db_class = type(self.file_name, (db.Model,), table_attr)
 
