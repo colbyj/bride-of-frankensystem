@@ -40,6 +40,7 @@ class PageList(object):
 
         if not include_tag:
             questionnaire_name = questionnaire.split("/")[0]
+            return questionnaire_name
 
         return questionnaire
 
@@ -227,7 +228,8 @@ class PageList(object):
 
                 for condition in entry:
                     output_str += "\n"
-                    output_str += f"{last_entry['name']}"
+                    if last_entry is not None:
+                        output_str += f"{last_entry['name']}"
 
                     for subidx, subentry in enumerate(entry[condition]):
                         output_str += "-->"

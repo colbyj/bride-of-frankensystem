@@ -35,5 +35,12 @@ where = [""]
 Homepage = "https://github.com/colbyj/bride-of-frankensystem/"
 Documentation = "https://docs.frankensystem.net"
 
+[project.optional-dependencies]
+test = ["pytest>=7.0", "pytest-cov"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+
 [project.scripts]
 BOFS = "BOFS.cli:main"

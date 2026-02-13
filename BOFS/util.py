@@ -299,7 +299,10 @@ def float_or_0(value) -> float:
     :param value: value to be cast
     :return: the value as a float (or 0.0)
     """
-    value = float(value)
+    try:
+        value = float(value)
+    except (ValueError, TypeError):
+        return 0.0
 
     if math.isnan(value):
         return 0.0
@@ -313,7 +316,10 @@ def int_or_0(value) -> int:
     :param value: value to be cast
     :return: the value as a int (or 0)
     """
-    value = int(value)
+    try:
+        value = int(value)
+    except (ValueError, TypeError):
+        return 0
 
     if math.isnan(value):
         return 0
@@ -324,7 +330,7 @@ def display_time(seconds):
     if not seconds:
         return seconds
     if seconds > 60:
-        return str("{:.0f}:{:02.0f}").format((seconds / 60), (seconds % 60))
+        return str("{}:{:02d}").format(int(seconds / 60), int(seconds % 60))
     else:
         return str(int(seconds))
 

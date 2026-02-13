@@ -16,10 +16,11 @@ class JSONQuestionnaireColumn(object):
         self.data_type = "string"
         self.default = ""
 
-        if question_type is None and 'questiontype' in definition:
-            question_type = definition['questiontype']
-        else:
-            question_type = "string"
+        if question_type is None:
+            if 'questiontype' in definition:
+                question_type = definition['questiontype']
+            else:
+                question_type = "string"
 
         if question_type.lower() in ["slider", "num_field", "checklist"]:
             self.data_type = "integer"
