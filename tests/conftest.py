@@ -55,43 +55,32 @@ def bofs_app(tmp_path):
     os.chdir(original_cwd)
 
 
-@pytest.fixture
-def invalid_questionnaires():
-    """Sample invalid questionnaire JSON data for validation testing."""
-    return {
-        "missing_questions_key": {
-            "title": "Bad Questionnaire",
-            "instructions": "This has no questions key",
-        },
-        "invalid_question_type": {
-            "questions": [{"questiontype": "magical_widget", "id": "test"}]
-        },
-        "duplicate_ids": {
-            "questions": [
-                {"questiontype": "field", "id": "duplicate"},
-                {"questiontype": "field", "id": "duplicate"},
-            ]
-        },
-        "unsafe_field_id": {
-            "questions": [
-                {"questiontype": "field", "id": "123invalid"},
-                {"questiontype": "field", "id": "has-dash"},
-                {"questiontype": "field", "id": "has space"},
-            ]
-        },
-        "reserved_column": {
-            "questions": [{"questiontype": "field", "id": "participantID"}]
-        },
-        "broken_calculation": {
-            "questions": [{"questiontype": "slider", "id": "q1"}],
-            "participant_calculations": {"total": "q1 + nonexistent_field"},
-        },
-    }
-
 
 # ===========================================================================
 # Tier 2 helper — write a questionnaire JSON to the app's questionnaires dir
 # ===========================================================================
+
+def write_table_file(app, name, data):
+    """
+    Write a table JSON into the app's tables/ directory
+    and load it into the app. Returns the JSONTable instance.
+    """
+    tables_dir = os.path.join(app.root_path, "tables")
+    os.makedirs(tables_dir, exist_ok=True)
+    filepath = os.path.join(tables_dir, f"{name}.json")
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+
+    from BOFS.JSONTable import JSONTable
+    t = JSONTable(tables_dir, name)
+    t.create_db_class()
+
+    if not hasattr(app.db, t.db_class.__name__):
+        setattr(app.db, t.db_class.__name__, t.db_class)
+    app.tables[name] = t
+    app.db.create_all()
+    return t
+
 
 def write_questionnaire_file(app, name, data):
     """
@@ -251,3 +240,211 @@ def sample_questionnaire_with_calculations():
             "QualitySum": "q1 + 6-q2 + q3"
         }
     }
+
+
+# ===========================================================================
+# Tier 3 questionnaire JSON data (written to disk before create_app)
+# ===========================================================================
+
+SURVEY_QUESTIONNAIRE_FULL = {
+    "title": "Test Survey",
+    "instructions": "Answer all questions.",
+    "questions": [
+        {"questiontype": "field", "instructions": "Enter name", "id": "name"},
+        {
+            "questiontype": "slider",
+            "instructions": "Rate",
+            "id": "rating",
+            "left": "Low",
+            "right": "High",
+        },
+        {"questiontype": "num_field", "instructions": "Enter age", "id": "age"},
+        {
+            "questiontype": "radiogrid",
+            "id": "grid",
+            "instructions": "Rate items",
+            "labels": ["1", "2", "3", "4", "5"],
+            "q_text": [
+                {"id": "g1_q1", "text": "Item one"},
+                {"id": "g1_q2", "text": "Item two"},
+            ],
+        },
+    ],
+    "participant_calculations": {
+        "grid_total": "g1_q1 + g1_q2",
+    },
+}
+
+SIMPLE_QUESTIONNAIRE_MINIMAL = {
+    "title": "Simple",
+    "instructions": "",
+    "questions": [
+        {"questiontype": "field", "id": "answer"},
+    ],
+}
+
+
+# ===========================================================================
+# Tier 3 fixtures — BOFS app with questionnaires for integration testing
+# ===========================================================================
+
+@pytest.fixture
+def bofs_app_with_questionnaires(tmp_path):
+    """
+    Create a BOFS app with questionnaires in PAGE_LIST and conditions configured.
+    Suitable for Tier 3 integration tests using test_client.
+
+    PAGE_LIST: consent → questionnaire/survey → questionnaire/survey/before → end
+    """
+    # Write questionnaire files BEFORE create_app so they're auto-discovered
+    q_dir = tmp_path / "questionnaires"
+    q_dir.mkdir()
+    (q_dir / "survey.json").write_text(
+        json.dumps(SURVEY_QUESTIONNAIRE_FULL), encoding="utf-8"
+    )
+
+    # consent.html static file (served by BOFSFlask.route_consent)
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test Experiment",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": False,
+        "GENERATE_COMPLETION_CODE": True,
+        "CONDITIONS": [
+            {"label": "Control", "enabled": True},
+            {"label": "Treatment", "enabled": True},
+        ],
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"name": "Survey", "path": "questionnaire/survey"},
+            {"name": "Survey", "path": "questionnaire/survey/before"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    original_cwd = os.getcwd()
+
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=True)
+
+    ctx = app.app_context()
+    ctx.push()
+
+    yield app
+
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
+@pytest.fixture
+def bofs_app_with_conditions(tmp_path):
+    """
+    Create a BOFS app with conditional routing in PAGE_LIST.
+
+    PAGE_LIST: consent → [cond 1: control | cond 2: treatment] → post → end
+    """
+    q_dir = tmp_path / "questionnaires"
+    q_dir.mkdir()
+    (q_dir / "control.json").write_text(
+        json.dumps(SIMPLE_QUESTIONNAIRE_MINIMAL), encoding="utf-8"
+    )
+    (q_dir / "treatment.json").write_text(
+        json.dumps(SIMPLE_QUESTIONNAIRE_MINIMAL), encoding="utf-8"
+    )
+    (q_dir / "post.json").write_text(
+        json.dumps(SIMPLE_QUESTIONNAIRE_MINIMAL), encoding="utf-8"
+    )
+
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test Experiment",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": False,
+        "CONDITIONS": [
+            {"label": "Control", "enabled": True},
+            {"label": "Treatment", "enabled": True},
+        ],
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"conditional_routing": [
+                {
+                    "condition": 1,
+                    "page_list": [
+                        {"name": "Control", "path": "questionnaire/control"},
+                    ],
+                },
+                {
+                    "condition": 2,
+                    "page_list": [
+                        {"name": "Treatment", "path": "questionnaire/treatment"},
+                    ],
+                },
+            ]},
+            {"name": "Post", "path": "questionnaire/post"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    original_cwd = os.getcwd()
+
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=True)
+
+    ctx = app.app_context()
+    ctx.push()
+
+    yield app
+
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
+# ===========================================================================
+# Tier 3 helpers — HTTP request helpers for integration tests
+# ===========================================================================
+
+def create_participant_via_consent(client, app, assign_condition=True):
+    """
+    POST to /consent (or /consent_nc), following redirects to advance navigation.
+    Returns the participantID of the newly created participant.
+    """
+    path = "/consent" if assign_condition else "/consent_nc"
+    client.post(path, follow_redirects=True)
+
+    participant = app.db.session.query(app.db.Participant).order_by(
+        app.db.Participant.participantID.desc()
+    ).first()
+    return participant.participantID
+
+
+def submit_questionnaire_data(client, name, tag=None, data_dict=None,
+                              follow_redirects=True):
+    """
+    POST form data to a questionnaire route.  Merges required hidden fields
+    (timeStarted, gridItemClicks) with the provided *data_dict*.
+    """
+    if tag:
+        url = f"/questionnaire/{name}/{tag}"
+    else:
+        url = f"/questionnaire/{name}"
+
+    form_data = {
+        "timeStarted": "2024-01-01 12:00:00",
+        "gridItemClicks": "",
+    }
+    if data_dict:
+        form_data.update(data_dict)
+
+    return client.post(url, data=form_data, follow_redirects=follow_redirects)

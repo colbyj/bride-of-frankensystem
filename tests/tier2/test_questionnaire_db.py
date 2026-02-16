@@ -55,6 +55,16 @@ CALC_QUESTIONNAIRE = {
     },
 }
 
+DATATYPE_QUESTIONNAIRE = {
+    "title": "Datatype Test",
+    "instructions": "",
+    "questions": [
+        {"questiontype": "field", "id": "float_val", "datatype": "float"},
+        {"questiontype": "field", "id": "dt_val", "datatype": "datetime"},
+        {"questiontype": "field", "id": "bool_val", "datatype": "boolean"},
+    ],
+}
+
 
 # ===========================================================================
 # TestCreateDBClass
@@ -158,6 +168,21 @@ class TestGenerateDBColumn:
         for field_name in ("name", "rating", "age"):
             col = q.db_class.__table__.c[field_name]
             assert col.nullable is False, f"Column '{field_name}' should not be nullable"
+
+    def test_float_column_type(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "dt_types", DATATYPE_QUESTIONNAIRE)
+        col = q.db_class.__table__.c["float_val"]
+        assert col.type.__class__.__name__ == "Float"
+
+    def test_datetime_column_type(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "dt_types", DATATYPE_QUESTIONNAIRE)
+        col = q.db_class.__table__.c["dt_val"]
+        assert col.type.__class__.__name__ == "DateTime"
+
+    def test_boolean_column_type(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "dt_types", DATATYPE_QUESTIONNAIRE)
+        col = q.db_class.__table__.c["bool_val"]
+        assert col.type.__class__.__name__ == "Boolean"
 
 
 # ===========================================================================
@@ -352,6 +377,41 @@ class TestHandleQuestionnaire:
         results = q.fetch_all_data()
         assert results[0].name == ""  # default for text fields
 
+    def test_radio_grid_logging(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "grid_q", RADIOGRID_QUESTIONNAIRE)
+        pid = self._create_participant(bofs_app)
+
+        # Semicolon-separated JSON click events
+        click_data = (
+            '{"id":"g_q1","value":"2","time":"1704110400.123"};'
+            '{"id":"g_q2","value":"3","time":"1704110401.456"}'
+        )
+
+        with bofs_app.test_request_context(
+            "/questionnaire/grid_q",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "g_q1": "2",
+                "g_q2": "3",
+                "gridItemClicks": click_data,
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            q.handle_questionnaire()
+
+        logs = bofs_app.db.session.query(bofs_app.db.RadioGridLog).filter(
+            bofs_app.db.RadioGridLog.participantID == pid,
+            bofs_app.db.RadioGridLog.questionnaire == "grid_q",
+        ).order_by(bofs_app.db.RadioGridLog.timeClicked).all()
+
+        assert len(logs) == 2
+        assert logs[0].questionID == "g_q1"
+        assert logs[0].value == "2"
+        assert logs[1].questionID == "g_q2"
+        assert logs[1].value == "3"
+
 
 # ===========================================================================
 # TestFetchMethods
@@ -373,20 +433,23 @@ class TestFetchMethods:
             app.db.session.add(obj)
         app.db.session.commit()
 
+    def _create_participant(self, app, finished=False, condition=1):
+        """Create a participant with the given attributes."""
+        p = app.db.Participant()
+        p.mTurkID = ""
+        p.ipAddress = ""
+        p.userAgent = ""
+        p.condition = condition
+        p.finished = finished
+        app.db.session.add(p)
+        app.db.session.commit()
+        return p
+
     def test_fetch_all_data(self, bofs_app):
         q = write_questionnaire_file(bofs_app, "survey", SIMPLE_QUESTIONNAIRE)
 
-        # Create two participants
-        p1 = bofs_app.db.Participant()
-        p1.mTurkID = ""
-        p1.ipAddress = ""
-        p1.userAgent = ""
-        p2 = bofs_app.db.Participant()
-        p2.mTurkID = ""
-        p2.ipAddress = ""
-        p2.userAgent = ""
-        bofs_app.db.session.add_all([p1, p2])
-        bofs_app.db.session.commit()
+        p1 = self._create_participant(bofs_app)
+        p2 = self._create_participant(bofs_app)
 
         self._seed_data(bofs_app, q, [
             {"participantID": p1.participantID, "name": "Alice", "rating": 4, "age": 30},
@@ -395,3 +458,54 @@ class TestFetchMethods:
 
         results = q.fetch_all_data()
         assert len(results) == 2
+
+    def test_fetch_finished_data(self, bofs_app):
+        """fetch_finished_data should only return data for finished participants.
+
+        Currently FAILS: the method filters on Participant.finished without
+        joining on participantID, producing a cartesian product that returns
+        all rows when *any* participant is finished.
+        """
+        q = write_questionnaire_file(bofs_app, "survey2", SIMPLE_QUESTIONNAIRE)
+
+        p_done = self._create_participant(bofs_app, finished=True)
+        p_not = self._create_participant(bofs_app, finished=False)
+
+        self._seed_data(bofs_app, q, [
+            {"participantID": p_done.participantID, "name": "Done", "rating": 5, "age": 30},
+            {"participantID": p_not.participantID, "name": "NotDone", "rating": 3, "age": 20},
+        ])
+
+        results = q.fetch_finished_data()
+        assert len(results) == 1
+        assert results[0].name == "Done"
+
+    def test_fetch_column_data_by_condition(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "survey3", SIMPLE_QUESTIONNAIRE)
+
+        p_c1 = self._create_participant(bofs_app, condition=1)
+        p_c2 = self._create_participant(bofs_app, condition=2)
+
+        self._seed_data(bofs_app, q, [
+            {"participantID": p_c1.participantID, "name": "C1", "rating": 4, "age": 30},
+            {"participantID": p_c2.participantID, "name": "C2", "rating": 5, "age": 25},
+        ])
+
+        results = q.fetch_column_data("rating", condition=1)
+        assert len(results) == 1
+        assert results[0][0] == 4  # fetch_column_data returns tuples
+
+    def test_fetch_column_data_condition_zero(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "survey4", SIMPLE_QUESTIONNAIRE)
+
+        p_c0 = self._create_participant(bofs_app, condition=0)
+        p_c1 = self._create_participant(bofs_app, condition=1)
+
+        self._seed_data(bofs_app, q, [
+            {"participantID": p_c0.participantID, "name": "C0", "rating": 2, "age": 20},
+            {"participantID": p_c1.participantID, "name": "C1", "rating": 8, "age": 40},
+        ])
+
+        results = q.fetch_column_data("rating", condition=0)
+        assert len(results) == 1
+        assert results[0][0] == 2

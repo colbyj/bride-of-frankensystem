@@ -327,7 +327,7 @@ class JSONQuestionnaire(object):
         return db.session.query(self.db_class).all()
 
     def fetch_finished_data(self):
-        return db.session.query(self.db_class).filter(db.Participant.finished == True).all()
+        return db.session.query(self.db_class).join(db.Participant).filter(db.Participant.finished == True).all()
 
     # Returns a list of the data for a single column, ordered by
     def fetch_column_data(self, column, condition=0, finishedOnly=True):
