@@ -15,16 +15,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     {% block head %}{% endblock %}
 </head>
-<body>
+<body class="bofs-body">
 
 <div class="title-bar">
     <div class="title-text">
         <div style="float: left; padding-top: 2px;">{{ config['TITLE'] }}</div>
     </div>
 </div>
-<br>
 
-<div class="content">
+<div class="content bofs-main-content">
     <div class="questions">
         {% if crumbs and config['USE_BREADCRUMBS'] %}
         <div>

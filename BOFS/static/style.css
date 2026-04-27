@@ -44,6 +44,16 @@ body {
     font-size: var(--font-size-main);
 }
 
+.bofs-main-content {
+    padding-top: 12px;
+}
+
+/* Reserved by JS at load time so content isn't hidden under the fixed toolbar.
+   Fallback ensures content still clears the toolbar before JS runs. */
+.bofs-body {
+    padding-bottom: 110px;
+}
+
 .questions {
     /*border: 1px solid #4e4e4e;*/
 }
@@ -152,12 +162,77 @@ h4 {
     padding: 0 0 0 12px; margin: 0; list-style-type: none;
 }
 
-.debug-menu {
-    padding: 10px;
+.debug-session li {
+    padding-bottom: 2px;
 }
 
-.debug-menu button, a {
-    font-size: 10pt !important;
+.admin-toolbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    width: 100%;
+    padding: 6px 12px 8px 12px;
+    color: #fff;
+}
+
+.admin-toolbar .btn,
+.admin-toolbar .dropdown-item {
+    font-size: 10pt;
+}
+
+.admin-toolbar-status {
+    font-size: 10pt;
+    color: #cfd2d6;
+    padding: 2px 4px 6px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.admin-toolbar-status .admin-status-key {
+    color: #8a8f96;
+    font-weight: 600;
+}
+
+.admin-toolbar-status .admin-status-sep {
+    color: #5a6068;
+}
+
+.admin-toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.admin-toolbar-actions .toolbar-left,
+.admin-toolbar-actions .toolbar-right {
+    flex: 0 0 auto;
+}
+
+.admin-toolbar-actions .toolbar-center {
+    flex: 1 1 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.admin-toolbar-actions .dropup {
+    display: inline-block;
+}
+
+/* Skip-to-page dropdown can get long — let it scroll. */
+.admin-toolbar-actions .dropdown-menu {
+    max-height: 60vh;
+    overflow-y: auto;
 }
 
 /*a, a:visited { text-decoration: none; color: #1144cc; }

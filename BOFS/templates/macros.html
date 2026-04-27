@@ -11,44 +11,101 @@
     {% endif %}
 {%- endmacro %}
 
+
+{% macro conditionLabel(condition) -%}
+    {%- if config['CONDITIONS'] and condition and condition > 0 and condition <= (config['CONDITIONS']|length) -%}
+        {{ config['CONDITIONS'][condition - 1]['label'] }}
+    {%- elif condition -%}
+        {{ condition }}
+    {%- endif -%}
+{%- endmacro %}
+
+
 {% macro adminControls() -%}
     {% if (session.get('loggedIn', False) or debug) and session.get('participantID', False) and request.blueprint != 'admin' %}
-    <div class="fixed-bottom debug-menu bg-dark">
-        <div class="row">
-            <div class="col-sm-2" style="text-align:left;">
-                <a href="/redirect_previous_page" class="btn btn-light btn-sm" role="button" style="width: 50px;"><i class="fas fa-arrow-circle-left"></i></a>
+    {%- set current_path = request.path.lstrip('/') -%}
+    {%- set ns = namespace(current_idx=0) -%}
+    {%- for page in flat_page_list -%}
+        {%- if page['path'] == current_path -%}{% set ns.current_idx = loop.index %}{%- endif -%}
+    {%- endfor -%}
+    {%- set total_pages = flat_page_list|length -%}
+    {%- set pid = session.get('participantID') -%}
+    {%- set condition = session.get('condition') -%}
+    {%- set condition_label = conditionLabel(condition)|trim -%}
+
+    <div class="admin-toolbar bg-dark">
+        <div class="admin-toolbar-status">
+            <span class="admin-status-item"><span class="admin-status-key">PID</span> {{ pid }}</span>
+            {% if condition_label %}
+            <span class="admin-status-sep">&bull;</span>
+            <span class="admin-status-item"><span class="admin-status-key">Condition:</span> {{ condition_label }}</span>
+            {% endif %}
+            {% if ns.current_idx %}
+            <span class="admin-status-sep">&bull;</span>
+            {%- set current_page_name = flat_page_list[ns.current_idx - 1].get('name') or flat_page_list[ns.current_idx - 1]['path'] -%}
+            <span class="admin-status-item"><span class="admin-status-key">Page</span> {{ ns.current_idx }} of {{ total_pages }} &mdash; &ldquo;{{ current_page_name }}&rdquo;</span>
+            {% else %}
+            <span class="admin-status-sep">&bull;</span>
+            <span class="admin-status-item"><span class="admin-status-key">Page</span> &mdash; of {{ total_pages }}</span>
+            {% endif %}
+        </div>
+
+        <div class="admin-toolbar-actions">
+            <div class="toolbar-left">
+                <a href="/redirect_previous_page" class="btn btn-light btn-sm" role="button" title="Previous page">
+                    <i class="fas fa-arrow-circle-left"></i>
+                </a>
             </div>
-            <div class="col-sm-2 dropup" style="text-align:center; padding: 0 8px;">
-                <button class="btn btn-light btn-sm dropdown-toggle" style="width: 100%;" data-bs-toggle="dropdown" aria-expanded="false">Skip to page... <i class="fas fa-file"></i></button>
-                <div class="dropdown-menu">
-                    {% for page in flat_page_list %}
-                    <a class="dropdown-item" href="/redirect_to_page/{{ page.path }}">{{ page }}</a>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="col-sm-2" style="text-align:center; padding: 0 8px;">
-                <a href="/restart" class="btn btn-light btn-sm" role="button" style="width: 100%;">Restart <i class="fas fa-redo"></i></a>
-            </div>
-            <div class="col-sm-2" style="text-align:center; padding: 0 8px;">
-                <a href="/admin" class="btn btn-light btn-sm" role="button" style="width: 100%;">Admin Panel <i class="fas fa-tools"></i></a>
-            </div>
-            <div class="col-sm-2 dropup" style="text-align:center; padding: 0 8px;">
-                <a href="#" class="btn btn-light btn-sm dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 100%;">Session Variables <i class="fas fa-clipboard-list"></i></a>
-                <div class="dropdown-menu debug-session">
-                    <ul>
-                        {% for variable in session %}
-                            <li>{{ variable }}: <pre>{{ session[variable] }}</pre></li>
+
+            <div class="toolbar-center">
+                <div class="dropup">
+                    <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        Skip to page <i class="fas fa-file"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        {% for page in flat_page_list %}
+                            {%- set is_current = (page['path'] == current_path) -%}
+                            <a class="dropdown-item{% if is_current %} active fw-bold{% endif %}" href="/redirect_to_page/{{ page['path'] }}">
+                                {{ loop.index }}. {{ page.get('name') or page['path'] }}{% if is_current %} <i class="fas fa-check ms-1"></i>{% endif %}
+                            </a>
                         {% endfor %}
-                    </ul>
+                    </div>
+                </div>
+
+                <a href="/restart" class="btn btn-light btn-sm" role="button" data-confirm-restart>
+                    Restart <i class="fas fa-redo"></i>
+                </a>
+
+                <a href="/admin" class="btn btn-light btn-sm" role="button">
+                    Admin Panel <i class="fas fa-tools"></i>
+                </a>
+
+                <div class="dropup">
+                    <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                        Vars <i class="fas fa-clipboard-list"></i>
+                    </button>
+                    <div class="dropdown-menu debug-session">
+                        <ul>
+                            {% for variable in session %}
+                                <li>{{ variable }}: <pre>{{ session[variable] }}</pre></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
             </div>
-            <div class="col-sm-2" style="text-align:right;">
-                <a href="/redirect_next_page" class="btn btn-light btn-sm" role="button" style="width: 50px;"><i class="fas fa-arrow-circle-right"></i></a>
+
+            <div class="toolbar-right">
+                <a href="/redirect_next_page" class="btn btn-light btn-sm" role="button" title="Next page">
+                    <i class="fas fa-arrow-circle-right"></i>
+                </a>
             </div>
         </div>
     </div>
+
+    <script src="{{ url_for('BOFS_static', filename='js/admin_controls.js') }}"></script>
     {% endif %}
 {%- endmacro %}
+
 
 {% macro checkUserActive() %}
     <script type="text/javascript">
@@ -81,5 +138,4 @@
         window.onunload = function(){};
     {% endif %}
 </script>
-
 {%- endmacro %}
