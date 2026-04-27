@@ -1,6 +1,19 @@
 <div id="summary">
     <div style="display: flex; flex-wrap: wrap; margin-left: -15px;">
         {% if (config['CONDITIONS'] | length) > 1 %}
+            {% set counts_by_condition = {} %}
+            {% for r in summary_groups %}
+                {% if r.condition is not none and r.condition > 0 %}
+                    {% set _ = counts_by_condition.update({r.condition: r}) %}
+                {% endif %}
+            {% endfor %}
+            {% set num_conditions = config['CONDITIONS'] | length %}
+            {% set orphan_groups = [] %}
+            {% for r in summary_groups %}
+                {% if r.condition is none or r.condition == 0 or r.condition > num_conditions %}
+                    {% set _ = orphan_groups.append(r) %}
+                {% endif %}
+            {% endfor %}
             <div class="" style="flex-grow: 3; margin-left: 15px;">
                 <table class="table table-striped border">
                     <thead>
@@ -11,17 +24,41 @@
                         <th scope="col" style="text-align: center; width: 100px;">Abandoned</th>
                         <th scope="col" style="text-align: center; width: 100px;">Finished</th>
                         <th scope="col" style="text-align: center; min-width: 70px;">Time Taken</th>
+                        <th scope="col" style="text-align: center; width: 110px;">Status</th>
                     </tr>
                     </thead>
                     <tbody>
-                    {% for r in summary_groups %}
-                        <tr>
-                            <td style="text-align: left">{{ condition_num_to_label(r.condition) }}</td>
+                    {% for cond in config['CONDITIONS'] %}
+                        {% set cnum = loop.index %}
+                        {% set r = counts_by_condition.get(cnum) %}
+                        {% set enabled = cond.get('enabled', True) %}
+                        <tr {% if not enabled %}style="opacity: 0.55;"{% endif %}>
+                            <td style="text-align: left">{{ cond.label }}</td>
+                            <td style="text-align: right">{{ r.count if r else 0 }}</td>
+                            <td style="text-align: right">{{ r.countInProgress if r else 0 }}</td>
+                            <td style="text-align: right">{{ r.countAbandoned if r else 0 }}</td>
+                            <td style="text-align: right">{{ r.countFinished if r else 0 }}</td>
+                            <td style="text-align: right">{{ display_time(r.minutes) if r else "" }}</td>
+                            <td style="text-align: center">
+                                <button class="btn btn-sm {{ 'btn-success' if enabled else 'btn-outline-secondary' }}"
+                                        hx-post="{{ url_for('admin.route_toggle_condition', condition_num=cnum) }}"
+                                        hx-target="#summary"
+                                        hx-swap="outerHTML"
+                                        title="{{ 'Click to stop assigning new participants to this condition' if enabled else 'Click to resume assigning new participants to this condition' }}">
+                                    {{ "Enabled" if enabled else "Disabled" }}
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    {% for r in orphan_groups %}
+                        <tr class="text-muted">
+                            <td style="text-align: left"><i>Unassigned</i></td>
                             <td style="text-align: right">{{ r.count }}</td>
                             <td style="text-align: right">{{ r.countInProgress }}</td>
                             <td style="text-align: right">{{ r.countAbandoned }}</td>
                             <td style="text-align: right">{{ r.countFinished }}</td>
                             <td style="text-align: right">{{ display_time(r.minutes) }}</td>
+                            <td style="text-align: center">&mdash;</td>
                         </tr>
                     {% endfor %}
                     </tbody>

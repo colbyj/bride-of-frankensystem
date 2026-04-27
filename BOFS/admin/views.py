@@ -173,6 +173,22 @@ def route_progress_summary_ajax():
     return render_template("progress_summary_ajax.html",
                            summary_groups=summary_groups, summary=summary, display_time=display_time)
 
+
+@admin.route("/condition/<int:condition_num>/toggle", methods=['POST'])
+@verify_admin
+def route_toggle_condition(condition_num):
+    conditions = current_app.config.get('CONDITIONS', [])
+    idx = condition_num - 1
+    if idx < 0 or idx >= len(conditions):
+        return "Invalid condition", 400
+
+    meta = conditions[idx]
+    meta['enabled'] = not meta.get('enabled', True)
+
+    summary_groups, summary = fetch_progress_summary()
+    return render_template("progress_summary_ajax.html",
+                           summary_groups=summary_groups, summary=summary, display_time=display_time)
+
 @admin.post("/update_exclude_from_count")
 def route_update_exclude_from_count():
     if 'participantID' not in request.form or 'excludeFromCount' not in request.form:
