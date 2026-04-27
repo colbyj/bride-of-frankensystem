@@ -337,7 +337,18 @@ def route_end():
     if 'OUTGOING_URL' in current_app.config and current_app.config['OUTGOING_URL'] is not None:
         return redirect(current_app.config['OUTGOING_URL'])
 
-    return render_template('end.html', code=session['code'] if 'code' in session else None)
+    host = request.host.split(':')[0]
+    is_local = host in ('127.0.0.1', 'localhost', '::1')
+    if current_app.debug:
+        restart_reason = "debug mode is enabled"
+    elif is_local:
+        restart_reason = "you are accessing the experiment locally"
+    else:
+        restart_reason = None
+
+    return render_template('end.html',
+                           code=session['code'] if 'code' in session else None,
+                           restart_reason=restart_reason)
 
 
 @default.route("/user_active")

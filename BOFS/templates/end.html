@@ -14,4 +14,13 @@
             </div>
         </div>
         {% endif %}
+
+        {% if restart_reason %}
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="{{ config['APPLICATION_ROOT'] }}/restart">Restart the experiment</a>
+            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                This link is only shown because {{ restart_reason }}.
+            </div>
+        </div>
+        {% endif %}
 {% endblock %}
