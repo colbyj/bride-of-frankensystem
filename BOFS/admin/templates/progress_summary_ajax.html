@@ -1,4 +1,16 @@
 <div id="summary">
+    {% if (config['CONDITIONS'] | length) > 0 %}
+        {% set ns = namespace(any_enabled=false) %}
+        {% for cond in config['CONDITIONS'] %}
+            {% if cond.get('enabled', True) %}{% set ns.any_enabled = true %}{% endif %}
+        {% endfor %}
+        {% if not ns.any_enabled %}
+            <div class="alert alert-warning" role="alert" style="margin: 0 0 15px 15px;">
+                <strong>All conditions are disabled.</strong>
+                New participants are being turned away (they see a "study not currently accepting new participants" page). Re-enable at least one condition to resume enrollment. Participants already in progress are unaffected.
+            </div>
+        {% endif %}
+    {% endif %}
     <div style="display: flex; flex-wrap: wrap; margin-left: -15px;">
         {% if (config['CONDITIONS'] | length) > 1 %}
             {% set counts_by_condition = {} %}

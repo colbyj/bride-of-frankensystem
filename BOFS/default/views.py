@@ -31,6 +31,9 @@ def route_consent():
     * ``/create_participant``
     * ``/create_participant_nc``
     """
+    if all_conditions_disabled():
+        return render_template("study_closed.html"), 503
+
     if request.method == 'POST':
         if 'email' in request.form and request.form['email'] != '':
             # We caught someone with our honeypot.
@@ -66,6 +69,9 @@ def route_create_participant():
     This creates the participant in the database and sets up the session variables. Use if you don't need to
     show a consent form.
     """
+    if all_conditions_disabled():
+        return render_template("study_closed.html"), 503
+
     provide_consent(True, False)
     return redirect("/redirect_from_page/create_participant")
 
@@ -100,6 +106,9 @@ def route_assign_condition():
     If you used ``/consent_nc`` or ``/create_participant_nc``, then you will need to use this to assign them to a
     condition other than 0.
     """
+    if all_conditions_disabled():
+        return render_template("study_closed.html"), 503
+
     p = db.session.query(db.Participant).get(session['participantID'])
     p.assign_condition()
     db.session.commit()

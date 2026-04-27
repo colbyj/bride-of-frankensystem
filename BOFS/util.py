@@ -227,6 +227,18 @@ def fetch_condition_count() -> int:
     return len(current_app.config["CONDITIONS"])
 
 
+def all_conditions_disabled() -> bool:
+    """
+    True iff CONDITIONS is non-empty AND every condition has enabled=False.
+    Used to halt new participant intake when a researcher has disabled every
+    condition from the admin panel mid-study.
+    """
+    conditions = current_app.config.get('CONDITIONS', [])
+    if not conditions:
+        return False
+    return not any(c.get('enabled', True) for c in conditions)
+
+
 def fetch_condition_count_db():
     """
     This is useful only after data has been collected.
