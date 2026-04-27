@@ -16,13 +16,9 @@ class AdminStatsService:
             each row contains the Participant entity plus one Progress entity
             (or None) per page, in the order of `pages`.
         """
-        pages = current_app.page_list.flat_page_list()
+        pages = [p for p in current_app.page_list.flat_page_list()
+                 if p['path'] not in ("end", "consent")]
         progress = db.session.query(db.Participant).filter(db.Participant.isCrawler == False)
-
-        for page in pages:
-            if page['path'] in ["end", "consent"]:  # Don't show end page, use Participant.finished instead.
-                pages.remove(page)
-                continue
 
         for page in pages:
             pp = db.aliased(db.Progress, name=page['path'])

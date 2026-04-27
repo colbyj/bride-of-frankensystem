@@ -89,6 +89,28 @@ class TestFetchProgress:
         _, progress = AdminStatsService.fetch_progress()
         assert len(progress) == 3
 
+    def test_fetch_progress_filters_adjacent_removable_pages(self, bofs_app_with_questionnaires, monkeypatch):
+        """Adjacent 'consent'/'end' entries are both removed.
+
+        Regression guard for the prior `pages.remove(page)` mid-iteration bug,
+        which would skip the element after each removed element. With two
+        adjacent removable entries, the second one would have survived.
+        """
+        app = bofs_app_with_questionnaires
+        custom = [
+            {'name': 'Consent', 'path': 'consent'},
+            {'name': 'Consent2', 'path': 'consent'},
+            {'name': 'Survey', 'path': 'questionnaire/survey'},
+            {'name': 'End1', 'path': 'end'},
+            {'name': 'End2', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'flat_page_list', lambda condition=None: list(custom))
+
+        pages, _ = AdminStatsService.fetch_progress()
+        paths = [p['path'] for p in pages]
+
+        assert paths == ['questionnaire/survey']
+
     def test_fetch_progress_includes_progress_entities(self, bofs_app_with_questionnaires):
         """A seeded Progress row appears at the correct column in the result tuple."""
         app = bofs_app_with_questionnaires
