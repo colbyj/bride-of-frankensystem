@@ -22,7 +22,7 @@
 
 
 {% macro adminControls() -%}
-    {% if (session.get('loggedIn', False) or debug) and session.get('participantID', False) and request.blueprint != 'admin' %}
+    {% if (session.get('loggedIn', False) or debug) and request.blueprint != 'admin' %}
     {%- set current_path = request.path.lstrip('/') -%}
     {%- set ns = namespace(current_idx=0) -%}
     {%- for page in flat_page_list -%}
@@ -35,7 +35,11 @@
 
     <div class="admin-toolbar bg-dark">
         <div class="admin-toolbar-status">
+            {% if pid %}
             <span class="admin-status-item"><span class="admin-status-key">PID</span> {{ pid }}</span>
+            {% else %}
+            <span class="admin-status-item"><span class="admin-status-key">PID</span> <i>none yet</i></span>
+            {% endif %}
             {% if condition_label %}
             <span class="admin-status-sep">&bull;</span>
             <span class="admin-status-item"><span class="admin-status-key">Condition:</span> {{ condition_label }}</span>
@@ -48,20 +52,32 @@
             <span class="admin-status-sep">&bull;</span>
             <span class="admin-status-item"><span class="admin-status-key">Page</span> &mdash; of {{ total_pages }}</span>
             {% endif %}
+            {% if not pid %}
+            <span class="admin-status-sep">&bull;</span>
+            <span class="admin-status-item"><i>No participant session yet &mdash; page navigation is disabled until consent is submitted (or <code>/create_participant</code> is visited).</i></span>
+            {% endif %}
         </div>
 
+        {%- set nav_disabled_reason = "Navigation requires an active participant session. Submit consent (or visit /create_participant) to begin." -%}
         <div class="admin-toolbar-actions">
             <div class="toolbar-left">
+                {% if pid %}
                 <a href="/redirect_previous_page" class="btn btn-light btn-sm" role="button" title="Previous page">
                     <i class="fas fa-arrow-circle-left"></i>
                 </a>
+                {% else %}
+                <button type="button" class="btn btn-light btn-sm" disabled aria-disabled="true" title="{{ nav_disabled_reason }}">
+                    <i class="fas fa-arrow-circle-left"></i>
+                </button>
+                {% endif %}
             </div>
 
             <div class="toolbar-center">
                 <div class="dropup">
-                    <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-light btn-sm dropdown-toggle" {% if pid %}data-bs-toggle="dropdown"{% else %}disabled aria-disabled="true" title="{{ nav_disabled_reason }}"{% endif %} aria-expanded="false">
                         Skip to page <i class="fas fa-file"></i>
                     </button>
+                    {% if pid %}
                     <div class="dropdown-menu">
                         {% for page in flat_page_list %}
                             {%- set is_current = (page['path'] == current_path) -%}
@@ -70,6 +86,7 @@
                             </a>
                         {% endfor %}
                     </div>
+                    {% endif %}
                 </div>
 
                 <a href="/restart" class="btn btn-light btn-sm" role="button" data-confirm-restart>
@@ -101,9 +118,15 @@
             </div>
 
             <div class="toolbar-right">
+                {% if pid %}
                 <a href="/redirect_next_page" class="btn btn-light btn-sm" role="button" title="Next page">
                     <i class="fas fa-arrow-circle-right"></i>
                 </a>
+                {% else %}
+                <button type="button" class="btn btn-light btn-sm" disabled aria-disabled="true" title="{{ nav_disabled_reason }}">
+                    <i class="fas fa-arrow-circle-right"></i>
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
