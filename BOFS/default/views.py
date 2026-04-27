@@ -2,12 +2,12 @@ from flask import Blueprint, render_template, current_app, request, make_respons
 from urllib.parse import urlsplit
 import datetime
 import traceback
-from BOFS.JSONQuestionnaire import JSONQuestionnaire
 from BOFS.JSONTable import JSONTable
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
 from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
 from BOFS.services.participant import ParticipantService
+from BOFS.services.participant_questionnaire import ParticipantQuestionnaireService
 from BOFS.services.session_recovery import SessionRecoveryService
 
 
@@ -264,13 +264,14 @@ def route_questionnaire(questionnaireName, tag=""):
                 unique tag (e.g., "before" or "after" or "1")
     """
     q = questionnaires[questionnaireName]
+    service = ParticipantQuestionnaireService(session['participantID'])
 
     if request.method == 'POST':
-        q.handle_questionnaire(tag)
+        service.handle_submission(q, tag)
 
         return redirect(join_urls('/redirect_from_page', request.path))
 
-    return q.render_questionnaire('questionnaire.html', tag)
+    return service.render_questionnaire(q, 'questionnaire.html', tag)
 
 
 @default.route("/questionnaire_question/<question_type>", methods=['POST'])
@@ -281,7 +282,7 @@ def route_questionnaire_question(question_type: str):
     Render a specific question type for the questionnaire. Only accepts POST requests.
     Data posted to this route must be a JSON object of the question data.
     """
-    return JSONQuestionnaire.render_questionnaire_question(question_type, request.json)
+    return ParticipantQuestionnaireService.render_questionnaire_question(question_type, request.json)
 
 
 @default.route("/redirect_previous_page")

@@ -9,6 +9,7 @@ from datetime import datetime
 
 import pytest
 
+from BOFS.services.participant_questionnaire import ParticipantQuestionnaireService
 from tests.conftest import write_questionnaire_file
 
 
@@ -259,7 +260,7 @@ class TestHandleQuestionnaire:
             from flask import session
             session["participantID"] = pid
 
-            q.handle_questionnaire()
+            ParticipantQuestionnaireService(pid).handle_submission(q)
 
         # Verify the record was created
         results = q.fetch_all_data()
@@ -286,7 +287,7 @@ class TestHandleQuestionnaire:
         ):
             from flask import session
             session["participantID"] = pid
-            q.handle_questionnaire()
+            ParticipantQuestionnaireService(pid).handle_submission(q)
 
         # Second submission (update)
         with bofs_app.test_request_context(
@@ -302,7 +303,7 @@ class TestHandleQuestionnaire:
         ):
             from flask import session
             session["participantID"] = pid
-            q.handle_questionnaire()
+            ParticipantQuestionnaireService(pid).handle_submission(q)
 
         # Should have updated, not created a new record
         results = q.fetch_all_data()
@@ -326,7 +327,7 @@ class TestHandleQuestionnaire:
         ):
             from flask import session
             session["participantID"] = pid
-            q.handle_questionnaire()
+            ParticipantQuestionnaireService(pid).handle_submission(q)
 
         results = q.fetch_all_data()
         assert results[0].timeStarted == datetime(2024, 1, 1, 12, 0, 0)
@@ -349,7 +350,7 @@ class TestHandleQuestionnaire:
         ):
             from flask import session
             session["participantID"] = pid
-            q.handle_questionnaire(tag="pre")
+            ParticipantQuestionnaireService(pid).handle_submission(q, tag="pre")
 
         results = q.fetch_all_data()
         assert len(results) == 1
@@ -372,7 +373,7 @@ class TestHandleQuestionnaire:
         ):
             from flask import session
             session["participantID"] = pid
-            q.handle_questionnaire()
+            ParticipantQuestionnaireService(pid).handle_submission(q)
 
         results = q.fetch_all_data()
         assert results[0].name == ""  # default for text fields
@@ -399,7 +400,7 @@ class TestHandleQuestionnaire:
         ):
             from flask import session
             session["participantID"] = pid
-            q.handle_questionnaire()
+            ParticipantQuestionnaireService(pid).handle_submission(q)
 
         logs = bofs_app.db.session.query(bofs_app.db.RadioGridLog).filter(
             bofs_app.db.RadioGridLog.participantID == pid,

@@ -4,7 +4,7 @@ from .. import BOFSFlask
 from ..globals import db, questionnaires, page_list
 from ..util import fetch_condition_count, display_time, provide_consent, int_or_0
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
-from ..JSONQuestionnaire import JSONQuestionnaire
+from ..services.participant_questionnaire import ParticipantQuestionnaireService
 from ..services.data_export import Results
 import json
 from ..services.admin_stats import AdminStatsService
@@ -449,7 +449,7 @@ def route_preview_questionnaire(questionnaireName):
     except Exception as e:
         errors = list(e.args)
 
-    return JSONQuestionnaire.render_unloaded_questionnaire(json_data, "preview_questionnaire.html", errors=errors)
+    return ParticipantQuestionnaireService.render_unloaded_questionnaire(json_data, "preview_questionnaire.html", errors=errors)
 
 
 @admin.route("/questionnaire_html/<questionnaireName>")
@@ -466,7 +466,7 @@ def route_questionnaire_html(questionnaireName):
     except Exception as e:
         errors = list(e.args)
 
-    return JSONQuestionnaire.render_unloaded_questionnaire(json_data, "preview_questionnaire_simple.html", errors=errors)
+    return ParticipantQuestionnaireService.render_unloaded_questionnaire(json_data, "preview_questionnaire_simple.html", errors=errors)
 
 
 def table_data(tableName):
