@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, current_app, request, make_response, abort
 from urllib.parse import urlsplit
+import datetime
 import traceback
 from BOFS.JSONQuestionnaire import JSONQuestionnaire
 from BOFS.JSONTable import JSONTable
@@ -290,10 +291,8 @@ def route_redirect_previous_page():
 
     Sends a user to the previous page. This is intended primarily for debugging purposes.
     """
-    session['currentUrl'] = page_list.previous_path(session['currentUrl'])
-    nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
-
-    return redirect(nextUrl)
+    from BOFS.services.routing import ParticipantRoutingService
+    return ParticipantRoutingService.from_app().go_back()
 
 
 @default.route("/redirect_next_page")
@@ -303,37 +302,8 @@ def route_redirect_next_page():
 
     This is the preferred way of sending a user to the next page.
     """
-    current_page = None
-
-    # request.url_rule.rule is only meaningful when a researcher's view calls
-    # this function directly (not via HTTP redirect) — then it reflects THEIR
-    # route's rule. When the browser hits /redirect_next_page itself, the rule
-    # is just '/redirect_next_page' and gets discarded by the strip check below.
-    if request is not None:
-        if request.url_rule is not None:
-            current_page = request.url_rule.rule
-        elif request.referrer is not None:
-            parsed = urlsplit(request.referrer)
-            if len(parsed.path) > 0:
-                current_page = parsed.path
-
-    if not current_page or not isinstance(current_page, str):
-        current_page = session.get('currentUrl')
-
-    if current_page and current_page.strip('/') == 'redirect_next_page':
-        current_page = session.get('currentUrl')
-
-    # session['currentUrl'] can be missing if the session was cleared (e.g. by
-    # /restart) and the browser still issues a stale request to this route.
-    # Bounce to / and let verify_correct_page re-establish the flow.
-    if not current_page:
-        return redirect(current_app.config["APPLICATION_ROOT"] + "/")
-
-    if current_page == "end":
-        close_progress_submitted(current_page)
-        return redirect(current_app.config["APPLICATION_ROOT"] + "/end")
-
-    return redirect_and_set_next_path(current_page)
+    from BOFS.services.routing import ParticipantRoutingService
+    return ParticipantRoutingService.from_app().advance_from_request()
 
 
 @default.route("/redirect_from_page/<path:page>")
@@ -345,7 +315,8 @@ def route_redirect_from_page(page):
 
     :param page: The page to start from, the user will be sent to next page in the list
     """
-    return redirect_and_set_next_path(page)
+    from BOFS.services.routing import ParticipantRoutingService
+    return ParticipantRoutingService.from_app().advance_to_next(page)
 
 
 @default.route("/redirect_to_page/<path:page>")
@@ -357,10 +328,8 @@ def route_redirect_to_page(page):
 
     :param page:
     """
-    session['currentUrl'] = page
-    nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
-
-    return redirect(nextUrl)
+    from BOFS.services.routing import ParticipantRoutingService
+    return ParticipantRoutingService.from_app().go_to(page)
 
 
 @default.route("/end")

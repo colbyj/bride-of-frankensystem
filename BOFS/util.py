@@ -3,50 +3,18 @@ from flask import request, redirect, session, current_app, g
 import operator
 from .globals import db
 import math
-import datetime
-import uuid
 from posixpath import join as urljoin
 from typing import Union, Any
 
 
 def update_participant_tracking(path):
+    """Deprecated: use :meth:`BOFS.services.routing.ParticipantRoutingService.track_progress`.
+
+    Kept as a thin wrapper for back-compat with researcher studies and
+    third-party blueprints that import it.
     """
-    Refresh ``Participant.lastActiveOn``, ensure a ``Progress`` row exists for
-    *(participant, path)*, and (on POST) close ``submittedOn``.
-
-    Called from ``BOFSFlask.before_request_`` for every participant-flow
-    request — decorated or not — so custom blueprint routes that forget
-    ``@verify_correct_page`` still get tracked.
-
-    No-ops when there's no participant in session or the participant row is
-    missing (e.g. cleared mid-flow).
-    """
-    if 'participantID' not in session:
-        return
-
-    participant = db.session.query(db.Participant).get(session['participantID'])
-    if participant is None:
-        return
-
-    participant.lastActiveOn = datetime.datetime.utcnow()
-    db.session.commit()
-
-    progress = db.session.query(db.Progress).filter(
-        db.Progress.participantID == session['participantID'],
-        db.Progress.path == path,
-    ).one_or_none()
-
-    if progress is None:
-        progress = db.Progress()
-        progress.participantID = session['participantID']
-        progress.path = path
-        progress.startedOn = datetime.datetime.utcnow()
-        db.session.add(progress)
-        db.session.commit()
-
-    if request.method == "POST":
-        progress.submittedOn = datetime.datetime.utcnow()
-        db.session.commit()
+    from BOFS.services.routing import ParticipantRoutingService
+    ParticipantRoutingService.from_app().track_progress(path)
 
 
 # Decorator to help views verify whether the user is on the right page
@@ -66,6 +34,8 @@ def verify_correct_page(f):
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        from BOFS.services.routing import ParticipantRoutingService
+
         currentUrl = request.url.replace(request.url_root, "")
 
         if 'PROLIFIC_PID' in request.args:
@@ -74,20 +44,15 @@ def verify_correct_page(f):
         if 'external_id' in request.args:
             session['mTurkID'] = request.args['external_id']
 
-        # Don't allow users to skip things or go back. Redirect to the correct page if they try.
-        if 'currentUrl' in session and currentUrl != session['currentUrl']:
-            return redirect(str.format(u"{}/{}", current_app.config["APPLICATION_ROOT"], str(session['currentUrl'])))
+        service = ParticipantRoutingService.from_app()
 
-        # If user hasn't been here before, set their current URL to the first one in the list.
-        if not 'currentUrl' in session:
-            session['currentUrl'] = current_app.page_list.flat_page_list()[0]['path']
+        wrong_page = service.enforce_current_page(currentUrl)
+        if wrong_page is not None:
+            return wrong_page
 
-            # If the user happens to be on the page they are already supposed to be at, continue as normal
-            # This should only happen for the first page in the experiment.
-            if session['currentUrl'] == currentUrl:
-                return f(*args, **kwargs)
-
-            return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
+        bootstrapped = service.bootstrap_session_if_needed()
+        if bootstrapped is not None and bootstrapped != currentUrl:
+            return redirect(current_app.config["APPLICATION_ROOT"] + "/" + bootstrapped)
 
         return f(*args, **kwargs)
 
@@ -128,28 +93,13 @@ def verify_session_valid(f):
 
 
 def close_progress_submitted(path):
+    """Deprecated: use :meth:`BOFS.services.routing.ParticipantRoutingService.close_progress`.
+
+    Kept as a thin wrapper for back-compat with researcher studies and
+    third-party blueprints that import it.
     """
-    Close out the participant's Progress row for *path* by setting
-    ``submittedOn`` to now, if it is still NULL.
-
-    No-op when there's no participant in session, no path, or no matching
-    Progress row. Safe to call from any forward-navigation chokepoint.
-    """
-    if not path:
-        return
-    if 'participantID' not in session:
-        return
-
-    progress = db.session.query(db.Progress).filter(
-        db.Progress.participantID == session['participantID'],
-        db.Progress.path == path,
-    ).one_or_none()
-
-    if progress is None or progress.submittedOn is not None:
-        return
-
-    progress.submittedOn = datetime.datetime.utcnow()
-    db.session.commit()
+    from BOFS.services.routing import ParticipantRoutingService
+    ParticipantRoutingService.from_app().close_progress(path)
 
 
 def suppress_activity_polling(f):
@@ -171,26 +121,23 @@ def suppress_activity_polling(f):
 
 
 def redirect_and_set_next_path(current_path=None):
-    """
-    Uses the next_path_in_list() method to redirect the user. Also closes the
-    outgoing page's Progress row (sets ``submittedOn``) so custom pages that
-    navigate via GET don't leave Progress rows perpetually open.
+    """Deprecated: use :meth:`BOFS.services.routing.ParticipantRoutingService.advance_to_next`.
 
-    :param str current_path: The user's current path
-    :returns: str -- the next path in PAGE_LIST which the user should be sent to.
+    Closes the outgoing page's Progress row, advances ``session['currentUrl']``
+    to the next page, and returns a redirect to it.
     """
-    close_progress_submitted(current_path)
-    session['currentUrl'] = current_app.page_list.next_path(current_path)
-    return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
+    from BOFS.services.routing import ParticipantRoutingService
+    return ParticipantRoutingService.from_app().advance_to_next(current_path)
 
 
 def redirect_next_page():
+    """Deprecated: use :meth:`BOFS.services.routing.ParticipantRoutingService.advance_to_next`.
+
+    Like ``redirect_and_set_next_path`` but reads the current path from
+    ``request.url_rule.rule``. Needs a valid app context to work.
     """
-    Like redirect_and_set_next_path but uses the Flask request variable instead.
-    Needs a valid app context to work.
-    Redirects user to the next page based on their present URL (from the request).
-    """
-    return redirect_and_set_next_path(request.url_rule.rule)
+    from BOFS.services.routing import ParticipantRoutingService
+    return ParticipantRoutingService.from_app().advance_to_next(request.url_rule.rule)
 
 
 def join_urls(path: str, *paths: str):

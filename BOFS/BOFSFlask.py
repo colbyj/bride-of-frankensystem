@@ -480,7 +480,8 @@ class BOFSFlask(Flask):
         if 'participantID' in session and 'currentUrl' in session:
             currentUrl = request.url.replace(request.url_root, "")
             if currentUrl == session['currentUrl']:
-                util.update_participant_tracking(currentUrl)
+                from BOFS.services.routing import ParticipantRoutingService
+                ParticipantRoutingService.from_app().track_progress(currentUrl)
 
     # Pages whose view functions are framework-special and don't go through
     # @verify_correct_page (handled in the admin timeline as a special case).
