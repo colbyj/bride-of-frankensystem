@@ -379,8 +379,8 @@ try:
 except Exception as e1:
     try:
         from statistics import mean as p3mean
-        from statistics import stdev as p3std
-        from statistics import variance as p3var
+        from statistics import pstdev as p3std
+        from statistics import pvariance as p3var
         from statistics import median as p3median
 
         py3statistics = True
