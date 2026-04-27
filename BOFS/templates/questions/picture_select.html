@@ -46,6 +46,7 @@
                id="{{ question.id }}{{ loop.index }}"
                value="{{ image.value }}"
                {{ "required" if question.required }}
+               {% if question.value == image.value|string %}checked{% endif %}
                style="opacity:0; position:absolute; width:1px; height:1px;">
         <label class="picture-select-option"
                for="{{ question.id }}{{ loop.index }}">

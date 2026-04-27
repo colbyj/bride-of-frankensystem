@@ -6,7 +6,7 @@
        class=""
        name="{{ question.id }}"
        id="{{ question.id }}"
-       value="{{ question.default }}"
+       value="{{ question.value if question.has_value else question.default }}"
        min="1"
        max="{{ question.tick_count }}"
        style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px;">

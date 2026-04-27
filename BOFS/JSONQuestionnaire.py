@@ -346,6 +346,62 @@ class JSONQuestionnaire(object):
 
         return q.all()
 
+    def fetch_prior_values(self, tag="") -> dict:
+        """Return {field_id: stored_value} for this participant's prior submission of this
+        questionnaire+tag, or an empty dict if there is no prior submission. Used to repopulate
+        the form when a participant returns to a questionnaire they've already submitted."""
+        if 'participantID' not in session:
+            return {}
+
+        previous = db.session.query(self.db_class).filter(
+            self.db_class.participantID == session['participantID'],
+            self.db_class.tag == tag
+        ).first()
+
+        if previous is None:
+            return {}
+
+        if not self.__fields:
+            self.fetch_fields()
+
+        return {f.id: getattr(previous, f.id) for f in self.__fields}
+
+    @staticmethod
+    def _inject_prior_values(question_data: dict, prior_values: dict) -> dict:
+        """Return a shallow-copied question dict with `value` and `has_value` keys populated
+        from prior_values, for the question and any sub-questions in `questions`/`q_text`.
+        Templates check `has_value` to decide whether to prefill — that flag handles values
+        that are legitimately falsy (0, empty string) without leaking that detail into the
+        template. Returns the input unchanged when prior_values is empty."""
+        if not prior_values:
+            return question_data
+
+        q = dict(question_data)
+        if 'id' in q and q['id'] in prior_values:
+            q['value'] = prior_values[q['id']]
+            q['has_value'] = True
+
+        parent_type = (q.get('questiontype') or '').lower()
+        for sub_key in ('questions', 'q_text'):
+            subs = q.get(sub_key)
+            if not isinstance(subs, list):
+                continue
+            new_subs = []
+            for sub in subs:
+                if isinstance(sub, dict) and sub.get('id') in prior_values:
+                    s = dict(sub)
+                    s['value'] = prior_values[sub['id']]
+                    s['has_value'] = True
+                    # Plain checklist sub-questions are boolean: stored 1 means checked.
+                    if parent_type == 'checklist' and not sub.get('text_entry'):
+                        s['checked'] = s['value'] == 1
+                    new_subs.append(s)
+                else:
+                    new_subs.append(sub)
+            q[sub_key] = new_subs
+
+        return q
+
     @staticmethod
     def render_questionnaire_question(question_type: str, question_data: dict) -> str:
         if 'participantID' not in session:
@@ -366,12 +422,15 @@ class JSONQuestionnaire(object):
             return f"Exception in <b>{question_type}.html</b>: {debugging_info}"
 
     @staticmethod
-    def render_unloaded_questionnaire(json_data: dict, template_name='questionnaire.html', tag="", **kwargs):
+    def render_unloaded_questionnaire(json_data: dict, template_name='questionnaire.html', tag="", prior_values: dict = None, **kwargs):
         questions_html = []
+        prior_values = prior_values or {}
 
         # Render the HTML for each question
         for question_data in json_data['questions']:
-            question_html = JSONQuestionnaire.render_questionnaire_question(question_data['questiontype'], question_data)
+            injected = JSONQuestionnaire._inject_prior_values(question_data, prior_values)
+            question_html = JSONQuestionnaire.render_questionnaire_question(
+                injected['questiontype'], injected)
             questions_html.append(question_html)
 
         return render_template(template_name,
@@ -382,4 +441,6 @@ class JSONQuestionnaire(object):
                                timeStarted=datetime.utcnow())
 
     def render_questionnaire(self, template_name='questionnaire.html', tag=""):
-        return JSONQuestionnaire.render_unloaded_questionnaire(self.json_data, template_name, tag)
+        prior_values = self.fetch_prior_values(tag)
+        return JSONQuestionnaire.render_unloaded_questionnaire(
+            self.json_data, template_name, tag, prior_values=prior_values)

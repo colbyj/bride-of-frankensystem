@@ -3,5 +3,6 @@
        name="{{ question.id }}"
        id="{{ question.id }}"
        placeholder="{{ question.placeholder }}"
+       {% if question.has_value %}value="{{ question.value|e }}"{% endif %}
        style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: 36px;"
        {{ "required" if question.required }}>

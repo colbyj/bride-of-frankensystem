@@ -3,8 +3,8 @@
         id="{{ question.id }}"
         style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: 36px;"
         {{ "required" if question.required }}>
-    <option value="" disabled selected>Select an option</option>
+    <option value="" disabled {% if question.value not in question["items"] %}selected{% endif %}>Select an option</option>
     {% for item in question["items"] %}
-    <option>{{ item }}</option>
+    <option {% if question.value == item %}selected{% endif %}>{{ item }}</option>
     {% endfor %}
 </select>

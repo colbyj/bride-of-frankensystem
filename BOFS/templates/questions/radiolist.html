@@ -2,6 +2,7 @@
 {% if question.shuffle %}
     {% do shuffle(question.labels) %}
 {% endif %}
+{% set is_other = question.other_enabled and question.value and question.value not in question.labels %}
 {% for label in question.labels %}
     <div class="form-check {{ "form-check-inline" if question.horizontal else "" }}">
         <input class="form-check-input"
@@ -10,6 +11,7 @@
                id="{{ question.id }}{{ loop.index }}"
                value="{{ label }}"
                {{ "required" if question.required }}
+               {% if question.value == label %}checked{% endif %}
                {% if question.other_enabled and question.other_input_hides %}
                onchange="handle_radio_button_click_{{ question.id }}()"
                {% endif %}>
@@ -27,8 +29,9 @@
                    type="radio"
                    name="{{ question.id }}"
                    id="{{ question.id }}_other"
-                   value=""
+                   value="{{ question.value|e if is_other else '' }}"
                    {{ "required" if question.required }}
+                   {% if is_other %}checked{% endif %}
                    {% if question.other_input_hides %}
                    onchange="handle_radio_button_click_{{ question.id }}()"
                    {% endif %}>
@@ -38,10 +41,11 @@
                {{ question.other_text_prompt }}
             </label>
             <input
-                style="grid-column: 2; width: {{ question.other_input_width if question.other_input_width else config['DEFAULT_FIELD_WIDTH'] }}px; {% if question.other_input_hides %}display: none;{% endif %}"
+                style="grid-column: 2; width: {{ question.other_input_width if question.other_input_width else config['DEFAULT_FIELD_WIDTH'] }}px; {% if question.other_input_hides and not is_other %}display: none;{% endif %}"
                 type="text"
                 name="{{ question.id }}_other_text_prompt"
                 id="{{ question.id }}_other_text_prompt"
+                {% if is_other %}value="{{ question.value|e }}"{% endif %}
                 onchange="{ $('#{{ question.id }}_other').val($('#{{ question.id }}_other_text_prompt').val()); }"
                 aria-label="custom text entry">
             {% if question.other_input_hides %}
