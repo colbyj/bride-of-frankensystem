@@ -189,6 +189,158 @@ def route_toggle_condition(condition_num):
     return render_template("progress_summary_ajax.html",
                            summary_groups=summary_groups, summary=summary, display_time=display_time)
 
+
+def _question_text_lookup(questionnaire):
+    """Build a {field_id: prompt_text} map from a questionnaire's JSON definition.
+    Falls back to the field id if no readable prompt is available."""
+    lookup = {}
+    qjson = getattr(questionnaire, 'json_data', None) or {}
+
+    def grab_text(defn):
+        for key in ('q_text', 'text', 'prompt', 'label', 'title'):
+            value = defn.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    for q in qjson.get('questions', []):
+        # Single-field question
+        if 'id' in q:
+            lookup[q['id']] = grab_text(q) or q['id']
+
+        # Group of sub-questions (e.g., radio grid)
+        if isinstance(q.get('questions'), list):
+            for sub in q['questions']:
+                if isinstance(sub, dict) and 'id' in sub:
+                    lookup[sub['id']] = grab_text(sub) or sub['id']
+
+    return lookup
+
+
+def _format_response_value(value):
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "Yes" if value else "No"
+    if isinstance(value, datetime):
+        return value.strftime('%Y-%m-%d %H:%M:%S')
+    return value
+
+
+def _fetch_page_data(participant, page):
+    """Return a dict describing the data submitted for this page, or None.
+    Currently only handles questionnaire pages."""
+    path = page['path']
+    if not path.startswith('questionnaire/'):
+        return None
+
+    name_and_tag = current_app.page_list.extract_questionnaire_from_path(path, include_tag=True)
+    name, tag = questionnaire_name_and_tag(name_and_tag)
+
+    questionnaire = current_app.questionnaires.get(name)
+    if questionnaire is None or questionnaire.db_class is None:
+        return None
+
+    row = db.session.query(questionnaire.db_class).filter(
+        questionnaire.db_class.participantID == participant.participantID,
+        questionnaire.db_class.tag == tag,
+    ).first()
+
+    if row is None:
+        return None
+
+    prompts = _question_text_lookup(questionnaire)
+    fields = []
+    for column in questionnaire.fetch_fields():
+        fields.append({
+            'id': column.id,
+            'prompt': prompts.get(column.id, column.id),
+            'value': _format_response_value(getattr(row, column.id, None)),
+        })
+
+    calculated = []
+    for calc_name in questionnaire.get_calculated_fields():
+        try:
+            value = getattr(row, calc_name)()
+        except Exception as e:
+            value = f"<calculation error: {e}>"
+        calculated.append({'id': calc_name, 'value': _format_response_value(value)})
+
+    return {
+        'kind': 'questionnaire',
+        'name': name,
+        'tag': tag,
+        'fields': fields,
+        'calculated': calculated,
+    }
+
+
+@admin.route("/participant/<int:pid>")
+@verify_admin
+def route_participant_detail(pid):
+    participant = db.session.query(db.Participant).get(pid)
+    if participant is None:
+        return render_template("error.html",
+                               title="Participant not found",
+                               heading="Participant not found",
+                               message=f"No participant exists with ID {pid}."), 404
+
+    # Pass 0 (not None) when the participant has no condition assigned —
+    # passing None falls back to the admin's session condition, which is wrong.
+    pages = current_app.page_list.flat_page_list(condition=participant.condition or 0)
+    progress_rows = db.session.query(db.Progress) \
+        .filter(db.Progress.participantID == pid).all()
+    progress_by_path = {row.path: row for row in progress_rows}
+
+    timeline = []
+    for idx, page in enumerate(pages, start=1):
+        path = page['path']
+        progress = progress_by_path.get(path)
+        started_on = progress.startedOn if progress else None
+        submitted_on = progress.submittedOn if progress else None
+
+        # Special cases: consent-style entry pages and the end page never get
+        # a normal Progress row that reflects the experiment's actual flow.
+        # Entry pages run before the participant is recorded in the DB, so no
+        # Progress row is created. The end page sets participant.timeEnded but
+        # never POSTs, so submittedOn stays NULL.
+        if path in ('consent', 'consent_nc', 'create_participant', 'create_participant_nc'):
+            started_on = participant.timeStarted
+            submitted_on = participant.timeStarted
+            status = 'completed'
+        elif path == 'end' and participant.finished:
+            started_on = started_on or participant.timeEnded
+            submitted_on = participant.timeEnded
+            status = 'completed'
+        elif progress is None:
+            status = 'not_reached'
+        elif submitted_on is None:
+            status = 'in_progress'
+        else:
+            status = 'completed'
+
+        if started_on and submitted_on and submitted_on > started_on:
+            duration_display = display_time((submitted_on - started_on).total_seconds())
+        else:
+            duration_display = ""
+
+        timeline.append({
+            'index': idx,
+            'name': page.get('name', path),
+            'path': path,
+            'started_on': started_on,
+            'submitted_on': submitted_on,
+            'duration_display': duration_display,
+            'status': status,
+            'data': _fetch_page_data(participant, page),
+        })
+
+    return render_template("participant_detail.html",
+                           participant=participant,
+                           timeline=timeline,
+                           total_pages=len(pages),
+                           display_time=display_time)
+
 @admin.post("/update_exclude_from_count")
 def route_update_exclude_from_count():
     if 'participantID' not in request.form or 'excludeFromCount' not in request.form:

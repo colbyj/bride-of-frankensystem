@@ -1,0 +1,131 @@
+{% extends "template_admin.html" %}
+
+{% block content %}
+
+<div class="p-3 border-bottom d-flex align-items-center justify-content-between">
+    <div>
+        <h2 class="mb-1">Participant {{ participant.participantID }}</h2>
+        <a href="{{ url_for('admin.route_progress') }}">&larr; Back to Progress</a>
+    </div>
+    <div>
+        {% if participant.finished %}
+            <span class="badge bg-success">Finished</span>
+        {% elif participant.is_in_progress %}
+            <span class="badge bg-warning text-dark">In Progress</span>
+        {% else %}
+            <span class="badge bg-secondary">Abandoned</span>
+        {% endif %}
+        {% if participant.excludeFromCount %}
+            <span class="badge bg-danger ms-1">Excluded</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="p-3">
+    <div class="bg-body-tertiary p-3 rounded">
+        <h4>Summary</h4>
+        <div style="display: grid; grid-template-columns: 160px auto; row-gap: 4px;">
+            <b>External ID</b> <span>{{ participant.mTurkID or "—" }}</span>
+            <b>Condition</b> <span>{{ condition_num_to_label(participant.condition) or "—" }}</span>
+            <b>Started</b> <span>{{ participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') if participant.timeStarted else "—" }}</span>
+            <b>Ended</b> <span>{{ participant.timeEnded.strftime('%Y-%m-%d %H:%M:%S') if participant.timeEnded else "—" }}</span>
+            <b>Duration</b> <span>{{ participant.display_duration() }}</span>
+            <b>Last Active</b> <span>{{ participant.lastActiveOn.strftime('%Y-%m-%d %H:%M:%S') if participant.lastActiveOn else "—" }}</span>
+            {% set completed_count = timeline | selectattr('status', 'equalto', 'completed') | list | length %}
+            <b>Progress</b> <span>{{ completed_count }} of {{ total_pages }} pages completed</span>
+        </div>
+    </div>
+</div>
+
+<div class="p-3">
+    <h4>Progress Timeline</h4>
+    <p class="text-muted">Pages are listed in the order this participant encountered them.</p>
+
+    {% for row in timeline %}
+    <div class="card mb-2">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <div>
+                <span class="text-muted me-2">{{ row.index }}.</span>
+                <strong>{{ row.name }}</strong>
+                <code class="ms-2 text-muted">{{ row.path }}</code>
+            </div>
+            <div>
+                {% if row.status == 'completed' %}
+                    <span class="badge bg-success">Completed</span>
+                {% elif row.status == 'in_progress' %}
+                    <span class="badge bg-warning text-dark">In Progress</span>
+                {% else %}
+                    <span class="badge bg-secondary">Not Reached</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if row.started_on or row.data %}
+        <div class="card-body">
+            {% if row.started_on %}
+            <div class="text-muted mb-2">
+                <b>Started:</b> {{ row.started_on.strftime('%Y-%m-%d %H:%M:%S') }}
+                {% if row.submitted_on %}
+                    &nbsp;&middot;&nbsp; <b>Submitted:</b> {{ row.submitted_on.strftime('%Y-%m-%d %H:%M:%S') }}
+                    {% if row.duration_display %}
+                        &nbsp;&middot;&nbsp; <b>Duration:</b> {{ row.duration_display }}
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if row.data and row.data.kind == 'questionnaire' %}
+            <div class="mb-2">
+                <b>Questionnaire:</b> <code>{{ row.data.name }}</code>{% if row.data.tag %} &nbsp;&middot;&nbsp; <b>Tag:</b> <code>{{ row.data.tag }}</code>{% endif %}
+            </div>
+
+            <table class="table table-sm table-striped border mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Question</th>
+                        <th style="width: 25%;">Field ID</th>
+                        <th>Response</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for field in row.data.fields %}
+                    <tr>
+                        <td>{{ field.prompt }}</td>
+                        <td><code>{{ field.id }}</code></td>
+                        <td>
+                            {% if field.value == "" or field.value is none %}
+                                <span class="text-muted fst-italic">(empty)</span>
+                            {% else %}
+                                {{ field.value }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if row.data.calculated %}
+            <div class="mt-3">
+                <b>Calculated fields</b>
+                <table class="table table-sm table-striped border mb-0 mt-1">
+                    <tbody>
+                        {% for field in row.data.calculated %}
+                        <tr>
+                            <td style="width: 25%;"><code>{{ field.id }}</code></td>
+                            <td>{{ field.value }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% elif row.path.startswith('questionnaire/') and row.status == 'completed' %}
+            <div class="text-muted">No response data found for this questionnaire submission.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
