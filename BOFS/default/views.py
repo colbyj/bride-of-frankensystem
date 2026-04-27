@@ -367,34 +367,28 @@ def route_restart():
     """
     ``/restart``
 
-    Use this if you ever need to the user to start the experiment over for any reason.
-    This tries to clear out all the cookies.
+    Clears all participant/progress session state and redirects to the start
+    of the experiment. Admin login state (``loggedIn``) is preserved so the
+    admin does not need to re-authenticate after restarting a session.
     """
+    was_logged_in = session.get('loggedIn', False)
 
-    response = make_response(redirect("/"))
+    # save_session only assigns the FK columns when their keys exist in the
+    # session dict; it never clears them. Null them out explicitly so the row
+    # doesn't keep pointing at the previous participant.
     sessionID = request.cookies.get("session", None)
-
     if sessionID:
-        # Delete from DB
         ss = db.session.query(db.SessionStore).get(sessionID)
-
         if ss:
-            db.session.delete(ss)
+            ss.participantID = None
+            ss.mTurkID = None
             db.session.commit()
 
-    # Set cookie expiry for every route.
-    for page in page_list.page_list:
-        # TODO: Get all paths in page_list, for all conditions.
-        if 'path' not in page:
-            continue
+    session.clear()
+    if was_logged_in:
+        session['loggedIn'] = True
 
-        path = page['path']
-        if not path.startswith("/"):
-            path = "/" + path
-
-        response.set_cookie('session', expires=0, path=path)
-
-    return response
+    return redirect("/")
 
 
 @default.route("/submit", methods=['POST'])
