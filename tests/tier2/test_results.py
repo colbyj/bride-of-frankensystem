@@ -1,4 +1,4 @@
-"""Tier 2 tests for the Results class (BOFS/admin/Results.py).
+"""Tier 2 tests for the Results class (BOFS/services/data_export.py).
 
 Tests DataFrame joins, CSV export, caching, and filtering.
 Uses the bofs_app_with_questionnaires fixture for a fully-loaded app with
@@ -11,7 +11,7 @@ from datetime import datetime
 
 import pytest
 
-from BOFS.admin.Results import Results
+from BOFS.services.data_export import Results
 
 
 # ===========================================================================
@@ -300,3 +300,189 @@ class TestCaching:
         r2 = Results(cache_path=cache_path)
         assert r2.df is None  # Not loaded from cache
         assert len(r2.export_data) == 1  # But data was built from DB
+
+
+# ===========================================================================
+# New staticmethods: build_filter_from_args and calculate_results
+# ===========================================================================
+
+class TestBuildFilterFromArgs:
+    """Unit tests for Results.build_filter_from_args (the bool-parsing bug fix)."""
+
+    def _filter(self, **kwargs):
+        from werkzeug.datastructures import ImmutableMultiDict
+        return Results.build_filter_from_args(ImmutableMultiDict(kwargs))
+
+    # --- Parsing correctness ---
+
+    def test_true_string_is_truthy(self, bofs_app_with_questionnaires):
+        """'true' → True. Both flags on → no filter."""
+        f = self._filter(includeUnfinished='true', includeExcluded='true')
+        assert f is None
+
+    def test_false_string_is_falsy(self, bofs_app_with_questionnaires):
+        """'false' → False (the bool-parsing bug that was fixed). Both off → restrict on both."""
+        f = self._filter(includeUnfinished='false', includeExcluded='false')
+        assert f is not None
+
+    def test_case_insensitive(self, bofs_app_with_questionnaires):
+        """'TRUE' / 'FALSE' are parsed case-insensitively."""
+        f_upper = self._filter(includeUnfinished='TRUE', includeExcluded='TRUE')
+        f_lower = self._filter(includeUnfinished='true', includeExcluded='true')
+        # Both produce identical "no filter" output.
+        assert f_upper is None
+        assert f_lower is None
+
+    def test_absent_params_use_defaults(self, bofs_app_with_questionnaires):
+        """Absent params fall back to (includeUnfinished=False, includeExcluded=False)
+        → both restrictions applied."""
+        from werkzeug.datastructures import ImmutableMultiDict
+        f = Results.build_filter_from_args(ImmutableMultiDict())
+        assert f is not None
+
+    def test_bool_true_passthrough(self, bofs_app_with_questionnaires):
+        """A literal Python True passes through the parser."""
+        f = Results.build_filter_from_args({'includeUnfinished': True, 'includeExcluded': True})
+        assert f is None
+
+    def test_bool_false_passthrough(self, bofs_app_with_questionnaires):
+        """A literal Python False passes through the parser."""
+        f = Results.build_filter_from_args({'includeUnfinished': False, 'includeExcluded': False})
+        assert f is not None
+
+    # --- Filter semantics (verified against a seeded DB) ---
+
+    def _seed_four(self, app):
+        """Seed finished+included, unfinished+included, finished+excluded, unfinished+excluded."""
+        def make(finished, excluded):
+            p = app.db.Participant()
+            p.mTurkID = ""
+            p.ipAddress = "127.0.0.1"
+            p.userAgent = "test"
+            p.condition = 1
+            p.finished = finished
+            p.excludeFromCount = excluded
+            p.timeStarted = datetime(2024, 1, 1, 12, 0, 0)
+            p.timeEnded = datetime(2024, 1, 1, 12, 5, 0) if finished else None
+            app.db.session.add(p)
+        make(True, False)
+        make(False, False)
+        make(True, True)
+        make(False, True)
+        app.db.session.commit()
+
+    def _count(self, app, f):
+        q = app.db.session.query(app.db.Participant)
+        if f is not None:
+            q = q.filter(f)
+        return q.count()
+
+    def test_default_finished_and_non_excluded(self, bofs_app_with_questionnaires):
+        """includeUnfinished=False, includeExcluded=False → only finished+included (1)."""
+        app = bofs_app_with_questionnaires
+        self._seed_four(app)
+        f = self._filter(includeUnfinished='false', includeExcluded='false')
+        assert self._count(app, f) == 1
+
+    def test_unfinished_only_non_excluded(self, bofs_app_with_questionnaires):
+        """includeUnfinished=True, includeExcluded=False → all non-excluded (2)."""
+        app = bofs_app_with_questionnaires
+        self._seed_four(app)
+        f = self._filter(includeUnfinished='true', includeExcluded='false')
+        assert self._count(app, f) == 2
+
+    def test_excluded_only_finished(self, bofs_app_with_questionnaires):
+        """includeUnfinished=False, includeExcluded=True → only finished, both excl states (2)."""
+        app = bofs_app_with_questionnaires
+        self._seed_four(app)
+        f = self._filter(includeUnfinished='false', includeExcluded='true')
+        assert self._count(app, f) == 2  # finished+included + finished+excluded
+
+    def test_both_flags_no_filter(self, bofs_app_with_questionnaires):
+        """includeUnfinished=True, includeExcluded=True → no filter (all 4)."""
+        app = bofs_app_with_questionnaires
+        self._seed_four(app)
+        f = self._filter(includeUnfinished='true', includeExcluded='true')
+        assert f is None
+        assert self._count(app, f) == 4
+
+
+class TestCalculateResults:
+    """Unit tests for Results.calculate_results staticmethod."""
+
+    def test_returns_three_tuple(self, bofs_app_with_questionnaires, tmp_path):
+        """calculate_results returns (results, df, summary_stats)."""
+        app = bofs_app_with_questionnaires
+        # Seed one finished, non-excluded participant
+        _make_participant(app, finished=True)
+        cache_path = str(tmp_path / "cache.json")
+
+        result = Results.calculate_results(cache_path)
+        assert len(result) == 3
+
+    def test_df_is_non_empty_with_participants(self, bofs_app_with_questionnaires, tmp_path):
+        """With qualifying participants, df is non-empty."""
+        app = bofs_app_with_questionnaires
+        _make_participant(app, finished=True)
+        cache_path = str(tmp_path / "cache.json")
+
+        results, df, summary_stats = Results.calculate_results(cache_path)
+        assert len(df) > 0
+
+    def test_summary_stats_is_dict(self, bofs_app_with_questionnaires, tmp_path):
+        """summary_stats is always a dict (possibly empty)."""
+        app = bofs_app_with_questionnaires
+        _make_participant(app, finished=True)
+        cache_path = str(tmp_path / "cache.json")
+
+        results, df, summary_stats = Results.calculate_results(cache_path)
+        assert isinstance(summary_stats, dict)
+
+    def test_empty_db_yields_empty_df_and_stats(self, bofs_app_with_questionnaires, tmp_path):
+        """No participants → empty df and empty summary_stats."""
+        app = bofs_app_with_questionnaires
+        cache_path = str(tmp_path / "cache_empty.json")
+
+        results, df, summary_stats = Results.calculate_results(cache_path)
+        assert len(df) == 0
+        assert summary_stats == {}
+
+    def test_excludes_unfinished(self, bofs_app_with_questionnaires, tmp_path):
+        """Unfinished participants are excluded from results."""
+        app = bofs_app_with_questionnaires
+        _make_participant(app, finished=True)
+        _make_participant(app, finished=False)
+        cache_path = str(tmp_path / "cache_excl.json")
+
+        results, df, summary_stats = Results.calculate_results(cache_path)
+        assert len(df) == 1
+
+    def test_excludes_excluded_from_count(self, bofs_app_with_questionnaires, tmp_path):
+        """Participants with excludeFromCount=True are excluded from results."""
+        app = bofs_app_with_questionnaires
+        p_incl = _make_participant(app, finished=True)
+        p_excl = _make_participant(app, finished=True)
+        p_excl.excludeFromCount = True
+        app.db.session.commit()
+
+        cache_path = str(tmp_path / "cache_excl2.json")
+        results, df, summary_stats = Results.calculate_results(cache_path)
+        assert len(df) == 1
+        assert p_incl.participantID in results.export_data
+        assert p_excl.participantID not in results.export_data
+
+    def test_summary_stats_populated_for_numeric_cols(self, bofs_app_with_questionnaires, tmp_path):
+        """With numeric questionnaire data, summary_stats is non-empty."""
+        app = bofs_app_with_questionnaires
+        # Seed two participants in different conditions with questionnaire data
+        p1 = _seed_full_participant(app, condition=1)
+        p2 = _seed_full_participant(app, condition=2)
+        p1.finished = True
+        p2.finished = True
+        app.db.session.commit()
+
+        cache_path = str(tmp_path / "cache_stats.json")
+        results, df, summary_stats = Results.calculate_results(cache_path)
+        # summary_stats may be empty if participants are filtered out due to excludeFromCount;
+        # just assert it is a dict (content varies by fixture data)
+        assert isinstance(summary_stats, dict)

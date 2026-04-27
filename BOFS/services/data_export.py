@@ -1,8 +1,14 @@
+"""Data export service for BOFS.
+
+The Results class and associated helpers for building participant data exports,
+DataFrames, and summary statistics.
+"""
+
 from sqlalchemy.orm import Query
 from BOFS.globals import db, questionnaires, page_list
 import sqlalchemy
-from .util import escape_csv, questionnaire_name_and_tag, condition_num_to_label
-from flask  import current_app
+from BOFS.admin.util import escape_csv, questionnaire_name_and_tag, condition_num_to_label
+from flask import current_app
 import pandas as pd
 import os
 from datetime import datetime
@@ -12,7 +18,7 @@ MAX_CACHE_SECONDS = 60 * 2
 
 
 class Results(object):
-    def __init__(self, filter_criterion=None, cache_path: Union[str, None] =None):
+    def __init__(self, filter_criterion=None, cache_path: Union[str, None] = None):
         self.cache_path = cache_path
         use_cache = False
 
@@ -297,3 +303,64 @@ class Results(object):
 
         return csv_string[:-1]  # return everything except last line break
 
+    @staticmethod
+    def build_filter_from_args(args):
+        """Construct a SQLAlchemy filter from request.args query parameters.
+
+        Each toggle, when off, adds a restricting clause; when on, leaves the
+        category in the export. Recognized params (literal string 'true' /
+        'false', case-insensitive):
+          - includeUnfinished (default False) — when False, restrict to finished participants.
+          - includeExcluded   (default False) — when False, restrict to non-excluded participants.
+          - includeMissing    (default True)  — accepted but currently unused by the filter; kept for API parity.
+
+        Returns: a ClauseElement (db.and_), or None when both toggles are on
+        (no filter at all).
+        """
+        def _parse(name, default):
+            value = args.get(name)
+            if value is None:
+                return default
+            if isinstance(value, bool):
+                return value
+            return str(value).strip().lower() == 'true'
+
+        include_unfinished = _parse('includeUnfinished', False)
+        include_excluded   = _parse('includeExcluded', False)
+        _parse('includeMissing', True)  # accepted for API parity; not used by the filter
+
+        clauses = []
+        if not include_unfinished:
+            clauses.append(db.Participant.finished == True)
+        if not include_excluded:
+            clauses.append(db.or_(db.Participant.excludeFromCount == False,
+                                  db.Participant.excludeFromCount == None))
+
+        if not clauses:
+            return None
+        return db.and_(*clauses)
+
+    @staticmethod
+    def calculate_results(cache_path):
+        """Build a Results, its DataFrame, and per-numeric-column SummaryStats.
+
+        Returns (results, df, summary_stats) where summary_stats is a dict keyed
+        by column name, valued by SummaryStats. Filters to finished, non-excluded
+        participants. Used by the admin /results and /results_boxplot routes.
+        """
+        from BOFS.admin.SummaryStats import SummaryStats  # avoid circular at module load
+        results = Results(
+            db.and_(db.Participant.finished == True, db.Participant.excludeFromCount == False),
+            cache_path,
+        )
+        df = results.build_data_frame()
+
+        summary_stats = {}
+        if len(df) > 0:
+            df_grouped = df.groupby(by="condition")
+            for column in list(df_grouped.head()):
+                dtype = df[column].head().dtype.name
+                if dtype in ['int64', 'float64', 'bool'] and column not in ['participantID', 'condition', 'duration', 'finished']:
+                    summary_stats[column] = SummaryStats(df_grouped, column)
+
+        return results, df, summary_stats

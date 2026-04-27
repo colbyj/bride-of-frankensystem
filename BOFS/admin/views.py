@@ -1,14 +1,12 @@
 import os
-import pandas as pd
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file
 from .. import BOFSFlask
 from ..globals import db, questionnaires, page_list
 from ..util import fetch_condition_count, display_time, provide_consent, int_or_0
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
 from ..JSONQuestionnaire import JSONQuestionnaire
-from .Results import Results
+from ..services.data_export import Results
 import json
-from .SummaryStats import SummaryStats
 from ..services.admin_stats import AdminStatsService
 from ..services.participant import ParticipantService
 from datetime import datetime
@@ -356,21 +354,7 @@ def route_export():
     excluded_count = db.session.query(db.Participant). \
         filter(db.Participant.excludeFromCount == True).count()  # For display only
 
-    include_unfinished = request.args.get('includeUnfinished', False)
-    include_missing = request.args.get('includeMissing', True)
-    include_excluded = request.args.get('includeExcluded', False)
-
-    if not include_excluded and include_unfinished:
-        query_filter = db.or_(db.Participant.excludeFromCount == False, db.Participant.excludeFromCount == None)
-    elif not include_excluded:
-        query_filter = db.and_(db.Participant.finished == True,
-                               db.or_(db.Participant.excludeFromCount == False, db.Participant.excludeFromCount == None))
-    elif not include_unfinished:
-        query_filter = None
-    else:
-        query_filter = db.and_(db.Participant.finished == True)
-
-    results = Results(query_filter)
+    results = Results(Results.build_filter_from_args(request.args))
     df = results.build_data_frame()
 
 
@@ -389,29 +373,11 @@ def route_export():
                                excludedCount=excluded_count)
 
 
-def calculate_results() -> tuple[Results, pd.DataFrame, dict[str, SummaryStats]]:
-    cache_path = os.path.join(current_app.root_path, 'cached_results.json')
-    results = Results(db.and_(db.Participant.finished == True, db.Participant.excludeFromCount == False), cache_path)
-    df = results.build_data_frame()
-
-    summary_stats = {}
-
-    if len(df) > 0:
-        df_grouped = df.groupby(by="condition")
-
-        for column in list(df_grouped.head()):
-            dtype = df[column].head().dtype.name
-            if dtype in ['int64', 'float64', 'bool'] and column not in ['participantID', 'condition', 'duration',
-                                                                        'finished']:
-                summary_stats[column] = SummaryStats(df_grouped, column)
-
-    return results, df, summary_stats
-
-
 @admin.route("/results")
 @verify_admin
 def route_results():
-    results, df, summary_stats = calculate_results()
+    cache_path = os.path.join(current_app.root_path, 'cached_results.json')
+    results, df, summary_stats = Results.calculate_results(cache_path)
 
     return render_template("results.html", summary_stats=summary_stats)
 
@@ -419,7 +385,8 @@ def route_results():
 @admin.route("/results_boxplot/<path:field_name>")
 @verify_admin
 def route_results_boxplot(field_name: str):
-    results, df, summary_stats = calculate_results()
+    cache_path = os.path.join(current_app.root_path, 'cached_results.json')
+    results, df, summary_stats = Results.calculate_results(cache_path)
 
     unique_conditions = df['condition'].unique().tolist()
     unique_conditions.sort()
