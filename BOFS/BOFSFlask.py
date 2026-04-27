@@ -84,6 +84,7 @@ class BOFSFlask(Flask):
         # allows flat_page_list variable to be accessible from all templates
         self.template_context_processors[None].append(self.inject_jinja_vars)
         self.before_request_funcs.setdefault(None, []).append(self.before_request_)
+        self.after_request_funcs.setdefault(None, []).append(self.after_request_)
 
         self.questionnaire_paths = {}
         self.table_paths = {}
@@ -469,3 +470,51 @@ class BOFSFlask(Flask):
                               '<p>If you need help with questionnaire format, see the '
                               '<a href="https://bride-of-frankensystem.readthedocs.io/">BOFS documentation</a>.</p>'
                 )
+
+    _ACTIVITY_POLL_TAG = b'<script src="/BOFS_static/js/user_active.js"></script>'
+    _ACTIVITY_POLL_SKIP_PREFIXES = ('/admin', '/BOFS_static')
+
+    def after_request_(self, response):
+        """
+        Inject the activity-polling ``<script>`` into HTML responses for
+        participant pages. This is what keeps ``Participant.lastActiveOn``
+        fresh for custom pages that don't extend ``template.html`` (and thus
+        don't include the ``checkUserActive`` macro inline).
+
+        Skipped when:
+          - response is not ``text/html``
+          - no participant in session
+          - request path is admin or BOFS static
+          - the route applied ``@suppress_activity_polling``
+        """
+        from flask import request, session, g
+
+        if response.mimetype != 'text/html':
+            return response
+        if 'participantID' not in session:
+            return response
+        if request.path.startswith(self._ACTIVITY_POLL_SKIP_PREFIXES):
+            return response
+        if getattr(g, 'bofs_skip_activity_polling', False):
+            return response
+        if response.direct_passthrough:
+            return response
+
+        body = response.get_data()
+        # Empty/whitespace-only responses (e.g. API endpoints that just return
+        # "") aren't pages — skip silently rather than warning.
+        if not body.strip():
+            return response
+
+        idx = body.rfind(b'</body>')
+        if idx == -1:
+            self.logger.warning(
+                "BOFS activity-polling: response for %s has no </body> tag; "
+                "skipping script injection. Participants on this page won't "
+                "have their lastActiveOn refreshed and may be marked abandoned.",
+                request.path,
+            )
+            return response
+
+        response.set_data(body[:idx] + self._ACTIVITY_POLL_TAG + body[idx:])
+        return response

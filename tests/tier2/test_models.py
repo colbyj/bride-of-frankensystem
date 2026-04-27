@@ -177,6 +177,111 @@ class TestProgressDisplayDuration:
 
 
 # ===========================================================================
+# TestCloseProgressSubmitted — close-out on forward navigation
+# ===========================================================================
+
+def _make_progress(app, participant_id, path, submitted_on=None):
+    prog = app.db.Progress()
+    prog.participantID = participant_id
+    prog.path = path
+    prog.startedOn = datetime(2024, 1, 1, 12, 0, 0)
+    prog.submittedOn = submitted_on
+    app.db.session.add(prog)
+    app.db.session.commit()
+    return prog
+
+
+class TestCloseProgressSubmitted:
+    def test_sets_submitted_on_when_null(self, bofs_app):
+        from flask import session
+        from BOFS.util import close_progress_submitted
+
+        p = _make_participant(bofs_app)
+        prog = _make_progress(bofs_app, p.participantID, "custom_page")
+
+        with bofs_app.test_request_context():
+            session['participantID'] = p.participantID
+            close_progress_submitted("custom_page")
+
+        bofs_app.db.session.refresh(prog)
+        assert prog.submittedOn is not None
+
+    def test_does_not_overwrite_existing(self, bofs_app):
+        from flask import session
+        from BOFS.util import close_progress_submitted
+
+        original = datetime(2024, 1, 1, 12, 0, 30)
+        p = _make_participant(bofs_app)
+        prog = _make_progress(bofs_app, p.participantID, "custom_page",
+                              submitted_on=original)
+
+        with bofs_app.test_request_context():
+            session['participantID'] = p.participantID
+            close_progress_submitted("custom_page")
+
+        bofs_app.db.session.refresh(prog)
+        assert prog.submittedOn == original
+
+    def test_no_op_without_participant_in_session(self, bofs_app):
+        from BOFS.util import close_progress_submitted
+
+        p = _make_participant(bofs_app)
+        prog = _make_progress(bofs_app, p.participantID, "custom_page")
+
+        with bofs_app.test_request_context():
+            close_progress_submitted("custom_page")
+
+        bofs_app.db.session.refresh(prog)
+        assert prog.submittedOn is None
+
+    def test_no_op_when_no_progress_row(self, bofs_app):
+        from flask import session
+        from BOFS.util import close_progress_submitted
+
+        p = _make_participant(bofs_app)
+        # No Progress row for this path
+
+        with bofs_app.test_request_context():
+            session['participantID'] = p.participantID
+            close_progress_submitted("never_visited")  # should not raise
+
+    def test_no_op_when_path_empty(self, bofs_app):
+        from flask import session
+        from BOFS.util import close_progress_submitted
+
+        p = _make_participant(bofs_app)
+        prog = _make_progress(bofs_app, p.participantID, "")
+
+        with bofs_app.test_request_context():
+            session['participantID'] = p.participantID
+            close_progress_submitted(None)
+            close_progress_submitted("")
+
+        bofs_app.db.session.refresh(prog)
+        assert prog.submittedOn is None
+
+
+class TestRedirectAndSetNextPath:
+    def test_closes_outgoing_and_advances(self, bofs_app):
+        from flask import session
+        from BOFS.util import redirect_and_set_next_path
+
+        p = _make_participant(bofs_app)
+        outgoing = _make_progress(bofs_app, p.participantID, "consent")
+
+        with bofs_app.test_request_context():
+            session['participantID'] = p.participantID
+            session['currentUrl'] = "consent"
+            response = redirect_and_set_next_path("consent")
+
+        bofs_app.db.session.refresh(outgoing)
+        assert outgoing.submittedOn is not None
+        assert response.status_code == 302
+        # PAGE_LIST in conftest is [consent, end]; next after consent is end.
+        assert response.location.endswith("/end")
+
+
+# ===========================================================================
 # TestQuestionnaireLog
 # ===========================================================================
 

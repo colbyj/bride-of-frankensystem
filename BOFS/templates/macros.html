@@ -139,13 +139,9 @@
 {% macro checkUserActive() %}
     <script type="text/javascript">
     {% if 'currentUrl' in session and session['currentUrl'] %}
-        setInterval(function() {
-            $.ajax({
-                url: "{{ url_for('default.route_user_active') }}",
-                dataType: "html",
-                success: function(data) {}
-            });
-        }, 30000);
+        // Activity polling lives in /BOFS_static/js/user_active.js, injected
+        // server-side for any participant page (see BOFSFlask.after_request_).
+        // This macro now only handles the wrong-page correctness redirect.
 
         // Redirect user to the correct page if they are on the wrong page.
         window.onload = function() {

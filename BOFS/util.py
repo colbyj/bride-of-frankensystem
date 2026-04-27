@@ -1,5 +1,5 @@
 from functools import wraps
-from flask import request, redirect, session, current_app
+from flask import request, redirect, session, current_app, g
 import operator
 from .globals import db
 import math
@@ -104,13 +104,54 @@ def verify_session_valid(f):
     return decorated_function
 
 
+def close_progress_submitted(path):
+    """
+    Close out the participant's Progress row for *path* by setting
+    ``submittedOn`` to now, if it is still NULL.
+
+    No-op when there's no participant in session, no path, or no matching
+    Progress row. Safe to call from any forward-navigation chokepoint.
+    """
+    if not path:
+        return
+    if 'participantID' not in session:
+        return
+
+    progress = db.session.query(db.Progress).filter(
+        db.Progress.participantID == session['participantID'],
+        db.Progress.path == path,
+    ).one_or_none()
+
+    if progress is None or progress.submittedOn is not None:
+        return
+
+    progress.submittedOn = datetime.datetime.utcnow()
+    db.session.commit()
+
+
+def suppress_activity_polling(f):
+    """
+    Decorator that opts a route out of the auto-injected activity-polling
+    script (see ``BOFSFlask.after_request_``). Use this on custom pages that
+    run their own JS and don't want a framework script appended to the body.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        g.bofs_skip_activity_polling = True
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def redirect_and_set_next_path(current_path=None):
     """
-    Uses the next_path_in_list() method to redirect the user
+    Uses the next_path_in_list() method to redirect the user. Also closes the
+    outgoing page's Progress row (sets ``submittedOn``) so custom pages that
+    navigate via GET don't leave Progress rows perpetually open.
 
     :param str current_path: The user's current path
     :returns: str -- the next path in PAGE_LIST which the user should be sent to.
     """
+    close_progress_submitted(current_path)
     session['currentUrl'] = current_app.page_list.next_path(current_path)
     return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
 
@@ -121,8 +162,7 @@ def redirect_next_page():
     Needs a valid app context to work.
     Redirects user to the next page based on their present URL (from the request).
     """
-    session['currentUrl'] = current_app.page_list.next_path(request.url_rule.rule)
-    return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
+    return redirect_and_set_next_path(request.url_rule.rule)
 
 
 def join_urls(path: str, *paths: str):

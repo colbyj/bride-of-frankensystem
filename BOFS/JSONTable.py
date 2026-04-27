@@ -157,7 +157,7 @@ class JSONTable(object):
         db.session.add(entry)
         db.session.commit()
 
-        return ""
+        return "", 204
 
     def handle_get(self):
         q = db.session.query(self.db_class).\

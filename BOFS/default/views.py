@@ -317,12 +317,10 @@ def route_redirect_next_page():
         current_page = session['currentUrl']
 
     if current_page == "end":
+        close_progress_submitted(current_page)
         return redirect(current_app.config["APPLICATION_ROOT"] + "/end")
 
-    session['currentUrl'] = page_list.next_path(current_page)
-    nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
-
-    return redirect(nextUrl)
+    return redirect_and_set_next_path(current_page)
 
 
 @default.route("/redirect_from_page/<path:page>")
@@ -334,10 +332,7 @@ def route_redirect_from_page(page):
 
     :param page: The page to start from, the user will be sent to next page in the list
     """
-    session['currentUrl'] = page_list.next_path(page)
-    nextUrl = current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl']
-
-    return redirect(nextUrl)
+    return redirect_and_set_next_path(page)
 
 
 @default.route("/redirect_to_page/<path:page>")
