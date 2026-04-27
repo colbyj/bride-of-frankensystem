@@ -1,5 +1,5 @@
 Accessing Participant Data
-=========================
+==========================
 
 This reference guide explains how to access participant data from templates, questionnaires, and custom pages in BOFS. Understanding these patterns is essential for creating dynamic content that adapts based on participant responses and progress.
 
@@ -8,15 +8,28 @@ Template Variables Overview
 
 BOFS automatically provides several variables in templates:
 
-==================== ========================================= ===================================
-Variable             Available In                              Description
-==================== ========================================= ===================================
-``participant``      Instructions, Simple pages, Questions    Current participant object with all data access methods
-``session``          All templates                             Flask session with participant ID, condition, etc.
-``debug``            All templates                             Boolean indicating if running in debug mode
-``config``           All templates                             Access to TOML configuration settings
-``flat_page_list``   All templates                             List of all pages in the experiment
-==================== ========================================= ===================================
+.. list-table::
+   :header-rows: 1
+   :widths: 20 35 45
+
+   * - Variable
+     - Available In
+     - Description
+   * - ``participant``
+     - Instructions, Simple pages, Questions
+     - Current participant object with all data access methods
+   * - ``session``
+     - All templates
+     - Flask session with participant ID, condition, etc.
+   * - ``debug``
+     - All templates
+     - Boolean indicating if running in debug mode
+   * - ``config``
+     - All templates
+     - Access to TOML configuration settings
+   * - ``flat_page_list``
+     - All templates
+     - List of all pages in the experiment
 
 The Participant Object
 ----------------------
@@ -230,7 +243,7 @@ Advanced Usage Examples
 
 **Performance Feedback Based on Multiple Sources**
 
-.. code-block:: html
+.. code-block:: html+jinja
 
     {% set task_responses = participant.questionnaire('task_questions') %}
     {% set performance_data = participant.table('task_performance') %}

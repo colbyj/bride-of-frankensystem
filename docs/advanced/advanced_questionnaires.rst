@@ -1,5 +1,5 @@
 Advanced Questionnaires
-======================
+=======================
 
 This section covers advanced questionnaire features including calculations, custom question types, and complex layouts.
 
@@ -67,7 +67,7 @@ Calculations can use any valid Python expression, including:
 
 
 Creating Custom Question Types
------------------------------
+------------------------------
 
 For maximum flexibility, you can create entirely custom question types using HTML templates.
 
@@ -162,7 +162,7 @@ Then loop through them in your template:
     {% endfor %}
 
 Advanced Features
-----------------
+-----------------
 
 **Conditional Display**
 
@@ -216,7 +216,7 @@ Add client-side validation to custom question types:
     </script>
 
 Database Considerations
-----------------------
+-----------------------
 
 **Column Names**
 
