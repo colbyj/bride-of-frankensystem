@@ -102,7 +102,6 @@ class JSONQuestionnaire(object):
 
         self.__fields: list["JSONQuestionnaireColumn"] = []
         self.__calc_fields: list[str] = []
-        self.__field_count = 0
         self.db_class : db.Model | None = None
 
     def get_table_name(self):
@@ -112,13 +111,12 @@ class JSONQuestionnaire(object):
         return self.__calc_fields
 
     def fetch_fields(self) -> list["JSONQuestionnaireColumn"]:
-        self.__fields: list["JSONQuestionnaireColumn"]= []
+        if self.__fields:
+            return self.__fields
 
         if not self.json_data or 'questions' not in self.json_data:
             print ("ERROR! `%s` questionnaire contains no questions." % self.file_name)
             return self.__fields
-
-        #print "fetchFields() for " + self.fileName
 
         for q in self.json_data['questions']:
             # Build up the fields list based on the questionnaire
@@ -134,7 +132,6 @@ class JSONQuestionnaire(object):
             if 'id' in q:
                 self.__fields.append(JSONQuestionnaireColumn(q))
 
-        self.__field_count = len(self.__fields)
         return self.__fields
 
     def create_db_class(self):

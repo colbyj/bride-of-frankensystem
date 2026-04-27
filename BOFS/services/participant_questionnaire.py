@@ -83,8 +83,8 @@ class ParticipantQuestionnaireService:
             if not os.path.exists("logs"):
                 os.makedirs("logs")
 
-            f = open("logs/" + questionnaire.file_name + ".txt", "a+")
-            f.write("Time = " + str(timeStarted) + "; pID = " + str(self.participant_id) + ";\n" + pprint.pformat(request.form) + "\n\n")
+            with open("logs/" + questionnaire.file_name + ".txt", "a+") as f:
+                f.write("Time = " + str(timeStarted) + "; pID = " + str(self.participant_id) + ";\n" + pprint.pformat(request.form) + "\n\n")
 
     def fetch_prior_values(self, questionnaire, tag: str = "") -> dict:
         """Return {field_id: stored_value} for this participant's prior submission of this
