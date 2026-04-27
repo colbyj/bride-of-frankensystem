@@ -6,6 +6,8 @@ from BOFS.JSONTable import JSONTable
 from BOFS.util import *
 from BOFS.globals import db, referrer, page_list, questionnaires, tables
 from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
+from BOFS.services.participant import ParticipantService
+from BOFS.services.session_recovery import SessionRecoveryService
 
 
 default = Blueprint('default', __name__)
@@ -117,10 +119,7 @@ def route_assign_condition():
         return redirect("/debug_pick_condition")
 
     p = db.session.query(db.Participant).get(session['participantID'])
-    p.assign_condition()
-    db.session.commit()
-
-    session['condition'] = p.condition
+    ParticipantService.assign_condition_organic(p)
 
     return redirect("/redirect_from_page/assign_condition")
 
@@ -165,9 +164,7 @@ def route_debug_pick_condition():
         if 'enabled' in meta and meta['enabled'] is False:
             abort(400)
 
-        p.condition = chosen
-        db.session.commit()
-        session['condition'] = p.condition
+        ParticipantService.assign_condition_explicit(p, chosen)
 
         return redirect("/redirect_next_page")
 
@@ -211,54 +208,9 @@ def route_external_id():
 
         session['mTurkID'] = p.mTurkID
 
-        # Don't try to load any past attempts if this config option is set
-        if not current_app.config['RETRIEVE_SESSIONS']:
-            return redirect(join_urls('/redirect_from_page', request.path))
-
-        # The assumption at this stage is that the user will have no session data with their MTurkID, and if there is
-        # any, then it would be associated with a different participantID.
-        sessionFromMTurkID = db.session.query(db.SessionStore).\
-            filter(db.SessionStore.mTurkID == p.mTurkID, db.SessionStore.participantID != p.participantID).\
-            order_by(db.desc(db.SessionStore.createdOn)).all()
-
-        allowRetakes = current_app.config['ALLOW_RETAKES']
-
-        # This person has tried the task before and didn't finish. Let's load their information.
-        # This will leave an orphaned participant in the DB (they will load up and use their old participantID).
-        # If they had previously finished an attempt, then let them start over.
-        if sessionFromMTurkID and len(sessionFromMTurkID) > 0:
-            pFromMTurkID = db.session.query(db.Participant). \
-                filter(
-                    db.Participant.mTurkID == p.mTurkID,
-                    db.Participant.participantID == sessionFromMTurkID[0].participantID
-                )
-
-            if allowRetakes:
-                # If `ALLOW_RETAKES` is `True`, then don't try to re-load data from past attempts that were completed.
-                pFromMTurkID = pFromMTurkID.filter(db.Participant.finished != True, db.Participant.participantID != session['participantID'])
-
-            pFromMTurkID = pFromMTurkID.all()
-
-            # Load their old session
-            if pFromMTurkID and len(pFromMTurkID) > 0:
-                dictData = BOFSSessionInterface.serializer.loads(sessionFromMTurkID[0].data)
-                for key in dictData.keys():
-                    session[key] = dictData[key]
-
-                # Ensure that if conditions are used, their incomplete attempt doesn't skew the counts.
-                p.condition = None
-                db.session.commit()
-
-                # Their condition will be loaded from the session data already. This is extra insurance.
-                for pPastAttempt in pFromMTurkID:
-                    # Find the attempt that has the actual condition set (second attempts onward will have condition 0)
-                    if pPastAttempt.condition != 0 and pPastAttempt.condition is not None:
-                        session['condition'] = pPastAttempt.condition
-
-                # Redirect them to where they should actually be, only if that location is not going to put them in a weird loop.
-                # TODO: Dynamically create a list of pages to avoid redirecting to from PAGE_LIST
-                if 'currentUrl' in dictData and session['currentUrl'] not in ('startMTurk', 'start_mturk', 'external_id', 'consent'):
-                    return redirect(session['currentUrl'])
+        recovered_url = SessionRecoveryService.try_restore(p, p.mTurkID)
+        if recovered_url:
+            return redirect(recovered_url)
 
         return redirect(join_urls('/redirect_from_page', request.path))
 

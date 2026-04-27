@@ -211,20 +211,13 @@ def fetch_current_condition() -> Union[int, None]:
     """
     :return: The participant's current condition, as an integer (or None)
     """
-    try:
-        # If session exists, and condition is a key, then let's grab the current condition!
-        if not session is None and 'condition' in session:
-            condition = session['condition']
-            if condition == -1:
-                condition = 0
-            return int(condition)
-        return 0
-    except:
-        return None  # This is almost definitely a "Working outside of request context" error
+    from BOFS.services.participant import ParticipantService
+    return ParticipantService.current_condition()
 
 
 def fetch_condition_count() -> int:
-    return len(current_app.config["CONDITIONS"])
+    from BOFS.services.participant import ParticipantService
+    return ParticipantService.condition_count()
 
 
 def all_conditions_disabled() -> bool:
@@ -233,10 +226,8 @@ def all_conditions_disabled() -> bool:
     Used to halt new participant intake when a researcher has disabled every
     condition from the admin panel mid-study.
     """
-    conditions = current_app.config.get('CONDITIONS', [])
-    if not conditions:
-        return False
-    return not any(c.get('enabled', True) for c in conditions)
+    from BOFS.services.participant import ParticipantService
+    return ParticipantService.all_conditions_disabled()
 
 
 def fetch_condition_count_db():
@@ -244,7 +235,8 @@ def fetch_condition_count_db():
     This is useful only after data has been collected.
     :return:
     """
-    return db.session.query(db.func.max(db.Participant.condition)).one()[0]
+    from BOFS.services.participant import ParticipantService
+    return ParticipantService.max_assigned_condition_db()
 
 
 def provide_consent(assignCondition=True, logDisplaySize=False):
@@ -255,57 +247,11 @@ def provide_consent(assignCondition=True, logDisplaySize=False):
     :param logDisplaySize:
     :return: A Participant object
     """
-    from flask import request, session
-    from BOFS.globals import db
-    import datetime
-
-    p = db.Participant()
-    ip_address = request.headers.get('X-Real-IP')
-
-    if ip_address == None:
-        ip_address = request.environ['REMOTE_ADDR']
-
-    p.ipAddress = ip_address  # request.remote_addr
-    p.userAgent = request.user_agent.string
-    p.timeStarted = datetime.datetime.utcnow()
-    p.check_useragent_for_crawler()
-
-    if current_app.config['STATIC_COMPLETION_CODE'] is not None:
-        p.code = current_app.config['STATIC_COMPLETION_CODE']
-        session['code'] = p.code
-    elif current_app.config['GENERATE_COMPLETION_CODE']:
-        p.code = uuid.uuid4().hex
-        session['code'] = p.code
-
-    if assignCondition:
-        if current_app.run_with_debugging:
-            # Debug mode defers assignment to /debug_pick_condition. Caller must
-            # redirect there before the participant proceeds.
-            p.condition = 0
-        else:
-            p.assign_condition()
-    else:
-        p.condition = 0
-
-    db.session.add(p)
-    db.session.commit()
-
-    session['participantID'] = p.participantID
-    session['condition'] = p.condition
-
-    if logDisplaySize:
-        entry = db.Display()
-        entry.participantID = session['participantID']
-        entry.dppx = request.form['dppx']
-        entry.screenWidth = request.form['screenWidth']
-        entry.screenHeight = request.form['screenHeight']
-        entry.innerWidth = request.form['innerWidth']
-        entry.innerHeight = request.form['innerHeight']
-
-        db.session.add(entry)
-        db.session.commit()
-
-    return p
+    from BOFS.services.participant import ParticipantService
+    return ParticipantService.provide_consent(
+        assign_condition=assignCondition,
+        log_display_size=logDisplaySize,
+    )
 
 
 # Provides some error checking for when converting results of form submission

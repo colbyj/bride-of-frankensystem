@@ -1,0 +1,60 @@
+<style>
+    .picture-select-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    .picture-select-option {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+    }
+    .picture-select-option img {
+        display: block;
+        border: 3px solid transparent;
+        border-radius: 4px;
+        transition: border-color 0.15s ease-in-out;
+        max-width: 100%;
+    }
+    .picture-select-option:hover img {
+        border-color: #9ec5fe;
+    }
+    .picture-select-input:checked + .picture-select-option img {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+    }
+    .picture-select-caption {
+        margin-top: 4px;
+        font-size: 0.875em;
+        text-align: center;
+        color: #6c757d;
+    }
+</style>
+
+{% if question.shuffle %}
+    {% do shuffle(question.images) %}
+{% endif %}
+
+<div class="picture-select-group">
+{% for image in question.images %}
+    <span>
+        <input class="picture-select-input"
+               type="radio"
+               name="{{ question.id }}"
+               id="{{ question.id }}{{ loop.index }}"
+               value="{{ image.value }}"
+               {{ "required" if question.required }}
+               style="opacity:0; position:absolute; width:1px; height:1px;">
+        <label class="picture-select-option"
+               for="{{ question.id }}{{ loop.index }}">
+            <img src="{{ image.src }}"
+                 alt="{{ image.label if image.label else image.value }}">
+            {% if image.label %}
+                <span class="picture-select-caption">{{ image.label }}</span>
+            {% endif %}
+        </label>
+    </span>
+{% endfor %}
+</div>

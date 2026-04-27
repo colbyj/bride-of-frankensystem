@@ -79,7 +79,7 @@ class TestDebugPicker:
         assert "Treatment" in body
         assert "Off" in body
         # The balancer's pick is annotated inline.
-        assert "would be assigned automatically" in body
+        assert "would normally be automatically assigned" in body
 
     def test_picker_post_assigns_chosen_condition(self, bofs_app_debug):
         app = bofs_app_debug
