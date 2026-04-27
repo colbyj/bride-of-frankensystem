@@ -330,7 +330,7 @@ def bofs_app_with_questionnaires(tmp_path):
     original_cwd = os.getcwd()
 
     from BOFS.create_app import create_app
-    app = create_app(str(tmp_path), str(config_path), debug=True)
+    app = create_app(str(tmp_path), str(config_path), debug=False)
 
     ctx = app.app_context()
     ctx.push()
@@ -399,7 +399,7 @@ def bofs_app_with_conditions(tmp_path):
     original_cwd = os.getcwd()
 
     from BOFS.create_app import create_app
-    app = create_app(str(tmp_path), str(config_path), debug=True)
+    app = create_app(str(tmp_path), str(config_path), debug=False)
 
     ctx = app.app_context()
     ctx.push()

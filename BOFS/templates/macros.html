@@ -152,6 +152,9 @@
             if (window.location.pathname.includes("admin")) {
                 return;
             }
+            if (window.location.pathname.includes("debug_pick_condition")) {
+                return;
+            }
 
             var xhttp = new XMLHttpRequest();
             xhttp.onreadystatechange = function () {

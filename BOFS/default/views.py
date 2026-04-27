@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, current_app, request, make_response
+from flask import Blueprint, render_template, current_app, request, make_response, abort
 from urllib.parse import urlsplit
 import traceback
 from BOFS.JSONQuestionnaire import JSONQuestionnaire
@@ -40,6 +40,8 @@ def route_consent():
             return render_template("consent.html")
 
         provide_consent(True)
+        if current_app.run_with_debugging:
+            return redirect("/debug_pick_condition")
         return redirect("/redirect_from_page/consent")
 
     return render_template("consent.html")
@@ -73,6 +75,8 @@ def route_create_participant():
         return render_template("study_closed.html"), 503
 
     provide_consent(True, False)
+    if current_app.run_with_debugging:
+        return redirect("/debug_pick_condition")
     return redirect("/redirect_from_page/create_participant")
 
 
@@ -109,6 +113,9 @@ def route_assign_condition():
     if all_conditions_disabled():
         return render_template("study_closed.html"), 503
 
+    if current_app.run_with_debugging:
+        return redirect("/debug_pick_condition")
+
     p = db.session.query(db.Participant).get(session['participantID'])
     p.assign_condition()
     db.session.commit()
@@ -116,6 +123,73 @@ def route_assign_condition():
     session['condition'] = p.condition
 
     return redirect("/redirect_from_page/assign_condition")
+
+
+@default.route("/debug_pick_condition", methods=['POST', 'GET'])
+def route_debug_pick_condition():
+    """
+    ``/debug_pick_condition``
+
+    Debug-only intermediate page. When BOFS is run with ``-d``, the consent and
+    ``/assign_condition`` routes redirect here instead of running the balancer
+    automatically. Shows current per-condition counts (using the same filter the
+    balancer uses), highlights the condition the balancer would have picked, and
+    lets the developer override.
+    """
+    if not current_app.run_with_debugging:
+        abort(404)
+
+    if all_conditions_disabled():
+        return render_template("study_closed.html"), 503
+
+    if 'participantID' not in session:
+        return redirect("/")
+
+    p = db.session.query(db.Participant).get(session['participantID'])
+    if p is None:
+        session.clear()
+        return redirect("/")
+
+    conditions = current_app.config['CONDITIONS']
+
+    if request.method == 'POST':
+        try:
+            chosen = int(request.form['condition'])
+        except (KeyError, ValueError, TypeError):
+            abort(400)
+
+        if chosen < 1 or chosen > len(conditions):
+            abort(400)
+
+        meta = conditions[chosen - 1]
+        if 'enabled' in meta and meta['enabled'] is False:
+            abort(400)
+
+        p.condition = chosen
+        db.session.commit()
+        session['condition'] = p.condition
+
+        return redirect("/redirect_next_page")
+
+    counts = db.Participant.balancer_counts()
+    organic = db.Participant.compute_organic_condition()
+
+    rows = []
+    for idx, meta in enumerate(conditions):
+        num = idx + 1
+        rows.append({
+            'num': num,
+            'label': meta.get('label', 'Condition {}'.format(num)),
+            'enabled': meta.get('enabled', True),
+            'count': counts[idx] if idx < len(counts) else 0,
+            'is_organic': (num == organic),
+        })
+
+    return render_template(
+        "debug_pick_condition.html",
+        rows=rows,
+        organic=organic,
+    )
 
 
 @default.route("/startMTurk", methods=['POST', 'GET'])  # Deprecated

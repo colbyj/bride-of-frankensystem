@@ -1,0 +1,63 @@
+{% extends "template.html" %}
+
+{% block head %}
+    <style>
+        .picker-row {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .picker-info {
+            flex: 1;
+        }
+        .picker-label {
+            font-weight: bold;
+        }
+        .picker-meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .picker-auto {
+            color: #2c5fb3;
+            font-weight: normal;
+            font-style: italic;
+            margin-left: 6px;
+        }
+        .picker-disabled {
+            color: #999;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <i>Choose a Condition (Debug Mode Only)</i>
+
+    {% for row in rows %}
+        <div class="question">
+            <div class="padding">
+                <div class="picker-row">
+                    <div class="picker-info">
+                        <div>
+                            <span class="picker-label {% if not row.enabled %}picker-disabled{% endif %}">
+                                {{ row.num }}. {{ row.label }}
+                            </span>
+                            {% if row.is_organic %}
+                                <span class="picker-auto">This condition would normally be automatically assigned.</span>
+                            {% endif %}
+                        </div>
+                        <div class="picker-meta">
+                            {{ row.count }} participant{{ '' if row.count == 1 else 's' }}
+                            {% if not row.enabled %}&middot; <i>disabled</i>{% endif %}
+                        </div>
+                    </div>
+                    <form method="post" style="margin: 0;">
+                        <input type="hidden" name="condition" value="{{ row.num }}">
+                        <input class="btn {% if row.is_organic %}btn-outline-primary{% else %}btn-outline-secondary{% endif %}" style="width: 160px;"
+                               type="submit" value="Pick"
+                               {% if not row.enabled %}disabled{% endif %}>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+{% endblock %}

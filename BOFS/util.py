@@ -278,7 +278,12 @@ def provide_consent(assignCondition=True, logDisplaySize=False):
         session['code'] = p.code
 
     if assignCondition:
-        p.assign_condition()
+        if current_app.run_with_debugging:
+            # Debug mode defers assignment to /debug_pick_condition. Caller must
+            # redirect there before the participant proceeds.
+            p.condition = 0
+        else:
+            p.assign_condition()
     else:
         p.condition = 0
 

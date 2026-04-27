@@ -76,46 +76,65 @@ def create(db):
 
             return result
 
+        @staticmethod
+        def balancer_counts():
+            """
+            Per-condition participant counts used by the balancer.
+            Returns list[int] of length len(CONDITIONS); index i = count for condition i+1.
+            Honors COUNTS_INCLUDE_ABANDONED and excludeFromCount, matching assign_condition's filter.
+            """
+            numConditions = len(current_app.config['CONDITIONS'])
+            counts = [0] * numConditions
+            for condition in range(1, numConditions + 1):
+                if current_app.config['COUNTS_INCLUDE_ABANDONED']:
+                    counts[condition - 1] = db.session.query(db.Participant).\
+                        filter(db.Participant.condition == condition,
+                               ~db.Participant.excludeFromCount).\
+                        count()
+                else:
+                    counts[condition - 1] = db.session.query(db.Participant).\
+                        filter(
+                            db.and_(db.Participant.condition == condition,
+                                    ~db.Participant.is_abandoned,
+                                    ~db.Participant.excludeFromCount)
+                        ).count()
+            return counts
+
+        @classmethod
+        def compute_organic_condition(cls):
+            """
+            Returns the condition integer the balancer would pick right now,
+            without mutating any participant. Returns None if no conditions are
+            configured, or if no enabled condition can be selected.
+            """
+            numConditions = len(current_app.config['CONDITIONS'])
+            if numConditions == 0:
+                return None
+
+            pCount = cls.balancer_counts()
+            for count in sorted(pCount):
+                idx = pCount.index(count)
+                conditionMeta = current_app.config['CONDITIONS'][idx]
+                if 'enabled' not in conditionMeta or conditionMeta['enabled'] == True:
+                    return idx + 1
+            return None
+
         def assign_condition(self) -> None:
             if self.check_useragent_for_crawler():
                 return  # This seems to be a crawler; don't assign a condition
 
             numConditions = len(current_app.config['CONDITIONS'])
-            if numConditions > 0:
-                pCount = [0] * numConditions
-
-                printText = "Total conditions: {}, Counts: ".format(numConditions)
-
-                for condition in range(1, numConditions+1):
-                    # Count the participants that have not abandoned the study.
-                    if current_app.config['COUNTS_INCLUDE_ABANDONED']:
-                        pCount[condition - 1] = db.session.query(db.Participant).\
-                            filter(db.Participant.condition == condition,
-                                   ~db.Participant.excludeFromCount).\
-                            count()
-                    else:
-                        pCount[condition-1] = db.session.query(db.Participant).\
-                            filter(
-                                db.and_(db.Participant.condition == condition,
-                                        ~db.Participant.is_abandoned,
-                                        ~db.Participant.excludeFromCount)
-                            ).count()
-
-                    printText += "{}, ".format(pCount[condition-1])
-
-                pCountSorted = sorted(pCount)
-
-                for count in pCountSorted:
-                    idx = pCount.index(count)
-                    conditionMeta = current_app.config['CONDITIONS'][idx]
-                    if 'enabled' not in conditionMeta or conditionMeta['enabled'] == True:
-                        self.condition = idx + 1
-                        break
-
-                printText += "User put in condition {}.".format(self.condition)
-                print(printText)
-            else:
+            if numConditions == 0:
                 self.condition = None
+                return
+
+            pCount = type(self).balancer_counts()
+            self.condition = type(self).compute_organic_condition()
+
+            printText = "Total conditions: {}, Counts: ".format(numConditions)
+            printText += ", ".join(str(c) for c in pCount)
+            printText += ". User put in condition {}.".format(self.condition)
+            print(printText)
 
         @hybrid_property
         def duration(self) -> int:
