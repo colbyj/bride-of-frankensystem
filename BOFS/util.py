@@ -157,11 +157,16 @@ def suppress_activity_polling(f):
     Decorator that opts a route out of the auto-injected activity-polling
     script (see ``BOFSFlask.after_request_``). Use this on custom pages that
     run their own JS and don't want a framework script appended to the body.
+
+    Applying this decorator also suppresses the startup warning about a
+    missing ``@verify_correct_page``, since reaching for this opt-out
+    implies the route is being managed manually by the researcher.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         g.bofs_skip_activity_polling = True
         return f(*args, **kwargs)
+    decorated_function._bofs_suppress_activity_polling = True
     return decorated_function
 
 

@@ -460,6 +460,28 @@ class TestWarnUndecoratedPages:
         assert any("'this_page_does_not_exist'" in m and "doesn't match" in m
                    for m in msgs)
 
+    def test_suppress_activity_polling_implies_manual_route(self, bofs_app, caplog):
+        # @suppress_activity_polling signals the researcher is managing the
+        # route manually, so missing @verify_correct_page is not a mistake.
+        from BOFS.util import suppress_activity_polling
+
+        @suppress_activity_polling
+        def manual_view():
+            return "ok"
+
+        bofs_app.add_url_rule("/manual_page", endpoint="manual_page",
+                              view_func=manual_view)
+        bofs_app.page_list.page_list.append(
+            {"name": "Manual", "path": "manual_page"}
+        )
+
+        with caplog.at_level("WARNING"):
+            bofs_app.warn_undecorated_pages()
+
+        msgs = [rec.message for rec in caplog.records]
+        assert not any("'manual_page'" in m and "missing @verify_correct_page" in m
+                       for m in msgs)
+
 
 # ===========================================================================
 # TestQuestionnaireLog

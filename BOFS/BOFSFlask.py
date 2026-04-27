@@ -513,6 +513,8 @@ class BOFSFlask(Flask):
             view_func = self.view_functions.get(endpoint)
             if view_func is None:
                 continue
+            if getattr(view_func, '_bofs_suppress_activity_polling', False):
+                continue  # Researcher is managing this route manually.
             if not getattr(view_func, '_bofs_verify_correct_page', False):
                 self.logger.warning(
                     "PAGE_LIST entry %r maps to view %s which is missing "

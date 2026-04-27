@@ -233,3 +233,40 @@ In addition to ``session``, you will always have access to the following variabl
 For more details on ``url_for()``, see the `Flask documentation on url_for() <https://flask.palletsprojects.com/en/latest/api/#flask.url_for>`_.
 
 For more details on how Jinja2 templates work, see the `Flask documentation on templates <https://flask.palletsprojects.com/en/latest/tutorial/templates/>`_.
+
+
+Activity Polling on Custom Pages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+BOFS considers a participant *abandoned* once they've been inactive on the
+server for ``ABANDONED_MINUTES`` (default 5). To keep ``lastActiveOn`` fresh
+on long-running task pages where the participant doesn't touch the server
+(e.g. a Unity build, a video, a reading task), BOFS automatically injects a
+small JavaScript polling script (``/BOFS_static/js/user_active.js``) into
+HTML responses. The script pings ``/user_active`` every 30 seconds.
+
+You generally don't need to do anything for this to work — it happens
+transparently for any HTML page served to a participant.
+
+**Opting out.** If your custom page runs its own JavaScript on a tight
+schedule and you don't want a framework script appended to the body, apply
+the ``@suppress_activity_polling`` decorator to your route:
+
+.. code-block:: python
+
+    from BOFS.util import verify_correct_page, suppress_activity_polling
+
+    @my_blueprint.route("/unity_task")
+    @verify_correct_page
+    @suppress_activity_polling
+    def unity_task():
+        return render_template("unity_task.html")
+
+When you opt out, you become responsible for keeping the participant from
+being marked abandoned. The simplest approach is to call ``/user_active``
+yourself on a timer from your own JavaScript — that's all the framework
+script does.
+
+Applying ``@suppress_activity_polling`` is also treated as a signal that
+you're managing the route manually, so the startup warning about a missing
+``@verify_correct_page`` is suppressed for that route.

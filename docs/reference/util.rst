@@ -7,6 +7,8 @@ The ``BOFS.util`` package contains several functions that you might find useful.
 
 .. autofunction:: BOFS.util.verify_session_valid
 
+.. autofunction:: BOFS.util.suppress_activity_polling
+
 .. autofunction:: BOFS.util.redirect_and_set_next_path
 
 .. autofunction:: BOFS.util.redirect_next_page
