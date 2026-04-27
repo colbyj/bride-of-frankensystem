@@ -1,8 +1,20 @@
 import os
+import re
 import secrets
 import sys
 from .BOFSFlask import BOFSFlask
 from .admin.util import check_and_add_column, make_columns_nullable
+
+# Accept hex (#rgb / #rrggbb / #rrggbbaa), CSS named colors, or rgb()/rgba()/hsl()/hsla()
+# functional notation. Restricting the character set blocks CSS/HTML injection via
+# the inline <style> block in template.html.
+_HEADER_COLOR_RE = re.compile(
+    r'^\s*('
+    r'#[0-9a-fA-F]{3,8}'
+    r'|[a-zA-Z]{3,32}'
+    r'|(?:rgb|rgba|hsl|hsla)\([0-9eE\s,.%/+\-]+\)'
+    r')\s*$'
+)
 
 
 def _resolve_secret_key(app) -> None:
@@ -59,6 +71,18 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     # Set defaults for some config options
     if 'USE_BREADCRUMBS' not in app.config:
         app.config['USE_BREADCRUMBS'] = True
+
+    header_color = app.config.get('HEADER_COLOR')
+    if header_color is not None:
+        if isinstance(header_color, str) and _HEADER_COLOR_RE.match(header_color):
+            app.config['HEADER_COLOR'] = header_color.strip()
+        else:
+            print(
+                f"WARNING: HEADER_COLOR={header_color!r} is not a valid CSS color "
+                f"(expected hex like '#8CB737', a named color, or rgb()/rgba()/hsl()/hsla()). "
+                f"Falling back to the default header color."
+            )
+            app.config['HEADER_COLOR'] = None
 
     if 'USE_LOGO' not in app.config:
         app.config['USE_LOGO'] = True

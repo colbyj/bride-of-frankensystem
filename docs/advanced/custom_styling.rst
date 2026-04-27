@@ -60,6 +60,17 @@ Quick Start: Basic Customization
 
 Your custom ``style.css`` will automatically override the default BOFS stylesheet.
 
+Quick: Header Color from Config
+-------------------------------
+
+If the only thing you want to change is the color of the title bar, you can set ``HEADER_COLOR`` in your project's ``.toml`` config — no custom ``style.css`` required:
+
+.. code-block:: toml
+
+    HEADER_COLOR = "#003366"   # any CSS color: hex, name, rgb(), rgba(), hsl(), hsla()
+
+For broader customization (fonts, layout, multiple colors), continue with the CSS-based approach below.
+
 Customizing Colors and Fonts
 -----------------------------
 

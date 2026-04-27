@@ -50,6 +50,10 @@ Application Settings
      - boolean
      - ``false``
      - Show breadcrumbs-style progress bar to participants.
+   * - ``HEADER_COLOR``
+     - string
+     - *(unset)*
+     - Background color of the title bar. Accepts a CSS hex color (e.g., ``"#8CB737"``), a named color (e.g., ``"navy"``), or ``rgb()``/``rgba()``/``hsl()``/``hsla()`` notation. When unset, the default green from the stylesheet is used.
 
 Admin Panel Settings
 --------------------
