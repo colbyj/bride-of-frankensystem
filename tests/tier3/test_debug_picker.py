@@ -128,6 +128,45 @@ class TestDebugPicker:
             )
             assert response.status_code == 400, f"value {bad!r}"
 
+    def test_consent_skips_picker_when_no_conditions_configured(self, tmp_path):
+        """With CONDITIONS=[], debug mode must NOT redirect to the picker — there's
+        nothing to pick and the page would dead-end the participant."""
+        (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+        config_data = {
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret-key",
+            "TITLE": "Empty Conditions",
+            "ADMIN_PASSWORD": "test",
+            "USE_ADMIN": False,
+            "CONDITIONS": [],
+            "PAGE_LIST": [
+                {"name": "Consent", "path": "consent"},
+                {"name": "End", "path": "end"},
+            ],
+        }
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+        original_cwd = os.getcwd()
+        from BOFS.create_app import create_app
+        app = create_app(str(tmp_path), str(config_path), debug=True)
+        ctx = app.app_context()
+        ctx.push()
+        try:
+            client = app.test_client()
+            response = client.post("/consent", follow_redirects=False)
+            assert response.status_code == 302
+            assert "/debug_pick_condition" not in response.location
+            assert "/redirect_from_page/consent" in response.location
+
+            # Picker route itself should 404 when no conditions are configured.
+            picker_response = client.get("/debug_pick_condition")
+            assert picker_response.status_code == 404
+        finally:
+            app.db.drop_all()
+            ctx.pop()
+            os.chdir(original_cwd)
+
     def test_picker_404_when_not_in_debug_mode(self, tmp_path):
         """Without debug mode the picker route must not be reachable."""
         (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")

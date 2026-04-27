@@ -42,7 +42,7 @@ def route_consent():
             return render_template("consent.html")
 
         provide_consent(True)
-        if current_app.run_with_debugging:
+        if ParticipantService.use_debug_picker():
             return redirect("/debug_pick_condition")
         return redirect("/redirect_from_page/consent")
 
@@ -77,7 +77,7 @@ def route_create_participant():
         return render_template("study_closed.html"), 503
 
     provide_consent(True, False)
-    if current_app.run_with_debugging:
+    if ParticipantService.use_debug_picker():
         return redirect("/debug_pick_condition")
     return redirect("/redirect_from_page/create_participant")
 
@@ -115,7 +115,7 @@ def route_assign_condition():
     if all_conditions_disabled():
         return render_template("study_closed.html"), 503
 
-    if current_app.run_with_debugging:
+    if ParticipantService.use_debug_picker():
         return redirect("/debug_pick_condition")
 
     p = db.session.query(db.Participant).get(session['participantID'])
@@ -136,6 +136,9 @@ def route_debug_pick_condition():
     lets the developer override.
     """
     if not current_app.run_with_debugging:
+        abort(404)
+
+    if len(current_app.config['CONDITIONS']) == 0:
         abort(404)
 
     if all_conditions_disabled():

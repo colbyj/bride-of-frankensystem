@@ -31,7 +31,7 @@ class ParticipantService:
             session['code'] = p.code
 
         if assign_condition:
-            if current_app.run_with_debugging:
+            if ParticipantService.use_debug_picker():
                 # Debug mode defers assignment to /debug_pick_condition. Caller must
                 # redirect there before the participant proceeds.
                 p.condition = 0
@@ -124,6 +124,17 @@ class ParticipantService:
         if not conditions:
             return False
         return not any(c.get('enabled', True) for c in conditions)
+
+    @staticmethod
+    def use_debug_picker() -> bool:
+        """True iff the dev should be sent to /debug_pick_condition before assignment.
+        Requires debug mode AND at least one configured condition — with zero conditions
+        the picker renders no rows and the participant can't proceed.
+        """
+        return (
+            current_app.run_with_debugging
+            and len(current_app.config.get('CONDITIONS', [])) > 0
+        )
 
     @staticmethod
     def toggle_condition_enabled(condition_idx: int) -> bool:
