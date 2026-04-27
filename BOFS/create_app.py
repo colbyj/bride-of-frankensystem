@@ -1,7 +1,46 @@
 import os
+import secrets
 import sys
 from .BOFSFlask import BOFSFlask
 from .admin.util import check_and_add_column, make_columns_nullable
+
+
+def _resolve_secret_key(app) -> None:
+    """
+    Load SECRET_KEY from the app_meta table, or generate and persist one.
+
+    Honors a SECRET_KEY supplied in the project config (legacy behavior): the
+    value is seeded into app_meta on first run with a one-time notice. On
+    subsequent runs the database value is the source of truth — the config
+    line is ignored, and a notice is printed reminding the researcher to
+    remove it.
+    """
+    config_key = app.config.get('SECRET_KEY')
+    stored = app.db.session.query(app.db.AppMeta).get('secret_key')
+
+    if stored is None:
+        if config_key:
+            app.db.session.add(app.db.AppMeta(key='secret_key', value=config_key))
+            app.db.session.commit()
+            print(
+                "NOTE: SECRET_KEY in your config has been migrated into the project database. "
+                "BOFS now manages SECRET_KEY automatically — you can safely remove the line "
+                "from your .toml config file."
+            )
+        else:
+            new_key = secrets.token_hex(32)
+            app.db.session.add(app.db.AppMeta(key='secret_key', value=new_key))
+            app.db.session.commit()
+            app.config['SECRET_KEY'] = new_key
+        return
+
+    # Stored value already exists — it is the source of truth.
+    if config_key and config_key != stored.value:
+        print(
+            "NOTE: SECRET_KEY is set in your config but BOFS is using the value persisted "
+            "in the project database. The config line is ignored and can be removed."
+        )
+    app.config['SECRET_KEY'] = stored.value
 
 
 def create_app(path, config_name, debug=False, reloader_off=False):
@@ -120,6 +159,11 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             print(f"{'='*60}\n")
 
         app.db.create_all()
+
+        # SECRET_KEY is now persisted in the app_meta table rather than the
+        # project's TOML config. This avoids accidental commits of secrets and
+        # ensures distinct projects on the same host don't end up sharing a key.
+        _resolve_secret_key(app)
 
         # Check to see if all the columns are there
         # These are columns added to newer versions of BOFS

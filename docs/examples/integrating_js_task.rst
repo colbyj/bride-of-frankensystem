@@ -172,10 +172,6 @@ correct URLs to ``PAGE_LIST``.
     # Database settings
     SQLALCHEMY_DATABASE_URI = 'sqlite:///p5_example.db'
 
-    # The secret key MUST be changed to something unique.
-    # You should at the very least mash your keyboard a bit to generate a random string.
-    SECRET_KEY = 'You Must Change This to Something Unique'
-
     # --------------------
     # Application Settings
     # --------------------

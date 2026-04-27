@@ -69,9 +69,6 @@ This is the main configuration file that controls your experiment:
     # Database settings
     SQLALCHEMY_DATABASE_URI = 'sqlite:///my_experiment.db'
 
-    # Security - change this to something unique in production
-    SECRET_KEY = 'your-generated-secret-key'
-
     # Application Settings
     TITLE = 'My First Experiment'
     ADMIN_PASSWORD = 'admin'
@@ -94,7 +91,6 @@ This is the main configuration file that controls your experiment:
 Key configuration options:
 
 - ``SQLALCHEMY_DATABASE_URI``: Where participant data is stored (SQLite by default)
-- ``SECRET_KEY``: Secures session cookies (auto-generated, keep it secret in production)
 - ``TITLE``: Displayed in the browser tab and page headers
 - ``ADMIN_PASSWORD``: Password for the ``/admin`` panel
 - ``PAGE_LIST``: Defines the sequence of pages participants see

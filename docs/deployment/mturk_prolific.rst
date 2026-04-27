@@ -30,7 +30,6 @@ Add these settings to your TOML configuration file for MTurk integration:
     # Basic Settings
     TITLE = "Research Study - MTurk"
     SQLALCHEMY_DATABASE_URI = "sqlite:///mturk_study.db"
-    SECRET_KEY = "your-unique-secret-key-here"
     ADMIN_PASSWORD = "secure_admin_password"
 
     # MTurk Integration Settings
@@ -157,7 +156,6 @@ Prolific has specific requirements for participant ID handling and completion:
     # Basic Settings
     TITLE = "Research Study - Prolific"
     SQLALCHEMY_DATABASE_URI = "sqlite:///prolific_study.db"
-    SECRET_KEY = "your-unique-secret-key-here"
     ADMIN_PASSWORD = "secure_admin_password"
 
     # Prolific Integration Settings
@@ -354,25 +352,6 @@ External ID Privacy
 - Consider anonymization requirements for your research
 - MTurk Worker IDs and Prolific IDs are considered personal identifiers
 - Follow your institution's IRB guidelines for external ID handling
-
-Configuration Security
-~~~~~~~~~~~~~~~~~~~~~~
-
-Always use strong, unique secret keys:
-
-.. code-block:: toml
-
-    SECRET_KEY = "generated-secret-key-here-not-simple-text"
-
-Generate secure keys using:
-
-.. code-block:: python
-
-    import secrets
-    print(secrets.token_hex(32))
-
-.. warning::
-    Never commit secret keys to public version control or share them publicly.
 
 Best Practices
 --------------

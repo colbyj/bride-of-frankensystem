@@ -234,5 +234,12 @@ def create(db):
         def expired(self) -> bool:
             return self.expiry is None or self.expiry <= datetime.utcnow()
 
-    return Participant, Progress, RadioGridLog, Display, SessionStore
+
+    class AppMeta(db.Model):
+        __tablename__ = "app_meta"
+
+        key = db.Column(db.String(64), primary_key=True)
+        value = db.Column(db.Text, nullable=False)
+
+    return Participant, Progress, RadioGridLog, Display, SessionStore, AppMeta
 

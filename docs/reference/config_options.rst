@@ -18,9 +18,6 @@ These settings must be present in every BOFS configuration file.
    * - ``SQLALCHEMY_DATABASE_URI``
      - string
      - Database connection string. Use ``sqlite:///filename.db`` for development or ``postgresql://user:pass@host/db`` for production.
-   * - ``SECRET_KEY``
-     - string
-     - A unique random string for session security. Generate with ``python -c "import secrets; print(secrets.token_hex(32))"``.
    * - ``TITLE``
      - string
      - Study title shown in browser tab and page headers.
@@ -292,7 +289,6 @@ Example Configurations
 .. code-block:: toml
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
-    SECRET_KEY = "your-unique-secret-key-here"
     ADMIN_PASSWORD = "admin"
 
     PAGE_LIST = [
@@ -306,7 +302,6 @@ Example Configurations
 .. code-block:: toml
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
-    SECRET_KEY = "your-unique-secret-key-here"
     TITLE = "Research Study"
     ADMIN_PASSWORD = "secure_password"
 
@@ -330,7 +325,6 @@ Example Configurations
 .. code-block:: toml
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
-    SECRET_KEY = "your-unique-secret-key-here"
     TITLE = "Decision Making Study"
     ADMIN_PASSWORD = "secure_password"
 

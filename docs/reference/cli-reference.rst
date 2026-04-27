@@ -318,7 +318,6 @@ Use debug mode to see detailed error messages:
 Verify your TOML file is valid and contains required settings. Common required settings include:
 
 - ``SQLALCHEMY_DATABASE_URI``
-- ``SECRET_KEY``
 - ``PAGE_LIST``
 
 **Database issues:**

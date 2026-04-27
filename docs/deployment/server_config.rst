@@ -349,8 +349,7 @@ Here's a complete production TOML configuration that brings together all the ele
 
     # Basic Settings
     TITLE = "Research Study - Production"
-    SECRET_KEY = "generate-a-long-random-secret-key-here"
-    
+
     # Server Configuration
     PORT = 5000
     

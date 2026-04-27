@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import html
 import os
-import secrets
 import shutil
 from pathlib import Path
 from typing import Optional
@@ -305,11 +304,6 @@ def validate_project_name(name: str) -> bool | str:
     return True
 
 
-def generate_secret_key() -> str:
-    """Generate a secure random secret key."""
-    return secrets.token_hex(32)
-
-
 def build_page_list(selected_features: list[str], use_pre_post: bool) -> str:
     """Build the PAGE_LIST configuration based on selected features."""
     use_conditions = "conditions" in selected_features
@@ -406,9 +400,6 @@ def build_config(name: str, title: str, selected_features: list[str],
     config_lines = [
         "# Database settings",
         f"SQLALCHEMY_DATABASE_URI = 'sqlite:///{escape_toml_string(name)}.db'",
-        "",
-        "# Security - change this to something unique in production",
-        f"SECRET_KEY = '{generate_secret_key()}'",
         "",
         "# Application Settings",
         f"TITLE = '{escape_toml_string(title)}'",

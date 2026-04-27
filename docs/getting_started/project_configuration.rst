@@ -39,15 +39,14 @@ Every BOFS project needs a configuration file (typically named ``config.toml``) 
 
     # Basic project information
     TITLE = "My Research Study"
-    SECRET_KEY = "your-unique-secret-key-here"
     PORT = 5000
-    
+
     # Database connection
     SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
-    
+
     # Admin access
     ADMIN_PASSWORD = "secure_admin_password"
-    
+
     # Page sequence (covered in detail below)
     PAGE_LIST = [
         {name="Consent", path="consent"},
@@ -61,22 +60,11 @@ Every BOFS project needs a configuration file (typically named ``config.toml``) 
 Setting                     Description
 =========================== =======================================================
 **TITLE**                   Study name (shown in browser tab and admin panel)
-**SECRET_KEY**              Random string for session security (see below)
 **PORT**                    The port that your experiment will run on (e.g., the "5000" in http://localhost:5000)
 **SQLALCHEMY_DATABASE_URI** Database connection (use SQLite for development)
 **ADMIN_PASSWORD**          Password for accessing admin panel at ``/admin``
 **PAGE_LIST**               The sequence of pages that participants will encounter
 =========================== =======================================================
-
-**Generating a Secret Key**
-
-Your secret key should be a random string unique to your project. You can generate one by typing random characters on your keyboard, or via Python:
-
-.. code-block:: python
-
-    import secrets
-    print(secrets.token_hex(16))
-    # Example output: "a1b2c3d4e5f6789012345678abcdef90"
 
 Defining Experiment Flow with PAGE_LIST
 ----------------------------------------
@@ -367,10 +355,9 @@ For complex projects, you might use multiple configuration files for different p
 .. code-block:: toml
 
     TITLE = "My Study"
-    SECRET_KEY = "development-secret-key"
     ADMIN_PASSWORD = "admin123"
     SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
-    
+
     PAGE_LIST = [
         {name="Consent", path="consent"},
         {name="Demographics", path="questionnaire/demographics"},
@@ -382,7 +369,6 @@ For complex projects, you might use multiple configuration files for different p
 
 .. code-block:: toml
 
-    SECRET_KEY = "production-secret-key-very-long-and-random"
     ADMIN_PASSWORD = "secure_production_password"
     SQLALCHEMY_DATABASE_URI = "postgresql://user:pass@host/database"
     
@@ -469,7 +455,6 @@ Example Configurations
 .. code-block:: toml
 
     TITLE = "Personality and Behavior Survey"
-    SECRET_KEY = "survey-secret-key-here"
     SQLALCHEMY_DATABASE_URI = "sqlite:///personality_survey.db"
     ADMIN_PASSWORD = "admin_password"
     
@@ -486,7 +471,6 @@ Example Configurations
 .. code-block:: toml
 
     TITLE = "Decision Making Study"
-    SECRET_KEY = "experiment-secret-key-here"
     SQLALCHEMY_DATABASE_URI = "sqlite:///decision_experiment.db"
     ADMIN_PASSWORD = "admin_password"
     
@@ -516,7 +500,6 @@ Example Configurations
 .. code-block:: toml
 
     TITLE = "Cognitive Task Study"
-    SECRET_KEY = "mturk-study-secret-key"
     SQLALCHEMY_DATABASE_URI = "sqlite:///mturk_study.db"
     ADMIN_PASSWORD = "admin_password"
     

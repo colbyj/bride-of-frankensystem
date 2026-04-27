@@ -1,3 +1,4 @@
+import hashlib
 from flask import Request
 from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
 from werkzeug.datastructures import CallbackDict
@@ -9,6 +10,25 @@ from . import BOFSFlask
 class BOFSSessionInterface(SessionInterface):
     serializer = TaggedJSONSerializer()
 
+    def __init__(self):
+        self._cookie_name = None
+
+    def get_cookie_name(self, app) -> str:
+        """
+        Per-project cookie name so two BOFS projects on the same host don't try to use each other's cookies.
+        Override via SESSION_COOKIE_NAME.
+        """
+        if self._cookie_name is not None:
+            return self._cookie_name
+
+        override = app.config.get('SESSION_COOKIE_NAME')
+        if override:
+            self._cookie_name = override
+        else:
+            seed = (str(app.config.get('TITLE', '')) + str(app.config.get('SECRET_KEY', ''))).encode('utf-8')
+            self._cookie_name = 'bofs_' + hashlib.sha256(seed).hexdigest()[:10]
+        return self._cookie_name
+
     def create_db_object(self, app, sessionID):
         storedSession = app.db.SessionStore()
         storedSession.sessionID = sessionID
@@ -19,7 +39,8 @@ class BOFSSessionInterface(SessionInterface):
         return storedSession
 
     def open_session(self, app: "BOFSFlask", request: "Request"):
-        sessionID = request.cookies.get("session")
+        cookie_name = self.get_cookie_name(app)
+        sessionID = request.cookies.get(cookie_name)
 
         # No sessionID cookie is set; create a new session.
         if not sessionID:
@@ -54,11 +75,12 @@ class BOFSSessionInterface(SessionInterface):
         domain = self.get_cookie_domain(app)
         #path = self.get_cookie_path(app)
         path = "/"  # We'll only ever want one cookie per project.
+        cookie_name = self.get_cookie_name(app)
 
         # Looks like the session was deleted... delete the cookie.
         # We can't delete stuff from the DB as we don't know the ID.
         if not session:
-            response.delete_cookie("session", domain=domain, path=path)
+            response.delete_cookie(cookie_name, domain=domain, path=path)
             return
 
         httpOnly = self.get_cookie_httponly(app)
@@ -84,7 +106,7 @@ class BOFSSessionInterface(SessionInterface):
             app.db.session.commit()
 
         if session.new:
-            response.set_cookie("session", session.sessionID,
+            response.set_cookie(cookie_name, session.sessionID,
                                 expires=storedSession.expiry, httponly=httpOnly,
                                 domain=domain, path=path, secure=secure)
 

@@ -73,6 +73,7 @@ class TestOpenSession:
 
     def test_valid_cookie_loads_data(self, bofs_app):
         interface = bofs_app.session_interface
+        cookie_name = interface.get_cookie_name(bofs_app)
 
         # Create a session in the DB with serialized data
         session_id = "valid-session-id"
@@ -85,7 +86,7 @@ class TestOpenSession:
 
         builder = EnvironBuilder(method="GET", path="/")
         request = builder.get_request()
-        request.cookies = {"session": session_id}
+        request.cookies = {cookie_name: session_id}
 
         s = interface.open_session(bofs_app, request)
 
@@ -94,6 +95,7 @@ class TestOpenSession:
 
     def test_expired_session_returns_new(self, bofs_app):
         interface = bofs_app.session_interface
+        cookie_name = interface.get_cookie_name(bofs_app)
 
         session_id = "expired-session-id"
         stored = bofs_app.db.SessionStore()
@@ -105,7 +107,7 @@ class TestOpenSession:
 
         builder = EnvironBuilder(method="GET", path="/")
         request = builder.get_request()
-        request.cookies = {"session": session_id}
+        request.cookies = {cookie_name: session_id}
 
         s = interface.open_session(bofs_app, request)
 
