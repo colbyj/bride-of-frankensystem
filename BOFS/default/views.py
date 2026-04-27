@@ -302,6 +302,10 @@ def route_redirect_next_page():
     """
     current_page = None
 
+    # request.url_rule.rule is only meaningful when a researcher's view calls
+    # this function directly (not via HTTP redirect) — then it reflects THEIR
+    # route's rule. When the browser hits /redirect_next_page itself, the rule
+    # is just '/redirect_next_page' and gets discarded by the strip check below.
     if request is not None:
         if request.url_rule is not None:
             current_page = request.url_rule.rule
@@ -310,11 +314,17 @@ def route_redirect_next_page():
             if len(parsed.path) > 0:
                 current_page = parsed.path
 
-    if current_page is None or len(current_page) == 0 or not current_page is str:
-        current_page = session['currentUrl']
-        
-    if current_page.strip('/') == 'redirect_next_page':
-        current_page = session['currentUrl']
+    if not current_page or not isinstance(current_page, str):
+        current_page = session.get('currentUrl')
+
+    if current_page and current_page.strip('/') == 'redirect_next_page':
+        current_page = session.get('currentUrl')
+
+    # session['currentUrl'] can be missing if the session was cleared (e.g. by
+    # /restart) and the browser still issues a stale request to this route.
+    # Bounce to / and let verify_correct_page re-establish the flow.
+    if not current_page:
+        return redirect(current_app.config["APPLICATION_ROOT"] + "/")
 
     if current_page == "end":
         close_progress_submitted(current_page)
