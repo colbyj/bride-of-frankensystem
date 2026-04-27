@@ -9,6 +9,8 @@ from ..JSONQuestionnaire import JSONQuestionnaire
 from .Results import Results
 import json
 from .SummaryStats import SummaryStats
+from ..services.admin_stats import AdminStatsService
+from ..services.participant import ParticipantService
 from datetime import datetime
 from os import path, listdir
 from shutil import copyfile
@@ -101,58 +103,11 @@ def admin_login():
         return render_template("login_admin.html")
 
 
-def fetch_progress():
-    pages = current_app.page_list.flat_page_list()
-    progress = db.session.query(db.Participant).filter(db.Participant.isCrawler == False)
-
-    for page in pages:
-        if page['path'] in ["end", "consent"]:  # Don't show end page, use Participant.finished instead.
-            pages.remove(page)
-            continue
-
-    for page in pages:
-        pp = db.aliased(db.Progress, name=page['path'])
-        progress = progress.outerjoin(pp, db.and_(
-            pp.participantID == db.Participant.participantID,
-            pp.path == page['path']
-        )).add_entity(
-            pp
-        )
-
-    progress = progress.all()
-    return pages, progress
-
-
-def fetch_progress_summary():
-    summary_groups = db.session.query(
-        db.Participant.condition,
-        db.func.count(db.Participant.participantID).label('count'),
-        db.func.sum(db.cast(db.Participant.is_abandoned, db.Integer)).label('countAbandoned'),
-        db.func.sum(db.cast(db.Participant.is_in_progress, db.Integer)).label('countInProgress'),
-        db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
-        db.func.avg(db.Participant.duration).label('minutes')). \
-        filter(db.or_(~db.Participant.excludeFromCount, db.Participant.excludeFromCount == None)). \
-        group_by(db.Participant.condition).all()
-
-    summary = db.session.query(
-        db.func.count(db.Participant.participantID).label('count'),
-        db.func.sum(db.cast(db.Participant.is_abandoned, db.Integer)).label('countAbandoned'),
-        db.func.sum(db.cast(db.Participant.is_in_progress, db.Integer)).label('countInProgress'),
-        db.func.sum(db.cast(db.Participant.finished, db.Integer)).label('countFinished'),
-        db.func.min(db.Participant.duration).label('minSeconds'),
-        db.func.max(db.Participant.duration).label('maxSeconds'),
-        db.func.avg(db.Participant.duration).label('seconds')). \
-        filter(db.or_(~db.Participant.excludeFromCount, db.Participant.excludeFromCount == None)). \
-        one()
-
-    return summary_groups, summary
-
-
 @admin.route("/progress")
 @verify_admin
 def route_progress():
-    pages, progress = fetch_progress()
-    summary_groups, summary = fetch_progress_summary()
+    pages, progress = AdminStatsService.fetch_progress()
+    summary_groups, summary = AdminStatsService.fetch_progress_summary()
 
     return render_template("progress.html",
                            pages=pages, progress=progress,
@@ -162,14 +117,14 @@ def route_progress():
 @admin.route("/progress_ajax")
 @verify_admin
 def route_progress_ajax():
-    pages, progress = fetch_progress()
+    pages, progress = AdminStatsService.fetch_progress()
     return render_template("progress_ajax.html", pages=pages, progress=progress)
 
 
 @admin.route("/progress_summary_ajax")
 @verify_admin
 def route_progress_summary_ajax():
-    summary_groups, summary = fetch_progress_summary()
+    summary_groups, summary = AdminStatsService.fetch_progress_summary()
     return render_template("progress_summary_ajax.html",
                            summary_groups=summary_groups, summary=summary, display_time=display_time)
 
@@ -182,10 +137,9 @@ def route_toggle_condition(condition_num):
     if idx < 0 or idx >= len(conditions):
         return "Invalid condition", 400
 
-    meta = conditions[idx]
-    meta['enabled'] = not meta.get('enabled', True)
+    ParticipantService.toggle_condition_enabled(idx)
 
-    summary_groups, summary = fetch_progress_summary()
+    summary_groups, summary = AdminStatsService.fetch_progress_summary()
     return render_template("progress_summary_ajax.html",
                            summary_groups=summary_groups, summary=summary, display_time=display_time)
 

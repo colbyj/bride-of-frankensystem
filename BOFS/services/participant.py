@@ -126,6 +126,18 @@ class ParticipantService:
         return not any(c.get('enabled', True) for c in conditions)
 
     @staticmethod
+    def toggle_condition_enabled(condition_idx: int) -> bool:
+        """Flip the 'enabled' flag for `current_app.config['CONDITIONS'][condition_idx]`.
+
+        Takes a 0-based index. Caller is responsible for range-checking;
+        out-of-bounds indices raise IndexError. Returns the new value of
+        the flag.
+        """
+        meta = current_app.config['CONDITIONS'][condition_idx]
+        meta['enabled'] = not meta.get('enabled', True)
+        return meta['enabled']
+
+    @staticmethod
     def max_assigned_condition_db():
         """Max condition value present in the participant table. Useful post-collection.
         Replaces util.fetch_condition_count_db.

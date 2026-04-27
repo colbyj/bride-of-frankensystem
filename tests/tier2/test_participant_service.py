@@ -193,3 +193,49 @@ class TestParticipantService:
 
         result = ParticipantService.max_assigned_condition_db()
         assert result == 3
+
+    def test_toggle_condition_enabled_flips(self, bofs_app):
+        """toggle_condition_enabled flips True→False and False→True."""
+        bofs_app.config["CONDITIONS"] = [
+            {"label": "Control", "enabled": True},
+            {"label": "Treatment", "enabled": True},
+        ]
+
+        result = ParticipantService.toggle_condition_enabled(0)
+        assert result is False
+        assert bofs_app.config["CONDITIONS"][0]["enabled"] is False
+
+        result = ParticipantService.toggle_condition_enabled(0)
+        assert result is True
+        assert bofs_app.config["CONDITIONS"][0]["enabled"] is True
+
+    def test_toggle_condition_enabled_default_when_unset(self, bofs_app):
+        """Missing 'enabled' key is treated as True; first toggle flips to False."""
+        bofs_app.config["CONDITIONS"] = [{"label": "Control"}]
+
+        result = ParticipantService.toggle_condition_enabled(0)
+        assert result is False
+        assert bofs_app.config["CONDITIONS"][0]["enabled"] is False
+
+    def test_toggle_condition_enabled_returns_new_value(self, bofs_app):
+        """Return value matches the post-toggle 'enabled' flag."""
+        bofs_app.config["CONDITIONS"] = [
+            {"label": "Control", "enabled": True},
+            {"label": "Treatment", "enabled": True},
+        ]
+
+        return_value = ParticipantService.toggle_condition_enabled(1)
+        assert return_value == bofs_app.config["CONDITIONS"][1]["enabled"]
+
+    def test_toggle_condition_enabled_invalid_index_raises(self, bofs_app):
+        """Out-of-range index raises IndexError."""
+        bofs_app.config["CONDITIONS"] = [
+            {"label": "Control", "enabled": True},
+            {"label": "Treatment", "enabled": True},
+        ]
+
+        with pytest.raises(IndexError):
+            ParticipantService.toggle_condition_enabled(2)
+
+        with pytest.raises(IndexError):
+            ParticipantService.toggle_condition_enabled(-999)
