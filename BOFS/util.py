@@ -9,11 +9,56 @@ from posixpath import join as urljoin
 from typing import Union, Any
 
 
+def update_participant_tracking(path):
+    """
+    Refresh ``Participant.lastActiveOn``, ensure a ``Progress`` row exists for
+    *(participant, path)*, and (on POST) close ``submittedOn``.
+
+    Called from ``BOFSFlask.before_request_`` for every participant-flow
+    request — decorated or not — so custom blueprint routes that forget
+    ``@verify_correct_page`` still get tracked.
+
+    No-ops when there's no participant in session or the participant row is
+    missing (e.g. cleared mid-flow).
+    """
+    if 'participantID' not in session:
+        return
+
+    participant = db.session.query(db.Participant).get(session['participantID'])
+    if participant is None:
+        return
+
+    participant.lastActiveOn = datetime.datetime.utcnow()
+    db.session.commit()
+
+    progress = db.session.query(db.Progress).filter(
+        db.Progress.participantID == session['participantID'],
+        db.Progress.path == path,
+    ).one_or_none()
+
+    if progress is None:
+        progress = db.Progress()
+        progress.participantID = session['participantID']
+        progress.path = path
+        progress.startedOn = datetime.datetime.utcnow()
+        db.session.add(progress)
+        db.session.commit()
+
+    if request.method == "POST":
+        progress.submittedOn = datetime.datetime.utcnow()
+        db.session.commit()
+
+
 # Decorator to help views verify whether the user is on the right page
 def verify_correct_page(f):
     """
     A decorator to be used on routes/views, which checks the the user is on the correct page. Checks
     ``session['currentUrl']``. If the user is on the wrong page, they will be redirected to the correct page.
+
+    Participant progress tracking (``lastActiveOn``, ``Progress`` rows) is
+    handled by ``BOFSFlask.before_request_`` for every participant-flow
+    request, so this decorator is no longer responsible for that. It is still
+    the right place to enforce page-list ordering and bootstrap session state.
 
     .. note::
         * Should be used just on routes after the user's session is created (usually after the consent form).
@@ -25,7 +70,7 @@ def verify_correct_page(f):
 
         if 'PROLIFIC_PID' in request.args:
             session['mTurkID'] = request.args['PROLIFIC_PID']
-            
+
         if 'external_id' in request.args:
             session['mTurkID'] = request.args['external_id']
 
@@ -44,31 +89,9 @@ def verify_correct_page(f):
 
             return redirect(current_app.config["APPLICATION_ROOT"] + "/" + session['currentUrl'])
 
-        # Add or update their progress
-        if 'participantID' in session:
-            participant = db.session.query(db.Participant).get(session['participantID'])
-            participant.lastActiveOn = datetime.datetime.utcnow()
-            db.session.commit()
-
-            progress = db.session.query(db.Progress).filter(
-                db.Progress.participantID == session['participantID'],
-                db.Progress.path == currentUrl
-            ).one_or_none()
-
-            if progress is None:
-                progress = db.Progress()
-                progress.participantID = session['participantID']
-                progress.path = currentUrl
-                progress.startedOn = datetime.datetime.utcnow()
-                db.session.add(progress)
-                db.session.commit()
-
-            if request.method == "POST":
-                progress.submittedOn = datetime.datetime.utcnow()
-                db.session.commit()
-
         return f(*args, **kwargs)
 
+    decorated_function._bofs_verify_correct_page = True
     return decorated_function
 
 

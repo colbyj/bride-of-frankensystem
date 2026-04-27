@@ -106,6 +106,20 @@ class TestActivityInjection:
         assert SCRIPT_TAG not in resp.get_data()
         assert not any("activity-polling" in rec.message for rec in caplog.records)
 
+    def test_silent_skip_for_redirects(self, bofs_app, caplog):
+        # 302 responses have a Flask-generated HTML body that lacks </body>;
+        # they're not pages and shouldn't trigger a warning.
+        from flask import redirect
+        with bofs_app.test_request_context("/some_post_handler"):
+            session['participantID'] = 1
+            redir = bofs_app.make_response(redirect("/somewhere_else"))
+            with caplog.at_level("WARNING"):
+                resp = bofs_app.after_request_(redir)
+
+        assert resp.status_code == 302
+        assert SCRIPT_TAG not in resp.get_data()
+        assert not any("activity-polling" in rec.message for rec in caplog.records)
+
     def test_inserts_before_last_body_tag(self, bofs_app):
         # If a page has nested </body> mentions in text content, we should
         # insert before the *last* one (the real closing tag).

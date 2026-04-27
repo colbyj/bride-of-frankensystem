@@ -208,4 +208,8 @@ def create_app(path, config_name, debug=False, reloader_off=False):
                 for w in schema_warnings:
                     print(w)
 
+        # Warn about PAGE_LIST routes missing @verify_correct_page (which
+        # enforces ordering and bootstraps session state).
+        app.warn_undecorated_pages()
+
     return app

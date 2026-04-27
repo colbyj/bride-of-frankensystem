@@ -282,6 +282,186 @@ class TestRedirectAndSetNextPath:
 
 
 # ===========================================================================
+# TestUpdateParticipantTracking — the helper invoked from before_request_
+# ===========================================================================
+
+class TestUpdateParticipantTracking:
+    def test_creates_progress_row_when_missing(self, bofs_app):
+        from flask import session
+        from BOFS.util import update_participant_tracking
+
+        p = _make_participant(bofs_app)
+        with bofs_app.test_request_context("/my_custom_page"):
+            session['participantID'] = p.participantID
+            update_participant_tracking("my_custom_page")
+
+        prog = bofs_app.db.session.query(bofs_app.db.Progress).filter_by(
+            participantID=p.participantID, path="my_custom_page"
+        ).one()
+        assert prog.startedOn is not None
+        assert prog.submittedOn is None  # GET, not POST
+
+    def test_refreshes_last_active_on(self, bofs_app):
+        from flask import session
+        from BOFS.util import update_participant_tracking
+
+        old = datetime(2024, 1, 1, 0, 0, 0)
+        p = _make_participant(bofs_app)
+        p.lastActiveOn = old
+        bofs_app.db.session.commit()
+
+        with bofs_app.test_request_context("/my_custom_page"):
+            session['participantID'] = p.participantID
+            update_participant_tracking("my_custom_page")
+
+        bofs_app.db.session.refresh(p)
+        assert p.lastActiveOn > old
+
+    def test_post_sets_submitted_on(self, bofs_app):
+        from flask import session
+        from BOFS.util import update_participant_tracking
+
+        p = _make_participant(bofs_app)
+        with bofs_app.test_request_context("/my_page", method="POST"):
+            session['participantID'] = p.participantID
+            update_participant_tracking("my_page")
+
+        prog = bofs_app.db.session.query(bofs_app.db.Progress).filter_by(
+            participantID=p.participantID, path="my_page"
+        ).one()
+        assert prog.submittedOn is not None
+
+    def test_no_op_without_participant(self, bofs_app):
+        from BOFS.util import update_participant_tracking
+
+        with bofs_app.test_request_context("/my_page"):
+            update_participant_tracking("my_page")  # should not raise
+
+        rows = bofs_app.db.session.query(bofs_app.db.Progress).all()
+        assert rows == []
+
+    def test_idempotent_on_second_call(self, bofs_app):
+        from flask import session
+        from BOFS.util import update_participant_tracking
+
+        p = _make_participant(bofs_app)
+        with bofs_app.test_request_context("/my_page"):
+            session['participantID'] = p.participantID
+            update_participant_tracking("my_page")
+            first = bofs_app.db.session.query(bofs_app.db.Progress).filter_by(
+                participantID=p.participantID, path="my_page"
+            ).one()
+            first_started = first.startedOn
+
+            update_participant_tracking("my_page")  # second call
+            after = bofs_app.db.session.query(bofs_app.db.Progress).filter_by(
+                participantID=p.participantID, path="my_page"
+            ).one()
+            assert after.startedOn == first_started  # not overwritten
+
+
+# ===========================================================================
+# TestBeforeRequestTracking — before_request_ tracks an undecorated route
+# ===========================================================================
+
+class TestBeforeRequestTracking:
+    def test_tracks_when_path_matches_currenturl(self, bofs_app):
+        from flask import session
+
+        p = _make_participant(bofs_app)
+        with bofs_app.test_request_context("/my_custom_page"):
+            session['participantID'] = p.participantID
+            session['currentUrl'] = "my_custom_page"
+            bofs_app.before_request_()
+
+        prog = bofs_app.db.session.query(bofs_app.db.Progress).filter_by(
+            participantID=p.participantID, path="my_custom_page"
+        ).one_or_none()
+        assert prog is not None
+
+    def test_skips_when_path_does_not_match_currenturl(self, bofs_app):
+        from flask import session
+
+        p = _make_participant(bofs_app)
+        with bofs_app.test_request_context("/wrong_page"):
+            session['participantID'] = p.participantID
+            session['currentUrl'] = "my_custom_page"
+            bofs_app.before_request_()
+
+        rows = bofs_app.db.session.query(bofs_app.db.Progress).all()
+        assert rows == []
+
+    def test_skips_admin_path(self, bofs_app):
+        from flask import session
+
+        p = _make_participant(bofs_app)
+        with bofs_app.test_request_context("/admin/dashboard"):
+            session['participantID'] = p.participantID
+            session['currentUrl'] = "my_custom_page"
+            bofs_app.before_request_()
+
+        rows = bofs_app.db.session.query(bofs_app.db.Progress).all()
+        assert rows == []
+
+
+# ===========================================================================
+# TestWarnUndecoratedPages
+# ===========================================================================
+
+class TestWarnUndecoratedPages:
+    def test_warns_for_undecorated_route(self, bofs_app, caplog):
+        from BOFS.util import verify_correct_page
+
+        @verify_correct_page
+        def decorated_view():
+            return "ok"
+
+        def undecorated_view():
+            return "ok"
+
+        bofs_app.add_url_rule("/good_page", endpoint="good_page",
+                              view_func=decorated_view)
+        bofs_app.add_url_rule("/bad_page", endpoint="bad_page",
+                              view_func=undecorated_view)
+
+        # Inject into PAGE_LIST
+        bofs_app.page_list.page_list.extend([
+            {"name": "Good", "path": "good_page"},
+            {"name": "Bad", "path": "bad_page"},
+        ])
+
+        with caplog.at_level("WARNING"):
+            bofs_app.warn_undecorated_pages()
+
+        msgs = [rec.message for rec in caplog.records]
+        assert any("'bad_page'" in m and "missing @verify_correct_page" in m
+                   for m in msgs)
+        assert not any("'good_page'" in m for m in msgs)
+
+    def test_skips_consent_and_end(self, bofs_app, caplog):
+        # PAGE_LIST in conftest is [consent, end] — both in the skip list.
+        # consent is served by route_consent_html (no decorator) but it's
+        # framework-special, so no warning.
+        with caplog.at_level("WARNING"):
+            bofs_app.warn_undecorated_pages()
+
+        msgs = [rec.message for rec in caplog.records]
+        assert not any("missing @verify_correct_page" in m for m in msgs)
+
+    def test_warns_for_unrouted_path(self, bofs_app, caplog):
+        bofs_app.page_list.page_list.append(
+            {"name": "Phantom", "path": "this_page_does_not_exist"}
+        )
+
+        with caplog.at_level("WARNING"):
+            bofs_app.warn_undecorated_pages()
+
+        msgs = [rec.message for rec in caplog.records]
+        assert any("'this_page_does_not_exist'" in m and "doesn't match" in m
+                   for m in msgs)
+
+
+# ===========================================================================
 # TestQuestionnaireLog
 # ===========================================================================
 

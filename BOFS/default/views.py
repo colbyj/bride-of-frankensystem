@@ -16,7 +16,10 @@ default = Blueprint('default', __name__)
 @default.route("/")
 @verify_correct_page
 def route_index():
-    return "You shouldn't be able to see this."
+    # @verify_correct_page redirects in normal flow; reaching this body means
+    # the participant's session is in a corrupted state (e.g. empty
+    # currentUrl). The 404 handler renders a recovery page with /restart link.
+    abort(404)
 
 
 @default.route("/consent", methods=['POST', 'GET'])
@@ -410,10 +413,8 @@ def route_current_url():
 
     :return: The current URL of the user. For a new user, it returns "/".
     """
-    if "currentUrl" in session:
-        return session['currentUrl']
-    else:
-        return "/"
+    body = session['currentUrl'] if "currentUrl" in session else "/"
+    return body, 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
 
 @default.route("/restart")

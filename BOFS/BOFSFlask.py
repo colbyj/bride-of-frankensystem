@@ -447,12 +447,14 @@ class BOFSFlask(Flask):
         """
         If running the server in debug mode, turn off Jinja caching.
         If there are validation errors, show the error page instead of normal content.
+        Also refreshes participant progress tracking when the request is for
+        the page the participant is supposed to be on.
         """
         if self.run_with_debugging:
             self.jinja_env.cache = {}
 
         # If there are fatal validation errors, redirect all non-static routes to the error page
-        from flask import request
+        from flask import request, session
         if self.validation_errors and not request.path.startswith('/BOFS_static'):
             has_fatal = any(e.severity == "error" for e in self.validation_errors)
             if has_fatal:
@@ -469,6 +471,55 @@ class BOFSFlask(Flask):
                               '</ol>'
                               '<p>If you need help with questionnaire format, see the '
                               '<a href="https://bride-of-frankensystem.readthedocs.io/">BOFS documentation</a>.</p>'
+                )
+
+        # Participant progress tracking. Runs for every request when the
+        # request is for the page the participant is supposed to be on. This
+        # makes tracking robust against custom blueprint routes that forget
+        # @verify_correct_page (which previously was the only writer).
+        if 'participantID' in session and 'currentUrl' in session:
+            currentUrl = request.url.replace(request.url_root, "")
+            if currentUrl == session['currentUrl']:
+                util.update_participant_tracking(currentUrl)
+
+    # Pages whose view functions are framework-special and don't go through
+    # @verify_correct_page (handled in the admin timeline as a special case).
+    _PAGES_DECORATOR_NOT_REQUIRED = frozenset({
+        'consent', 'consent_nc', 'create_participant', 'create_participant_nc', 'end',
+    })
+
+    def warn_undecorated_pages(self):
+        """
+        Emit a warning for any PAGE_LIST entry whose route is missing the
+        ``@verify_correct_page`` decorator. The decorator enforces page-list
+        ordering — without it, participants can land on a page out of order
+        and the framework can't redirect them back. Called once at startup.
+        """
+        adapter = self.url_map.bind('localhost')
+        for page in self.page_list.flat_page_list(condition=0):
+            path = page.get('path', '')
+            if not path or path in self._PAGES_DECORATOR_NOT_REQUIRED:
+                continue
+            try:
+                endpoint, _ = adapter.match('/' + path)
+            except Exception:
+                self.logger.warning(
+                    "PAGE_LIST entry %r doesn't match any registered route. "
+                    "Participants navigating to this page will see a 404.",
+                    path,
+                )
+                continue
+
+            view_func = self.view_functions.get(endpoint)
+            if view_func is None:
+                continue
+            if not getattr(view_func, '_bofs_verify_correct_page', False):
+                self.logger.warning(
+                    "PAGE_LIST entry %r maps to view %s which is missing "
+                    "@verify_correct_page. The decorator enforces page-list "
+                    "ordering and bootstraps session state; without it, "
+                    "participants can navigate to this page out of order.",
+                    path, endpoint,
                 )
 
     _ACTIVITY_POLL_TAG = b'<script src="/BOFS_static/js/user_active.js"></script>'
@@ -489,6 +540,8 @@ class BOFSFlask(Flask):
         """
         from flask import request, session, g
 
+        if response.status_code != 200:
+            return response
         if response.mimetype != 'text/html':
             return response
         if 'participantID' not in session:
