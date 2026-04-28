@@ -1,3 +1,64 @@
+Changes from 2.0 to 2.1
+=======================
+
+Getting Started
+* New `BOFS init` CLI wizard that walks users through creating a new BOFS project, and can launch the project with the browser opened automatically.
+* `SECRET_KEY` is no longer required in the config; an auto-generated hash is created and stored when the database is initialized.
+* Major overhaul of [the documentation](https://docs.frankensystem.net/), including expanded config options reference, util function reference, blueprint guidance, and docs for the `title` attribute, `required_selection`, and the `init` command.
+
+New Question Types and Questionnaire Features
+* Added a "video" question type for embedding video stimuli.
+* Added a "picture_select" question type for choosing one option from a set of images. Supports horizontal (default) or vertical centered layouts, an explicit per-question `width`, and an `auto_resize` flag that normalizes every image to the smallest natural dimension in the group. The data type of the stored column is auto-detected (integer / float / string) from the image values, and the `images` list is validated at startup.
+* Checklist now supports options with associated text fields.
+* Radiolist now supports an "other" option with a free-text field, and can require a specific option to be chosen in order to continue.
+* Radiogrid can now be made optional, supports `questions` as an alias for `q_text`, and provides better validation feedback.
+* Questions can now define a `title` attribute that displays above the question box.
+* Questions can be configured to show only for specific conditions.
+* Questionnaire questions are now loaded server-side instead of via htmx.
+* More thorough questionnaire validation: any issues are reported on the console and the user is directed to a friendlier error page.
+* If a participant returns to a prior questionnaire (not currently exposed in the UI, but supported internally), their previously-entered values are now reloaded into the form.
+
+Conditions
+* Can now optionally load conditions from a `.csv` file or an existing `.db` file, making longitudinal studies easier to set up.
+* Can "pause" individual conditions to stop new participants from being assigned to them.
+* If all conditions are paused, new participants are blocked from entering the study entirely.
+
+Admin Panel
+* New procedure diagram that visualizes the page flow.
+* Can now preview an individual participant's responses.
+* Admin panel now redirects users back to the log-in page when their session is no longer valid.
+* Refined admin control panel shown at the bottom of pages when logged in as admin or running in debug mode.
+* Export button on the database table view moved to the top of the page.
+
+Debug Mode and Developer Experience
+* In debug mode, a condition picker is shown so developers can choose which condition to test.
+* In debug mode (or when accessed via localhost), users are now offered the option to restart the experiment from `/end`; the restart route keeps the admin login session intact.
+* The debug toolbar is now shown on pages before the participant exists, with buttons disabled and a note explaining that consent must be given (or the participant created) first.
+* A console warning is shown when `@verify_correct_page` is missing on a custom route; a new `@suppress_activity_polling` decorator silences the warning when the polling script can't be injected.
+
+Custom Routes and Templates
+* Activity polling is now injected via `after_request`, so participants on long-running tasks with fully custom HTML are no longer falsely marked as abandoned. Pages are also marked "submitted" when the session's current URL is updated.
+* Participant progress tracking moved entirely out of `@verify_correct_page` into a `before_request_` handler, so custom routes that omit the decorator still track progress properly.
+* Can now set the template's header colour from the config file.
+* Can load alternative `style.css` files via configuration.
+* Template macros extracted into their own file for easier reuse and overriding.
+* `mTurkID` can now also be passed in via the `external_id` URL argument.
+* Allow `APPLICATION_ROOT` to be missing from the config.
+
+Internal Refactoring
+* Introduced a service layer to consolidate previously scattered logic: `ParticipantService`, `SessionRecoveryService`, `ParticipantRoutingService`, `ParticipantQuestionnaireService`, and `AdminStatsService`.
+* `Results` class moved to `services/data_export.py`; fixed an issue with export flags discovered during the move.
+* Added unit tests covering JSON tables, built-in model classes, results calculations, session management, page routing, participant management, and questionnaire handling.
+
+Bug Fixes
+* Fixed `redirect_next_page` edge cases.
+* Fixed condition being lost when external ID was loaded via URL arguments.
+* Fixed debug condition picker showing on projects with no conditions.
+* Fixed slider default size not applying to the right label.
+* Fixed page-list composition issue in the admin progress route.
+* Fixed Python 3.9 typehint compatibility issue.
+* Fallback source for standard deviation/variance now uses the population method.
+
 Changes from 1.2 to 2.0
 =======================
 
