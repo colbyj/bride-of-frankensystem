@@ -23,14 +23,71 @@
             font-style: italic;
             margin-left: 6px;
         }
+        .picker-lookup {
+            color: #1f7a1f;
+            font-weight: normal;
+            font-style: italic;
+            margin-left: 6px;
+        }
         .picker-disabled {
             color: #999;
+        }
+        .lookup-banner {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 4px;
+            border-left: 4px solid #1f7a1f;
+            background: rgba(31, 122, 31, 0.08);
+        }
+        .lookup-banner.lookup-banner-miss {
+            border-left-color: #b13030;
+            background: rgba(177, 48, 48, 0.08);
+        }
+        .lookup-banner.lookup-banner-pending {
+            border-left-color: #888;
+            background: rgba(136, 136, 136, 0.08);
+        }
+        .lookup-banner code {
+            background: rgba(0, 0, 0, 0.06);
+            padding: 1px 5px;
+            border-radius: 3px;
         }
     </style>
 {% endblock %}
 
 {% block content %}
     <i>Choose a Condition (Debug Mode Only)</i>
+
+    {% if lookup_configured %}
+        {% if looked_up_condition %}
+            <div class="lookup-banner">
+                <b>Condition lookup hit.</b>
+                Configured source resolved external ID
+                <code>{{ external_id }}</code>
+                to <b>condition {{ looked_up_condition }}</b>.
+                In production this would be assigned automatically — pick
+                {{ looked_up_condition }} below to mirror that, or pick a
+                different value to override for debugging.
+            </div>
+        {% elif external_id %}
+            <div class="lookup-banner lookup-banner-miss">
+                <b>Condition lookup miss.</b>
+                External ID
+                <code>{{ external_id }}</code>
+                was not found in any configured lookup source.
+                In production this would render the "ID Not Recognized"
+                error page. Picking a condition below lets you continue
+                anyway for debugging.
+            </div>
+        {% else %}
+            <div class="lookup-banner lookup-banner-pending">
+                <b>Condition lookup configured but pending.</b>
+                The participant has not entered an external ID yet, so the
+                lookup cannot run. The balancer would normally pick the
+                condition shown below.
+            </div>
+        {% endif %}
+    {% endif %}
 
     {% for row in rows %}
         <div class="question">
@@ -41,7 +98,9 @@
                             <span class="picker-label {% if not row.enabled %}picker-disabled{% endif %}">
                                 {{ row.num }}. {{ row.label }}
                             </span>
-                            {% if row.is_organic %}
+                            {% if row.is_lookup %}
+                                <span class="picker-lookup">This is the condition the lookup resolved to.</span>
+                            {% elif row.is_organic %}
                                 <span class="picker-auto">This condition would normally be automatically assigned.</span>
                             {% endif %}
                         </div>
@@ -52,7 +111,7 @@
                     </div>
                     <form method="post" style="margin: 0;">
                         <input type="hidden" name="condition" value="{{ row.num }}">
-                        <input class="btn {% if row.is_organic %}btn-outline-primary{% else %}btn-outline-secondary{% endif %}" style="width: 160px;"
+                        <input class="btn {% if row.is_lookup %}btn-outline-success{% elif row.is_organic %}btn-outline-primary{% else %}btn-outline-secondary{% endif %}" style="width: 160px;"
                                type="submit" value="Pick"
                                {% if not row.enabled %}disabled{% endif %}>
                     </form>

@@ -9,7 +9,7 @@ from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
 from BOFS.services.participant import ParticipantService
 from BOFS.services.participant_questionnaire import ParticipantQuestionnaireService
 from BOFS.services.session_recovery import SessionRecoveryService
-from BOFS.services.condition_lookup import ConditionLookupMiss
+from BOFS.services.condition_lookup import ConditionLookupMiss, ConditionLookupService
 
 
 default = Blueprint('default', __name__)
@@ -195,6 +195,15 @@ def route_debug_pick_condition():
     counts = db.Participant.balancer_counts()
     organic = db.Participant.compute_organic_condition()
 
+    # If a CSV/DB lookup source is configured, run the lookup now (without
+    # mutating the participant) and surface the result on the picker page so
+    # it's evident whether the lookup found a hit. In production the picker
+    # is bypassed and assign_condition would run the same lookup itself.
+    lookup_configured = ConditionLookupService.is_configured()
+    looked_up_condition = None
+    if lookup_configured and p.mTurkID:
+        looked_up_condition = ConditionLookupService.lookup(p.mTurkID)
+
     rows = []
     for idx, meta in enumerate(conditions):
         num = idx + 1
@@ -204,12 +213,16 @@ def route_debug_pick_condition():
             'enabled': meta.get('enabled', True),
             'count': counts[idx] if idx < len(counts) else 0,
             'is_organic': (num == organic),
+            'is_lookup': (num == looked_up_condition),
         })
 
     return render_template(
         "debug_pick_condition.html",
         rows=rows,
         organic=organic,
+        lookup_configured=lookup_configured,
+        looked_up_condition=looked_up_condition,
+        external_id=p.mTurkID,
     )
 
 
