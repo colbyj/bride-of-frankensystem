@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy import inspect as sa_inspect
 from .globals import db
 from BOFS.util import mean, stdev, std, var, variance, median
+from .validation import EXPANDED_TYPES
 
 
 def _normalize_type_name(sa_type) -> str:
@@ -130,7 +131,13 @@ class JSONQuestionnaire(object):
                         self.__fields.append(JSONQuestionnaireColumn(qt, question_type))
 
             if 'id' in q:
-                self.__fields.append(JSONQuestionnaireColumn(q))
+                qtype = q.get('questiontype')
+                if qtype in EXPANDED_TYPES:
+                    for suffix, dtype in EXPANDED_TYPES[qtype]:
+                        self.__fields.append(JSONQuestionnaireColumn(
+                            {'id': q['id'] + suffix, 'datatype': dtype}))
+                else:
+                    self.__fields.append(JSONQuestionnaireColumn(q))
 
         return self.__fields
 

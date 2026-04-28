@@ -25,6 +25,12 @@ BUILTIN_QUESTION_TYPES = _scan_builtin_types()
 # Question types that don't produce database columns (display-only)
 DISPLAY_ONLY_TYPES = frozenset({"textview"})
 
+# Question types whose top-level `id` expands into multiple suffixed columns.
+# Maps questiontype -> list of (suffix, datatype) pairs.
+EXPANDED_TYPES = {
+    "video": [("_started", "float"), ("_ended", "float"), ("_watched", "float")],
+}
+
 
 def discover_question_types(app) -> frozenset:
     """
@@ -123,7 +129,12 @@ def _collect_field_ids(json_data: dict) -> list[tuple[str, int]]:
 
         # Top-level ID
         if "id" in q:
-            ids.append((q["id"], i))
+            qtype = q.get("questiontype")
+            if qtype in EXPANDED_TYPES and isinstance(q["id"], str):
+                for suffix, _dtype in EXPANDED_TYPES[qtype]:
+                    ids.append((q["id"] + suffix, i))
+            else:
+                ids.append((q["id"], i))
 
     return ids
 

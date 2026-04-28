@@ -122,6 +122,16 @@ class ParticipantQuestionnaireService:
             q['has_value'] = True
 
         parent_type = (q.get('questiontype') or '').lower()
+
+        # Expanded types (e.g. video) store one row across multiple suffixed
+        # columns. Surface those priors as `prior_<suffix>` so the template
+        # can repopulate hidden fields when a participant returns mid-flow.
+        from BOFS.validation import EXPANDED_TYPES
+        if parent_type in EXPANDED_TYPES and 'id' in q:
+            for suffix, _dtype in EXPANDED_TYPES[parent_type]:
+                full_id = q['id'] + suffix
+                if full_id in prior_values:
+                    q['prior' + suffix] = prior_values[full_id]
         for sub_key in ('questions', 'q_text'):
             subs = q.get(sub_key)
             if not isinstance(subs, list):

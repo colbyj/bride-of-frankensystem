@@ -234,6 +234,32 @@ def test_fetch_fields_standalone_with_questiontype(tmp_path):
     assert fields[0].data_type == "integer"
 
 
+def test_fetch_fields_video_expands_into_three_columns(tmp_path):
+    """A video question with an id expands into _started, _ended, _watched columns,
+    all of float datatype. No bare {id} column is created."""
+    data = {
+        "questions": [
+            {"questiontype": "video", "id": "tutorial", "src": "https://example.com/v.webm"},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "vid_expand", data)
+    fields = q.fetch_fields()
+    field_ids = [f.id for f in fields]
+    assert field_ids == ["tutorial_started", "tutorial_ended", "tutorial_watched"]
+    assert all(f.data_type == "float" for f in fields)
+
+
+def test_fetch_fields_video_without_id_emits_no_columns(tmp_path):
+    """A video question without an id is purely display — no DB columns."""
+    data = {
+        "questions": [
+            {"questiontype": "video", "src": "https://example.com/v.webm"},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "vid_noid", data)
+    assert q.fetch_fields() == []
+
+
 def test_fetch_fields_empty_questions(tmp_path):
     data = {"questions": []}
     q = _write_questionnaire(tmp_path, "empty", data)

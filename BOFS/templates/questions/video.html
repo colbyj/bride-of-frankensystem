@@ -1,0 +1,220 @@
+{# Video question type. Renders an HTML5 <video> from an arbitrary URL.
+   Optionally enforces "watch to completion" before allowing the participant to
+   continue, and (when `id` is set) logs viewing telemetry to the database.
+
+   JSON fields:
+     src                   (required) URL of the video.
+     width, height         (optional) pixel dimensions for the video element.
+     autoplay              (optional, default false)
+     force_watch           (optional, default false) When true, btnNext is
+                           disabled until the participant watches at least
+                           `completion_threshold` of the video's duration.
+     completion_threshold  (optional, default 0.98) Fraction of duration that
+                           counts as "watched".
+     minimal_controls      (optional, default false) When true, hides the native
+                           controls and shows only a custom Play/Pause button.
+                           When false, native controls are shown; if force_watch
+                           is also true, a snap-back guard prevents seeking past
+                           the supposed playhead position.
+     id                    (optional) When set, three columns are written to the
+                           questionnaire table:
+                             {id}_started — epoch seconds when the participant
+                                            first pressed play (0 if never).
+                             {id}_ended   — epoch seconds at last observed
+                                            activity (play/timeupdate/pause).
+                             {id}_watched — accumulated forward play time
+                                            (seconds), excluding seeks and
+                                            background-tab playback.
+#}
+{% set fw = question.force_watch|default(false) %}
+{% set min_ctrl = question.minimal_controls|default(false) %}
+{% set threshold = question.completion_threshold|default(0.98) %}
+{% set prior_started = question.prior_started|default(0) %}
+{% set prior_ended = question.prior_ended|default(0) %}
+{% set prior_watched = question.prior_watched|default(0) %}
+
+<div class="bofs-video-wrapper" style="display: inline-block;">
+    <video class="bofs-video"
+           {% if question.width %}width="{{ question.width }}"{% endif %}
+           {% if question.height %}height="{{ question.height }}"{% endif %}
+           {% if question.autoplay %}autoplay{% endif %}
+           {% if not min_ctrl %}controls{% endif %}
+           preload="auto"
+           controlsList="nodownload nofullscreen noremoteplayback"
+           disablePictureInPicture
+           playsinline>
+        <source src="{{ question.src }}">
+        Your browser does not support HTML5 video.
+    </video>
+    {% if min_ctrl %}
+    <div class="bofs-video-toggle-row" style="margin-top: 6px;">
+        <button type="button" class="btn btn-light bofs-video-toggle">Play</button>
+    </div>
+    {% endif %}
+    {% if question.id %}
+    <input type="hidden" name="{{ question.id }}_started" class="bofs-video-started" value="{{ prior_started }}">
+    <input type="hidden" name="{{ question.id }}_ended"   class="bofs-video-ended"   value="{{ prior_ended }}">
+    <input type="hidden" name="{{ question.id }}_watched" class="bofs-video-watched" value="{{ prior_watched }}">
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    // Cross-video gate: btnNext is disabled while any force_watch video is unwatched.
+    // A small italic notice is inserted next to btnNext so the participant knows why.
+    if (!window.bofsVideoGate) {
+        window.bofsVideoGate = (function() {
+            var pending = 0;
+            function btn() { return document.getElementById('btnNext'); }
+            function ensureNotice() {
+                var existing = document.getElementById('bofs-video-gate-msg');
+                if (existing) return existing;
+                var b = btn();
+                if (!b || !b.parentNode) return null;
+                var span = document.createElement('span');
+                span.id = 'bofs-video-gate-msg';
+                span.className = 'bofs-video-gate-msg';
+                span.style.marginLeft = '12px';
+                span.style.fontStyle = 'italic';
+                span.style.color = '#6c757d';
+                span.textContent = 'Please watch the video before continuing.';
+                b.parentNode.insertBefore(span, b.nextSibling);
+                return span;
+            }
+            function removeNotice() {
+                var m = document.getElementById('bofs-video-gate-msg');
+                if (m && m.parentNode) m.parentNode.removeChild(m);
+            }
+            return {
+                require: function() {
+                    pending++;
+                    var b = btn();
+                    if (b) b.disabled = true;
+                    ensureNotice();
+                },
+                satisfy: function() {
+                    pending = Math.max(0, pending - 1);
+                    if (pending === 0) {
+                        var b = btn();
+                        if (b) b.disabled = false;
+                        removeNotice();
+                    }
+                }
+            };
+        })();
+    }
+
+    var wrapper = document.currentScript.previousElementSibling;
+    var vid = wrapper.querySelector('video');
+    var toggle = wrapper.querySelector('.bofs-video-toggle');
+    var startedField = wrapper.querySelector('.bofs-video-started');
+    var endedField   = wrapper.querySelector('.bofs-video-ended');
+    var watchedField = wrapper.querySelector('.bofs-video-watched');
+    var forceWatch = {{ 'true' if fw else 'false' }};
+    var minimalControls = {{ 'true' if min_ctrl else 'false' }};
+    var threshold = {{ threshold }};
+
+    var startedAt = parseFloat(startedField ? startedField.value : 0) || 0;
+    var watchedSeconds = parseFloat(watchedField ? watchedField.value : 0) || 0;
+    var lastTime = 0;
+    var supposedTime = 0;
+    var completed = false;
+    var gateRegistered = false;
+
+    function now() { return Date.now() / 1000; }
+
+    function setEnded() {
+        if (endedField) endedField.value = now();
+    }
+    function persistWatched() {
+        if (watchedField) watchedField.value = watchedSeconds;
+    }
+
+    function checkCompletion() {
+        if (completed || !vid.duration || isNaN(vid.duration)) return;
+        if (watchedSeconds / vid.duration >= threshold) {
+            completed = true;
+            if (gateRegistered) {
+                window.bofsVideoGate.satisfy();
+                gateRegistered = false;
+            }
+        }
+    }
+
+    if (forceWatch) {
+        // Already watched enough on a prior visit? Don't re-gate.
+        var initialDuration = vid.duration;
+        if (initialDuration && watchedSeconds / initialDuration >= threshold) {
+            completed = true;
+        } else {
+            window.bofsVideoGate.require();
+            gateRegistered = true;
+        }
+    }
+
+    // Pin playback rate so users can't speed through.
+    vid.addEventListener('ratechange', function() {
+        if (vid.playbackRate !== 1) vid.playbackRate = 1;
+    });
+
+    // Snap-back guard: relevant only when native controls are exposed and
+    // we're enforcing watch. The accumulator is the real gate; this just
+    // prevents the visual confusion of "I scrubbed but Next is still off".
+    if (forceWatch && !minimalControls) {
+        vid.addEventListener('seeking', function() {
+            if (Math.abs(vid.currentTime - supposedTime) > 0.5) {
+                vid.currentTime = supposedTime;
+            }
+        });
+    }
+
+    // Accumulate forward play-time only. Forward seeks (large positive deltas)
+    // and backward seeks (negative deltas) don't count toward the threshold.
+    vid.addEventListener('timeupdate', function() {
+        if (vid.seeking || vid.paused) {
+            lastTime = vid.currentTime;
+            return;
+        }
+        var delta = vid.currentTime - lastTime;
+        if (delta > 0 && delta < 1.0 && document.visibilityState === 'visible') {
+            watchedSeconds += delta;
+            supposedTime = vid.currentTime;
+            persistWatched();
+            setEnded();
+        }
+        lastTime = vid.currentTime;
+        if (forceWatch) checkCompletion();
+    });
+
+    vid.addEventListener('play', function() {
+        lastTime = vid.currentTime;
+        if (startedAt === 0) {
+            startedAt = now();
+            if (startedField) startedField.value = startedAt;
+        }
+        setEnded();
+        if (toggle) toggle.textContent = 'Pause';
+    });
+    vid.addEventListener('pause', function() {
+        setEnded();
+        if (toggle) toggle.textContent = 'Play';
+    });
+    vid.addEventListener('ended', function() {
+        setEnded();
+        if (forceWatch) checkCompletion();
+    });
+
+    // Pause when the tab is hidden or window loses focus, so the video can't
+    // play in the background while watchedSeconds is gated by visibility.
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible' && !vid.paused) vid.pause();
+    });
+    window.addEventListener('blur', function() { if (!vid.paused) vid.pause(); });
+
+    if (toggle) {
+        toggle.addEventListener('click', function() {
+            if (vid.paused) vid.play(); else vid.pause();
+        });
+    }
+})();
+</script>

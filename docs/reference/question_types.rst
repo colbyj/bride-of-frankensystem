@@ -34,6 +34,8 @@ Currently, the following types of input are supported:
 -  ``multi_field`` - Multi-line text entry
 -  ``drop_down`` - Select one option from a drop-down list
 -  ``textview`` - Display plain text (HTML syntax is supported)
+-  ``video`` - Embed an HTML5 video, optionally requiring the participant to
+   watch it before continuing
 
 radiogrid
 ---------
@@ -347,4 +349,69 @@ textview
            "questiontype": "textview",
            "instructions": "Some header",
            "text": "These are some instructions which will appear wherever you place this question."
+       }
+
+video
+-----
+
+``questiontype == 'video'``
+
+Embeds an HTML5 ``<video>`` element from any URL. Can optionally require the
+participant to watch the video to completion before the *Continue* button is
+enabled, and (when ``id`` is set) records viewing telemetry to the database.
+
+**How "force watch" works**
+
+When ``force_watch`` is ``true``, the *Continue* button is disabled and an
+explanatory notice appears beside it. A watched-time accumulator counts only
+forward playback while the tab is visible — forward seeks, backward seeks,
+playback rate changes, and background-tab playback do not count. The button
+unlocks once the accumulator reaches ``completion_threshold`` of the video's
+duration. If multiple videos on the same page set ``force_watch``, the
+button is gated until *all* of them are satisfied.
+
+When ``minimal_controls`` is ``false`` (the default), the native video
+controls are shown and a "snap-back" guard prevents the participant from
+scrubbing past the supposed playhead position. When ``minimal_controls`` is
+``true``, the native controls are hidden entirely and only a custom
+*Play/Pause* button is rendered, so seeking is impossible by construction.
+
+**Properties**
+
+-  ``src``: URL of the video file (required, string)
+-  ``id``: when set, three columns are written to the questionnaire table
+   (optional, string):
+
+   -  ``{id}_started`` — epoch seconds when the participant first pressed
+      play, or ``0`` if they never started it
+   -  ``{id}_ended`` — epoch seconds at the last observed activity
+      (play / timeupdate / pause / ended)
+   -  ``{id}_watched`` — accumulated forward play time, in seconds
+
+-  ``width``, ``height``: pixel dimensions for the video element
+   (optional, integer)
+-  ``autoplay``: start playing as soon as the page loads (optional, boolean,
+   default ``false``)
+-  ``force_watch``: disable the *Continue* button until the participant has
+   watched ``completion_threshold`` of the video (optional, boolean,
+   default ``false``)
+-  ``completion_threshold``: fraction of the video's duration that counts
+   as "watched" (optional, float between 0 and 1, default ``0.98``)
+-  ``minimal_controls``: hide the native player controls and show only a
+   custom Play/Pause button (optional, boolean, default ``false``)
+
+**Example**
+
+.. code:: json
+
+       {
+           "questiontype": "video",
+           "id": "tutorial_video",
+           "instructions": "Please watch the entire tutorial before continuing.",
+           "src": "https://example.com/static/tutorial.webm",
+           "width": 940,
+           "height": 530,
+           "force_watch": true,
+           "completion_threshold": 0.95,
+           "minimal_controls": true
        }
