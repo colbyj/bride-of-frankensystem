@@ -48,7 +48,7 @@
     </video>
     {% if min_ctrl %}
     <div class="bofs-video-toggle-row" style="margin-top: 6px;">
-        <button type="button" class="btn btn-light bofs-video-toggle">Play</button>
+        <button type="button" class="btn btn-outline-secondary bofs-video-toggle">Play</button>
     </div>
     {% endif %}
     {% if question.id %}
@@ -60,45 +60,66 @@
 
 <script>
 (function() {
-    // Cross-video gate: btnNext is disabled while any force_watch video is unwatched.
-    // A small italic notice is inserted next to btnNext so the participant knows why.
-    if (!window.bofsVideoGate) {
-        window.bofsVideoGate = (function() {
-            var pending = 0;
+    // Shared media gate: btnNext is disabled while any force_watch video or
+    // force_listen audio question on the page is still unsatisfied. A single
+    // italic notice is rendered next to btnNext, with text that adapts based
+    // on which media kinds are still pending.
+    if (!window.bofsMediaGate) {
+        window.bofsMediaGate = (function() {
+            var counts = { video: 0, audio: 0 };
+            var deferred = false;
             function btn() { return document.getElementById('btnNext'); }
-            function ensureNotice() {
-                var existing = document.getElementById('bofs-video-gate-msg');
-                if (existing) return existing;
-                var b = btn();
-                if (!b || !b.parentNode) return null;
-                var span = document.createElement('span');
-                span.id = 'bofs-video-gate-msg';
-                span.className = 'bofs-video-gate-msg';
-                span.style.marginLeft = '12px';
-                span.style.fontStyle = 'italic';
-                span.style.color = '#6c757d';
-                span.textContent = 'Please watch the video before continuing.';
-                b.parentNode.insertBefore(span, b.nextSibling);
-                return span;
+            function noticeText() {
+                if (counts.video > 0 && counts.audio > 0) {
+                    return 'Please play all media before continuing.';
+                }
+                if (counts.video > 0) {
+                    return counts.video > 1
+                        ? 'Please watch the videos before continuing.'
+                        : 'Please watch the video before continuing.';
+                }
+                return counts.audio > 1
+                    ? 'Please listen to the audio clips before continuing.'
+                    : 'Please listen to the audio before continuing.';
             }
-            function removeNotice() {
-                var m = document.getElementById('bofs-video-gate-msg');
-                if (m && m.parentNode) m.parentNode.removeChild(m);
+            function update() {
+                // The questionnaire template renders btnNext *after* the
+                // questions, so at script-parse time btnNext doesn't exist
+                // yet. Defer the DOM work until DOMContentLoaded.
+                if (document.readyState === 'loading') {
+                    if (!deferred) {
+                        deferred = true;
+                        document.addEventListener('DOMContentLoaded', function() {
+                            deferred = false;
+                            update();
+                        }, { once: true });
+                    }
+                    return;
+                }
+                var b = btn();
+                var existing = document.getElementById('bofs-media-gate-msg');
+                if (counts.video + counts.audio === 0) {
+                    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+                    if (b) b.disabled = false;
+                    return;
+                }
+                if (b) b.disabled = true;
+                if (!existing && b && b.parentNode) {
+                    existing = document.createElement('span');
+                    existing.id = 'bofs-media-gate-msg';
+                    existing.className = 'bofs-media-gate-msg';
+                    existing.style.marginRight = '12px';
+                    existing.style.fontStyle = 'italic';
+                    existing.style.color = '#6c757d';
+                    b.parentNode.insertBefore(existing, b);
+                }
+                if (existing) existing.textContent = noticeText();
             }
             return {
-                require: function() {
-                    pending++;
-                    var b = btn();
-                    if (b) b.disabled = true;
-                    ensureNotice();
-                },
-                satisfy: function() {
-                    pending = Math.max(0, pending - 1);
-                    if (pending === 0) {
-                        var b = btn();
-                        if (b) b.disabled = false;
-                        removeNotice();
-                    }
+                require: function(kind) { counts[kind]++; update(); },
+                satisfy: function(kind) {
+                    counts[kind] = Math.max(0, counts[kind] - 1);
+                    update();
                 }
             };
         })();
@@ -135,7 +156,7 @@
         if (watchedSeconds / vid.duration >= threshold) {
             completed = true;
             if (gateRegistered) {
-                window.bofsVideoGate.satisfy();
+                window.bofsMediaGate.satisfy('video');
                 gateRegistered = false;
             }
         }
@@ -147,7 +168,7 @@
         if (initialDuration && watchedSeconds / initialDuration >= threshold) {
             completed = true;
         } else {
-            window.bofsVideoGate.require();
+            window.bofsMediaGate.require('video');
             gateRegistered = true;
         }
     }

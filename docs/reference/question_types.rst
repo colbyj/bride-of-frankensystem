@@ -36,6 +36,8 @@ Currently, the following types of input are supported:
 -  ``textview`` - Display plain text (HTML syntax is supported)
 -  ``video`` - Embed an HTML5 video, optionally requiring the participant to
    watch it before continuing
+-  ``audio`` - Embed an HTML5 audio clip, optionally requiring the participant
+   to listen to it before continuing
 
 radiogrid
 ---------
@@ -414,4 +416,57 @@ scrubbing past the supposed playhead position. When ``minimal_controls`` is
            "force_watch": true,
            "completion_threshold": 0.95,
            "minimal_controls": true
+       }
+
+audio
+-----
+
+``questiontype == 'audio'``
+
+Embeds an HTML5 ``<audio>`` element from any URL with native player controls.
+Can optionally require the participant to listen to the clip in full before
+the *Continue* button is enabled, and (when ``id`` is set) records listening
+telemetry to the database.
+
+When ``force_listen`` is on, a snap-back guard prevents the participant from
+scrubbing past the supposed playhead position, the playback rate is pinned
+to 1.0, and the clip pauses automatically when the tab loses focus. The
+*Continue* button is gated by the same shared notice used by ``video`` —
+if a page contains both pending audio and video, the notice reads "Please
+play all media before continuing."
+
+Audio always shows native controls; there is no ``minimal_controls`` option,
+because the scrubber doubles as the participant's only progress indicator.
+
+**Properties**
+
+-  ``src``: URL of the audio file (required, string)
+-  ``id``: when set, three columns are written to the questionnaire table
+   (optional, string):
+
+   -  ``{id}_started`` — epoch seconds when the participant first pressed
+      play, or ``0`` if they never started it
+   -  ``{id}_ended`` — epoch seconds at the last observed activity
+      (play / timeupdate / pause / ended)
+   -  ``{id}_listened`` — accumulated forward play time, in seconds
+
+-  ``autoplay``: start playing as soon as the page loads (optional, boolean,
+   default ``false``)
+-  ``force_listen``: disable the *Continue* button until the participant has
+   listened to ``completion_threshold`` of the clip (optional, boolean,
+   default ``false``)
+-  ``completion_threshold``: fraction of the clip's duration that counts
+   as "listened" (optional, float between 0 and 1, default ``0.98``)
+
+**Example**
+
+.. code:: json
+
+       {
+           "questiontype": "audio",
+           "id": "instructions_clip",
+           "instructions": "Please listen to the instructions in full before continuing.",
+           "src": "https://example.com/static/instructions.ogg",
+           "force_listen": true,
+           "completion_threshold": 0.95
        }

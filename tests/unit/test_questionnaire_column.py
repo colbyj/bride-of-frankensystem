@@ -260,6 +260,21 @@ def test_fetch_fields_video_without_id_emits_no_columns(tmp_path):
     assert q.fetch_fields() == []
 
 
+def test_fetch_fields_audio_expands_into_three_columns(tmp_path):
+    """An audio question with an id expands into _started, _ended, _listened columns,
+    all of float datatype."""
+    data = {
+        "questions": [
+            {"questiontype": "audio", "id": "clip", "src": "https://example.com/a.ogg"},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "aud_expand", data)
+    fields = q.fetch_fields()
+    field_ids = [f.id for f in fields]
+    assert field_ids == ["clip_started", "clip_ended", "clip_listened"]
+    assert all(f.data_type == "float" for f in fields)
+
+
 def test_fetch_fields_empty_questions(tmp_path):
     data = {"questions": []}
     q = _write_questionnaire(tmp_path, "empty", data)

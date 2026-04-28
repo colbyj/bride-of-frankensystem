@@ -1,0 +1,208 @@
+{# Audio question type. Renders an HTML5 <audio> from an arbitrary URL.
+   Optionally enforces "listen to completion" before allowing the participant to
+   continue, and (when `id` is set) logs listening telemetry to the database.
+
+   Audio always uses native controls — there is no equivalent to video's
+   `minimal_controls` because the scrubber is also the only progress indicator
+   the participant has, and play/pause is essential. When `force_listen` is on
+   a snap-back guard prevents seeking past the supposed playhead position.
+
+   JSON fields:
+     src                   (required) URL of the audio file.
+     autoplay              (optional, default false)
+     force_listen          (optional, default false) When true, btnNext is
+                           disabled until the participant listens to at least
+                           `completion_threshold` of the clip.
+     completion_threshold  (optional, default 0.98) Fraction of duration that
+                           counts as "listened".
+     id                    (optional) When set, three columns are written to
+                           the questionnaire table:
+                             {id}_started  — epoch seconds when the participant
+                                             first pressed play (0 if never).
+                             {id}_ended    — epoch seconds at last observed
+                                             activity (play/timeupdate/pause).
+                             {id}_listened — accumulated forward play time
+                                             (seconds), excluding seeks and
+                                             background-tab playback.
+#}
+{% set fl = question.force_listen|default(false) %}
+{% set threshold = question.completion_threshold|default(0.98) %}
+{% set prior_started = question.prior_started|default(0) %}
+{% set prior_ended = question.prior_ended|default(0) %}
+{% set prior_listened = question.prior_listened|default(0) %}
+
+<div class="bofs-audio-wrapper" style="display: inline-block;">
+    <audio class="bofs-audio"
+           {% if question.autoplay %}autoplay{% endif %}
+           controls
+           controlsList="nodownload noremoteplayback"
+           preload="auto">
+        <source src="{{ question.src }}">
+        Your browser does not support HTML5 audio.
+    </audio>
+    {% if question.id %}
+    <input type="hidden" name="{{ question.id }}_started"  class="bofs-audio-started"  value="{{ prior_started }}">
+    <input type="hidden" name="{{ question.id }}_ended"    class="bofs-audio-ended"    value="{{ prior_ended }}">
+    <input type="hidden" name="{{ question.id }}_listened" class="bofs-audio-listened" value="{{ prior_listened }}">
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    // Shared media gate — see video.html for the full definition. Audio
+    // questions register themselves under the 'audio' kind so the notice
+    // text and pluralisation account for both video and audio at once.
+    if (!window.bofsMediaGate) {
+        window.bofsMediaGate = (function() {
+            var counts = { video: 0, audio: 0 };
+            var deferred = false;
+            function btn() { return document.getElementById('btnNext'); }
+            function noticeText() {
+                if (counts.video > 0 && counts.audio > 0) {
+                    return 'Please play all media before continuing.';
+                }
+                if (counts.video > 0) {
+                    return counts.video > 1
+                        ? 'Please watch the videos before continuing.'
+                        : 'Please watch the video before continuing.';
+                }
+                return counts.audio > 1
+                    ? 'Please listen to the audio clips before continuing.'
+                    : 'Please listen to the audio before continuing.';
+            }
+            function update() {
+                // The questionnaire template renders btnNext *after* the
+                // questions, so at script-parse time btnNext doesn't exist
+                // yet. Defer the DOM work until DOMContentLoaded.
+                if (document.readyState === 'loading') {
+                    if (!deferred) {
+                        deferred = true;
+                        document.addEventListener('DOMContentLoaded', function() {
+                            deferred = false;
+                            update();
+                        }, { once: true });
+                    }
+                    return;
+                }
+                var b = btn();
+                var existing = document.getElementById('bofs-media-gate-msg');
+                if (counts.video + counts.audio === 0) {
+                    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+                    if (b) b.disabled = false;
+                    return;
+                }
+                if (b) b.disabled = true;
+                if (!existing && b && b.parentNode) {
+                    existing = document.createElement('span');
+                    existing.id = 'bofs-media-gate-msg';
+                    existing.className = 'bofs-media-gate-msg';
+                    existing.style.marginRight = '12px';
+                    existing.style.fontStyle = 'italic';
+                    existing.style.color = '#6c757d';
+                    b.parentNode.insertBefore(existing, b);
+                }
+                if (existing) existing.textContent = noticeText();
+            }
+            return {
+                require: function(kind) { counts[kind]++; update(); },
+                satisfy: function(kind) {
+                    counts[kind] = Math.max(0, counts[kind] - 1);
+                    update();
+                }
+            };
+        })();
+    }
+
+    var wrapper = document.currentScript.previousElementSibling;
+    var aud = wrapper.querySelector('audio');
+    var startedField  = wrapper.querySelector('.bofs-audio-started');
+    var endedField    = wrapper.querySelector('.bofs-audio-ended');
+    var listenedField = wrapper.querySelector('.bofs-audio-listened');
+    var forceListen = {{ 'true' if fl else 'false' }};
+    var threshold = {{ threshold }};
+
+    var startedAt = parseFloat(startedField ? startedField.value : 0) || 0;
+    var listenedSeconds = parseFloat(listenedField ? listenedField.value : 0) || 0;
+    var lastTime = 0;
+    var supposedTime = 0;
+    var completed = false;
+    var gateRegistered = false;
+
+    function now() { return Date.now() / 1000; }
+    function setEnded() { if (endedField) endedField.value = now(); }
+    function persistListened() {
+        if (listenedField) listenedField.value = listenedSeconds;
+    }
+
+    function checkCompletion() {
+        if (completed || !aud.duration || isNaN(aud.duration)) return;
+        if (listenedSeconds / aud.duration >= threshold) {
+            completed = true;
+            if (gateRegistered) {
+                window.bofsMediaGate.satisfy('audio');
+                gateRegistered = false;
+            }
+        }
+    }
+
+    if (forceListen) {
+        var initialDuration = aud.duration;
+        if (initialDuration && listenedSeconds / initialDuration >= threshold) {
+            completed = true;
+        } else {
+            window.bofsMediaGate.require('audio');
+            gateRegistered = true;
+        }
+    }
+
+    // Pin playback rate so users can't speed through.
+    aud.addEventListener('ratechange', function() {
+        if (aud.playbackRate !== 1) aud.playbackRate = 1;
+    });
+
+    // Snap-back guard: audio always shows native controls, so when force_listen
+    // is on we always defend against scrubbing past the supposed playhead.
+    if (forceListen) {
+        aud.addEventListener('seeking', function() {
+            if (Math.abs(aud.currentTime - supposedTime) > 0.5) {
+                aud.currentTime = supposedTime;
+            }
+        });
+    }
+
+    aud.addEventListener('timeupdate', function() {
+        if (aud.seeking || aud.paused) {
+            lastTime = aud.currentTime;
+            return;
+        }
+        var delta = aud.currentTime - lastTime;
+        if (delta > 0 && delta < 1.0 && document.visibilityState === 'visible') {
+            listenedSeconds += delta;
+            supposedTime = aud.currentTime;
+            persistListened();
+            setEnded();
+        }
+        lastTime = aud.currentTime;
+        if (forceListen) checkCompletion();
+    });
+
+    aud.addEventListener('play', function() {
+        lastTime = aud.currentTime;
+        if (startedAt === 0) {
+            startedAt = now();
+            if (startedField) startedField.value = startedAt;
+        }
+        setEnded();
+    });
+    aud.addEventListener('pause', setEnded);
+    aud.addEventListener('ended', function() {
+        setEnded();
+        if (forceListen) checkCompletion();
+    });
+
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState !== 'visible' && !aud.paused) aud.pause();
+    });
+    window.addEventListener('blur', function() { if (!aud.paused) aud.pause(); });
+})();
+</script>

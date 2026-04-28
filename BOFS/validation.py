@@ -29,6 +29,7 @@ DISPLAY_ONLY_TYPES = frozenset({"textview"})
 # Maps questiontype -> list of (suffix, datatype) pairs.
 EXPANDED_TYPES = {
     "video": [("_started", "float"), ("_ended", "float"), ("_watched", "float")],
+    "audio": [("_started", "float"), ("_ended", "float"), ("_listened", "float")],
 }
 
 
