@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property
 from sqlalchemy.ext.declarative import declared_attr
-from BOFS.util import display_time
+from BOFS.util import display_time, utcnow_naive
 from flask import current_app
 
 
@@ -15,13 +14,13 @@ def create(db):
         ipAddress = db.Column(db.String, nullable=False, default="")
         userAgent = db.Column(db.String, nullable=False, default="")
         condition = db.Column(db.Integer, nullable=True, default=0)
-        timeStarted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # Starts after consent
+        timeStarted = db.Column(db.DateTime, nullable=False, default=utcnow_naive)  # Starts after consent
         timeEnded = db.Column(db.DateTime, nullable=True)
         finished = db.Column(db.Boolean, nullable=False, default=False)
         isCrawler = db.Column(db.Boolean, nullable=False, default=False)
         excludeFromCount = db.Column(db.Boolean, nullable=False, default=False)
         code = db.Column(db.String, nullable=False, default=0)
-        lastActiveOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        lastActiveOn = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
         notes = db.Column(db.String, nullable=False, default="")
 
         def table(self, name):
@@ -214,7 +213,7 @@ def create(db):
 
         participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'), primary_key=True)
         path = db.Column(db.Text, nullable=False, primary_key=True)
-        startedOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        startedOn = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
         submittedOn = db.Column(db.DateTime, nullable=True)
 
         def display_duration(self) -> str:
@@ -232,7 +231,7 @@ def create(db):
 
         radioGridLog = db.Column(db.Integer, primary_key=True, autoincrement=True)
         participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'))
-        timeClicked = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        timeClicked = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
         questionnaire = db.Column(db.String, nullable=False, default="")
         tag = db.Column(db.String, nullable=False, default="")
         questionID = db.Column(db.String, nullable=False, default="")
@@ -259,14 +258,14 @@ def create(db):
         mTurkID = db.Column(db.Text, nullable=True)
         data = db.Column(db.Text)
         expiry = db.Column(db.DateTime)
-        createdOn = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+        createdOn = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
 
         def __repr__(self):
             return '<Session data {0!s}>'.format(self.data)
 
         @property
         def expired(self) -> bool:
-            return self.expiry is None or self.expiry <= datetime.utcnow()
+            return self.expiry is None or self.expiry <= utcnow_naive()
 
 
     class AppMeta(db.Model):

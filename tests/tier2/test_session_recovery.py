@@ -10,6 +10,7 @@ import pytest
 
 from BOFS.BOFSSession import BOFSSessionInterface
 from BOFS.services.session_recovery import SessionRecoveryService
+from BOFS.util import utcnow_naive
 
 
 # ===========================================================================
@@ -46,8 +47,8 @@ def _make_session_store(app, participant, mturk_id, data_dict):
     ss.participantID = participant.participantID
     ss.mTurkID = mturk_id
     ss.data = BOFSSessionInterface.serializer.dumps(data_dict)
-    ss.expiry = datetime.datetime.utcnow() + datetime.timedelta(days=21)
-    ss.createdOn = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+    ss.expiry = utcnow_naive() + datetime.timedelta(days=21)
+    ss.createdOn = utcnow_naive() - datetime.timedelta(hours=1)
     app.db.session.add(ss)
     app.db.session.commit()
     return ss

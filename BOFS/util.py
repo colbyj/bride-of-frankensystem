@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from functools import wraps
 from flask import request, redirect, session, current_app, g
 import operator
@@ -5,6 +6,16 @@ from .globals import db
 import math
 from posixpath import join as urljoin
 from typing import Union, Any
+
+
+def utcnow_naive() -> datetime:
+    """Naive UTC datetime — drop-in replacement for the deprecated ``datetime.utcnow()``.
+
+    Returned value has no ``tzinfo`` so it stays compatible with SQLAlchemy
+    ``DateTime`` columns (no ``timezone=True``) and with naive datetimes already
+    persisted in existing databases.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def update_participant_tracking(path):
@@ -76,7 +87,7 @@ def verify_session_valid(f):
             return redirect('/')
 
         if 'participantID' in session:
-            participant = db.Participant.query.get(session['participantID'])
+            participant = db.session.get(db.Participant, session['participantID'])
 
             # See if the user exists in the database
             if participant is None:

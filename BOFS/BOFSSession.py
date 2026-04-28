@@ -3,8 +3,9 @@ from flask import Request
 from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
 from werkzeug.datastructures import CallbackDict
 from uuid import uuid4
-from datetime import datetime, timedelta
+from datetime import timedelta
 from . import BOFSFlask
+from .util import utcnow_naive
 
 
 class BOFSSessionInterface(SessionInterface):
@@ -32,7 +33,7 @@ class BOFSSessionInterface(SessionInterface):
     def create_db_object(self, app, sessionID):
         storedSession = app.db.SessionStore()
         storedSession.sessionID = sessionID
-        storedSession.expiry = datetime.utcnow() + timedelta(days=21)
+        storedSession.expiry = utcnow_naive() + timedelta(days=21)
 
         app.db.session.add(storedSession)
         app.db.session.commit()
@@ -48,7 +49,7 @@ class BOFSSessionInterface(SessionInterface):
             self.create_db_object(app, sessionID)
             return BOFSSession(None, sessionID=sessionID, new=True)
 
-        storedSession = app.db.session.query(app.db.SessionStore).get(sessionID)
+        storedSession = app.db.session.get(app.db.SessionStore, sessionID)
 
         # The database has no session info! The cookie exists, but the session is empty.
         if not storedSession:
@@ -86,7 +87,7 @@ class BOFSSessionInterface(SessionInterface):
         httpOnly = self.get_cookie_httponly(app)
         secure = self.get_cookie_secure(app)
 
-        storedSession = app.db.session.query(app.db.SessionStore).get(session.sessionID)
+        storedSession = app.db.session.get(app.db.SessionStore, session.sessionID)
 
         # This must be a new session.
         if not storedSession:

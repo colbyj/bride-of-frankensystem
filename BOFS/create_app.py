@@ -28,7 +28,7 @@ def _resolve_secret_key(app) -> None:
     remove it.
     """
     config_key = app.config.get('SECRET_KEY')
-    stored = app.db.session.query(app.db.AppMeta).get('secret_key')
+    stored = app.db.session.get(app.db.AppMeta, 'secret_key')
 
     if stored is None:
         if config_key:

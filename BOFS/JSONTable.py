@@ -2,6 +2,7 @@ import os
 import json
 from datetime import datetime
 from .globals import db
+from .util import utcnow_naive
 from flask import current_app, request, session, config, jsonify, abort
 
 
@@ -112,7 +113,7 @@ class JSONTable(object):
             str.format(u'{0}ID', self.file_name): db.Column(db.Integer, primary_key=True, autoincrement=True),
             'participantID': db.Column(db.Integer, db.ForeignKey("participant.participantID"), nullable=False),
             'participant': db.relationship("Participant", backref=table_name),
-            'timeSubmitted': db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+            'timeSubmitted': db.Column(db.DateTime, nullable=False, default=utcnow_naive)
         }
 
         for column in self.json_data['columns']:

@@ -11,6 +11,7 @@ import pytest
 from flask import session
 
 from BOFS.services.routing import ParticipantRoutingService
+from BOFS.util import utcnow_naive
 
 
 def _make_participant(app):
@@ -21,7 +22,7 @@ def _make_participant(app):
     p.condition = 0
     p.finished = False
     p.excludeFromCount = False
-    p.timeStarted = datetime.datetime.utcnow()
+    p.timeStarted = utcnow_naive()
     app.db.session.add(p)
     app.db.session.commit()
     return p
@@ -74,7 +75,7 @@ class TestAdvanceToNext:
         progress = app.db.Progress()
         progress.participantID = p.participantID
         progress.path = "consent"
-        progress.startedOn = datetime.datetime.utcnow()
+        progress.startedOn = utcnow_naive()
         app.db.session.add(progress)
         app.db.session.commit()
 
@@ -258,7 +259,7 @@ class TestProgressTracking:
         progress = app.db.Progress()
         progress.participantID = p.participantID
         progress.path = "consent"
-        progress.startedOn = datetime.datetime.utcnow()
+        progress.startedOn = utcnow_naive()
         app.db.session.add(progress)
         app.db.session.commit()
 

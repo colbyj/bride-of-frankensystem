@@ -4,12 +4,13 @@ These tests require a Flask app context with an in-memory SQLite database.
 They use the ``bofs_app`` fixture from conftest.py.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from werkzeug.test import EnvironBuilder
 
 from BOFS.BOFSSession import BOFSSession, BOFSSessionInterface
+from BOFS.util import utcnow_naive
 
 
 # ===========================================================================
@@ -43,13 +44,13 @@ class TestSessionStore:
     def test_expired_property_true(self, bofs_app):
         store = bofs_app.db.SessionStore()
         store.sessionID = "expired-test"
-        store.expiry = datetime.utcnow() - timedelta(days=1)
+        store.expiry = utcnow_naive() - timedelta(days=1)
         assert store.expired is True
 
     def test_expired_property_false(self, bofs_app):
         store = bofs_app.db.SessionStore()
         store.sessionID = "fresh-test"
-        store.expiry = datetime.utcnow() + timedelta(days=21)
+        store.expiry = utcnow_naive() + timedelta(days=21)
         assert store.expired is False
 
 
@@ -79,7 +80,7 @@ class TestOpenSession:
         session_id = "valid-session-id"
         stored = bofs_app.db.SessionStore()
         stored.sessionID = session_id
-        stored.expiry = datetime.utcnow() + timedelta(days=21)
+        stored.expiry = utcnow_naive() + timedelta(days=21)
         stored.data = interface.serializer.dumps({"participantID": 42})
         bofs_app.db.session.add(stored)
         bofs_app.db.session.commit()
@@ -100,7 +101,7 @@ class TestOpenSession:
         session_id = "expired-session-id"
         stored = bofs_app.db.SessionStore()
         stored.sessionID = session_id
-        stored.expiry = datetime.utcnow() - timedelta(days=1)
+        stored.expiry = utcnow_naive() - timedelta(days=1)
         stored.data = interface.serializer.dumps({"old": "data"})
         bofs_app.db.session.add(stored)
         bofs_app.db.session.commit()

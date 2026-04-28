@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file
 from .. import BOFSFlask
 from ..globals import db, questionnaires, page_list
-from ..util import fetch_condition_count, display_time, provide_consent, int_or_0
+from ..util import fetch_condition_count, display_time, provide_consent, int_or_0, utcnow_naive
 from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
 from ..services.participant_questionnaire import ParticipantQuestionnaireService
 from ..services.data_export import Results
@@ -230,7 +230,7 @@ def _fetch_page_data(participant, page):
 @admin.route("/participant/<int:pid>")
 @verify_admin
 def route_participant_detail(pid):
-    participant = db.session.query(db.Participant).get(pid)
+    participant = db.session.get(db.Participant, pid)
     if participant is None:
         return render_template("error.html",
                                title="Participant not found",
@@ -298,7 +298,7 @@ def route_update_exclude_from_count():
     if 'participantID' not in request.form or 'excludeFromCount' not in request.form:
         return ""
 
-    p = db.session.query(db.Participant).get(request.form['participantID'])
+    p = db.session.get(db.Participant, request.form['participantID'])
     p.excludeFromCount = not (request.form['excludeFromCount'] == 'True')
     db.session.commit()
 
@@ -363,7 +363,7 @@ def route_export():
                         mimetype="text/csv",
                         headers={
                             "Content-disposition": "attachment; filename=%s.csv" %
-                                                   ("export_" + datetime.utcnow().strftime("%Y-%m-%d_%H-%M"))
+                                                   ("export_" + utcnow_naive().strftime("%Y-%m-%d_%H-%M"))
                         })
     else:
         return render_template("export.html",
@@ -433,7 +433,7 @@ def route_preview_questionnaire(questionnaireName):
     if request.method == 'POST' and 'condition' in request.form:
         session['condition'] = int_or_0(request.form['condition'])
 
-        p = db.session.query(db.Participant).get(session['participantID'])
+        p = db.session.get(db.Participant, session['participantID'])
         p.condition = session['condition']
         db.session.commit()
 
@@ -516,7 +516,7 @@ def route_table_csv(tableName):
                     mimetype="text/csv",
                     headers={
                         "Content-disposition": "attachment; filename=%s.csv" % (
-                                    tableName + "_" + datetime.utcnow().strftime("%Y-%m-%d"))
+                                    tableName + "_" + utcnow_naive().strftime("%Y-%m-%d"))
                     })
 
 
@@ -542,7 +542,7 @@ def route_database_delete():
             return render_template("database_delete.html", message="The password you entered is incorrect.")
         else:
             db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-            copyfile(db_uri, db_uri.replace('.db', '') + "_" + datetime.utcnow().strftime("%Y%m%d_%H%M%S") + ".db")  # Make a copy of the db, just in case we didn't truly want to delete everything.
+            copyfile(db_uri, db_uri.replace('.db', '') + "_" + utcnow_naive().strftime("%Y%m%d_%H%M%S") + ".db")  # Make a copy of the db, just in case we didn't truly want to delete everything.
 
             # now delete everything from the database
             for tbl in reversed(db.metadata.sorted_tables):

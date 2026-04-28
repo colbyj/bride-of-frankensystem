@@ -1,6 +1,5 @@
 from flask import Blueprint, render_template, current_app, request, make_response, abort
 from urllib.parse import urlsplit
-import datetime
 import traceback
 from BOFS.JSONTable import JSONTable
 from BOFS.util import *
@@ -136,7 +135,7 @@ def route_assign_condition():
     if ParticipantService.use_debug_picker():
         return redirect("/debug_pick_condition")
 
-    p = db.session.query(db.Participant).get(session['participantID'])
+    p = db.session.get(db.Participant, session['participantID'])
     try:
         ParticipantService.assign_condition_organic(p)
     except ConditionLookupMiss as miss:
@@ -168,7 +167,7 @@ def route_debug_pick_condition():
     if 'participantID' not in session:
         return redirect("/")
 
-    p = db.session.query(db.Participant).get(session['participantID'])
+    p = db.session.get(db.Participant, session['participantID'])
     if p is None:
         session.clear()
         return redirect("/")
@@ -240,7 +239,7 @@ def route_external_id():
     :return:
     """
     if request.method == 'POST':
-        p = db.Participant.query.get(session['participantID'])
+        p = db.session.get(db.Participant, session['participantID'])
         p.mTurkID = str(request.form['mTurkID']).strip()
 
         session['mTurkID'] = p.mTurkID
@@ -373,9 +372,9 @@ def route_end():
     Ends the experiment, marks the participants as finished, and shows the user's completion code if they have been
     given one. Can also be configured to redirect to an external URL.
     """
-    p = db.Participant.query.get(session['participantID'])
+    p = db.session.get(db.Participant, session['participantID'])
     if p.timeEnded is None:
-        p.timeEnded = datetime.datetime.utcnow()
+        p.timeEnded = utcnow_naive()
     p.finished = True
 
     db.session.commit()
@@ -400,8 +399,8 @@ def route_end():
 @default.route("/user_active")
 def route_user_active():
     if 'participantID' in session:
-        participant = db.session.query(db.Participant).get(session['participantID'])
-        participant.lastActiveOn = datetime.datetime.utcnow()
+        participant = db.session.get(db.Participant, session['participantID'])
+        participant.lastActiveOn = utcnow_naive()
         db.session.commit()
     return ""
 
@@ -433,7 +432,7 @@ def route_restart():
     # doesn't keep pointing at the previous participant.
     sessionID = request.cookies.get("session", None)
     if sessionID:
-        ss = db.session.query(db.SessionStore).get(sessionID)
+        ss = db.session.get(db.SessionStore, sessionID)
         if ss:
             ss.participantID = None
             ss.mTurkID = None
@@ -483,7 +482,7 @@ def route_instructions(pageName):
         return redirect(join_urls('/redirect_from_page', request.path))
 
     if 'participantID' in session:
-        participant = db.session.query(db.Participant).get(session['participantID'])
+        participant = db.session.get(db.Participant, session['participantID'])
     else:
         participant = None
 
@@ -520,7 +519,7 @@ def route_simple_html(pageName):
         return redirect(join_urls('/redirect_from_page', request.path))
 
     if 'participantID' in session:
-        participant = db.session.query(db.Participant).get(session['participantID'])
+        participant = db.session.get(db.Participant, session['participantID'])
     else:
         participant = None
 

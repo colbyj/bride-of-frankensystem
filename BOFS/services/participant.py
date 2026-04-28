@@ -1,6 +1,6 @@
 from flask import session, request, current_app
 from BOFS.globals import db
-import datetime
+from BOFS.util import utcnow_naive
 import uuid
 
 
@@ -20,7 +20,7 @@ class ParticipantService:
 
         p.ipAddress = ip_address
         p.userAgent = request.user_agent.string
-        p.timeStarted = datetime.datetime.utcnow()
+        p.timeStarted = utcnow_naive()
         p.check_useragent_for_crawler()
 
         if current_app.config['STATIC_COMPLETION_CODE'] is not None:

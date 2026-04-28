@@ -11,8 +11,10 @@ from BOFS.admin.util import escape_csv, questionnaire_name_and_tag, condition_nu
 from flask import current_app
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Union
+
+from BOFS.util import utcnow_naive
 
 MAX_CACHE_SECONDS = 60 * 2
 
@@ -24,8 +26,8 @@ class Results(object):
 
         if cache_path is not None:
             if os.path.exists(cache_path):
-                modified_time = datetime.utcfromtimestamp(os.path.getmtime(cache_path))
-                if (datetime.utcnow() - modified_time).total_seconds() < MAX_CACHE_SECONDS:
+                modified_time = datetime.fromtimestamp(os.path.getmtime(cache_path), tz=timezone.utc).replace(tzinfo=None)
+                if (utcnow_naive() - modified_time).total_seconds() < MAX_CACHE_SECONDS:
                     use_cache = True
 
         self.df = None

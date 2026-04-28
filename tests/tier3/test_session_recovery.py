@@ -13,6 +13,7 @@ import pytest
 import toml
 
 from BOFS.BOFSSession import BOFSSessionInterface
+from BOFS.util import utcnow_naive
 from tests.conftest import create_participant_via_consent, SURVEY_QUESTIONNAIRE_FULL
 
 
@@ -103,8 +104,8 @@ def _create_session_store(app, participant, mturk_id, data_dict):
     ss.participantID = participant.participantID
     ss.mTurkID = mturk_id
     ss.data = _make_session_blob(data_dict)
-    ss.expiry = datetime.datetime.utcnow() + datetime.timedelta(days=21)
-    ss.createdOn = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+    ss.expiry = utcnow_naive() + datetime.timedelta(days=21)
+    ss.createdOn = utcnow_naive() - datetime.timedelta(hours=1)
     db.session.add(ss)
     db.session.commit()
     return ss

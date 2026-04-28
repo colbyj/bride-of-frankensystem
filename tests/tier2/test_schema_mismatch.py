@@ -20,13 +20,13 @@ from tests.conftest import write_questionnaire_file
 
 def _insert_row(app, q, participant_id, tag="", **field_values):
     """Insert a questionnaire row directly via the ORM."""
-    from datetime import datetime
+    from BOFS.util import utcnow_naive
 
     obj = q.db_class()
     obj.participantID = participant_id
     obj.tag = tag
-    obj.timeStarted = datetime.utcnow()
-    obj.timeEnded = datetime.utcnow()
+    obj.timeStarted = utcnow_naive()
+    obj.timeEnded = utcnow_naive()
     for k, v in field_values.items():
         setattr(obj, k, v)
     app.db.session.add(obj)

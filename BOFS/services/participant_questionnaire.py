@@ -6,6 +6,7 @@ from datetime import datetime
 from flask import current_app, request, session, render_template
 
 from ..globals import db
+from ..util import utcnow_naive
 
 
 class ParticipantQuestionnaireService:
@@ -73,7 +74,7 @@ class ParticipantQuestionnaireService:
 
         setattr(new_object, 'participantID', self.participant_id)
         setattr(new_object, 'timeStarted', timeStarted)
-        setattr(new_object, 'timeEnded', datetime.utcnow())
+        setattr(new_object, 'timeEnded', utcnow_naive())
         setattr(new_object, 'tag', tag)
 
         db.session.add(new_object)
@@ -157,7 +158,7 @@ class ParticipantQuestionnaireService:
         if 'participantID' not in session:
             raise Exception('Error: No participantID in session. Did you forget /consent or /create_participant, etc.?')
 
-        participant = db.Participant.query.get(session['participantID'])
+        participant = db.session.get(db.Participant, session['participantID'])
 
         try:
             return render_template(f'questions/{question_type}.html',
@@ -188,4 +189,4 @@ class ParticipantQuestionnaireService:
                                tag=tag,
                                q=json_data,
                                q_html=questions_html,
-                               timeStarted=datetime.utcnow())
+                               timeStarted=utcnow_naive())

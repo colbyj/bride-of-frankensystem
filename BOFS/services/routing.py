@@ -1,9 +1,9 @@
 from urllib.parse import urlsplit
-import datetime
 
 from flask import current_app, redirect, request, session
 
 from BOFS.globals import db
+from BOFS.util import utcnow_naive
 
 
 class ParticipantRoutingService:
@@ -150,11 +150,11 @@ class ParticipantRoutingService:
         if "participantID" not in self.session:
             return
 
-        participant = db.session.query(db.Participant).get(self.session["participantID"])
+        participant = db.session.get(db.Participant, self.session["participantID"])
         if participant is None:
             return
 
-        participant.lastActiveOn = datetime.datetime.utcnow()
+        participant.lastActiveOn = utcnow_naive()
         db.session.commit()
 
         progress = db.session.query(db.Progress).filter(
@@ -166,12 +166,12 @@ class ParticipantRoutingService:
             progress = db.Progress()
             progress.participantID = self.session["participantID"]
             progress.path = path
-            progress.startedOn = datetime.datetime.utcnow()
+            progress.startedOn = utcnow_naive()
             db.session.add(progress)
             db.session.commit()
 
         if request.method == "POST":
-            progress.submittedOn = datetime.datetime.utcnow()
+            progress.submittedOn = utcnow_naive()
             db.session.commit()
 
     def close_progress(self, path):
@@ -192,5 +192,5 @@ class ParticipantRoutingService:
         if progress is None or progress.submittedOn is not None:
             return
 
-        progress.submittedOn = datetime.datetime.utcnow()
+        progress.submittedOn = utcnow_naive()
         db.session.commit()
