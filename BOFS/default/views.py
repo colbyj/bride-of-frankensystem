@@ -9,9 +9,17 @@ from BOFS.BOFSSession import BOFSSessionInterface, BOFSSession
 from BOFS.services.participant import ParticipantService
 from BOFS.services.participant_questionnaire import ParticipantQuestionnaireService
 from BOFS.services.session_recovery import SessionRecoveryService
+from BOFS.services.condition_lookup import ConditionLookupMiss
 
 
 default = Blueprint('default', __name__)
+
+
+def _render_condition_lookup_miss(external_id):
+    return render_template(
+        "condition_lookup_miss.html",
+        external_id=external_id,
+    ), 404
 
 
 @default.route("/")
@@ -45,7 +53,10 @@ def route_consent():
             # We caught someone with our honeypot.
             return render_template("consent.html")
 
-        provide_consent(True)
+        try:
+            provide_consent(True)
+        except ConditionLookupMiss as miss:
+            return _render_condition_lookup_miss(miss.external_id)
         if ParticipantService.use_debug_picker():
             return redirect("/debug_pick_condition")
         return redirect("/redirect_from_page/consent")
@@ -80,7 +91,10 @@ def route_create_participant():
     if all_conditions_disabled():
         return render_template("study_closed.html"), 503
 
-    provide_consent(True, False)
+    try:
+        provide_consent(True, False)
+    except ConditionLookupMiss as miss:
+        return _render_condition_lookup_miss(miss.external_id)
     if ParticipantService.use_debug_picker():
         return redirect("/debug_pick_condition")
     return redirect("/redirect_from_page/create_participant")
@@ -123,7 +137,10 @@ def route_assign_condition():
         return redirect("/debug_pick_condition")
 
     p = db.session.query(db.Participant).get(session['participantID'])
-    ParticipantService.assign_condition_organic(p)
+    try:
+        ParticipantService.assign_condition_organic(p)
+    except ConditionLookupMiss as miss:
+        return _render_condition_lookup_miss(miss.external_id)
 
     return redirect("/redirect_from_page/assign_condition")
 

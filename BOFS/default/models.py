@@ -128,6 +128,21 @@ def create(db):
                 self.condition = None
                 return
 
+            # If a CONDITIONS_FROM_CSV / CONDITIONS_FROM_DB source is configured
+            # and we already know the participant's external ID, look up first.
+            # An ID that's set but not present in the source is a hard error
+            # (raised below) — we deliberately don't fall back to the balancer.
+            from BOFS.services.condition_lookup import (
+                ConditionLookupMiss,
+                ConditionLookupService,
+            )
+            if ConditionLookupService.is_configured() and self.mTurkID:
+                looked_up = ConditionLookupService.lookup(self.mTurkID)
+                if looked_up is not None:
+                    self.condition = looked_up
+                    return
+                raise ConditionLookupMiss(self.mTurkID)
+
             pCount = type(self).balancer_counts()
             self.condition = type(self).compute_organic_condition()
 

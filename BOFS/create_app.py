@@ -129,6 +129,18 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     if 'CONDITIONS' not in app.config:
         app.config['CONDITIONS'] = []
 
+    if 'CONDITIONS_FROM_CSV' not in app.config:
+        app.config['CONDITIONS_FROM_CSV'] = None
+
+    if 'CONDITIONS_FROM_DB' not in app.config:
+        app.config['CONDITIONS_FROM_DB'] = None
+
+    # Validate and prime the condition-lookup service. Either source raises
+    # ConditionLookupConfigError on misconfiguration, which we let propagate
+    # so the app fails fast on startup with a clear message.
+    from .services.condition_lookup import ConditionLookupService
+    ConditionLookupService.init_app(app)
+
     # Flask defaults APPLICATION_ROOT to '/', but that causes issues with URL concatenation
     # (e.g., "/" + "/" + "consent" = "//consent" which is interpreted as a protocol-relative URL)
     if 'APPLICATION_ROOT' not in app.config or app.config['APPLICATION_ROOT'] == '/':

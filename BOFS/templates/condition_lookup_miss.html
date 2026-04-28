@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title|default("ID Not Recognized") }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font-family: 'segoe ui', arial, sans-serif;
+            font-size: 12pt;
+            color: #333;
+        }
+        .content {
+            max-width: 640px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+        h1 { font-size: 18pt; margin-bottom: 8px; }
+        .id-shown {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .help {
+            margin-top: 24px;
+            padding: 16px;
+            background: #f7f7f7;
+            border-left: 4px solid #f0ad4e;
+            border-radius: 4px;
+            font-size: 11pt;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+<div class="content">
+    <h1>ID Not Recognized</h1>
+    <p>
+        We could not find the ID
+        {% if external_id %}<span class="id-shown">{{ external_id }}</span>{% endif %}
+        in our records for this study.
+    </p>
+    <div class="help">
+        <p>If you previously completed an earlier session of this study, please
+        double-check the ID you entered against the one provided to you.</p>
+        <p>If you continue to see this message, contact the researchers using
+        the contact information you were given when you signed up.</p>
+    </div>
+</div>
+</body>
+</html>
