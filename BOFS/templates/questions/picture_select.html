@@ -3,7 +3,31 @@
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
+    }
+    .picture-select-group.horizontal {
+        flex-direction: row;
+        justify-content: center;
         align-items: flex-start;
+    }
+    .picture-select-group.vertical {
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .picture-select-item {
+        position: relative;
+        display: inline-block;
+    }
+    .picture-select-input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
     .picture-select-option {
         display: inline-flex;
@@ -25,6 +49,10 @@
         border-color: #0d6efd;
         box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
     }
+    .picture-select-input:focus-visible + .picture-select-option img {
+        outline: 2px solid #0d6efd;
+        outline-offset: 2px;
+    }
     .picture-select-caption {
         margin-top: 4px;
         font-size: 0.875em;
@@ -37,21 +65,22 @@
     {% do shuffle(question.images) %}
 {% endif %}
 
-<div class="picture-select-group">
+<div class="picture-select-group {{ 'vertical' if question.vertical else 'horizontal' }}"
+     id="picture-select-group-{{ question.id }}">
 {% for image in question.images %}
-    <span>
+    <span class="picture-select-item">
         <input class="picture-select-input"
                type="radio"
                name="{{ question.id }}"
                id="{{ question.id }}{{ loop.index }}"
                value="{{ image.value }}"
                {{ "required" if question.required }}
-               {% if question.value == image.value|string %}checked{% endif %}
-               style="opacity:0; position:absolute; width:1px; height:1px;">
+               {% if question.value is not none and question.value|string == image.value|string %}checked{% endif %}>
         <label class="picture-select-option"
                for="{{ question.id }}{{ loop.index }}">
             <img src="{{ image.src }}"
-                 alt="{{ image.label if image.label else image.value }}">
+                 alt="{{ image.alt if image.alt is defined else (image.label if image.label else '') }}"
+                 {% if question.width and not question.auto_resize %}style="width: {{ question.width }}px;"{% endif %}>
             {% if image.label %}
                 <span class="picture-select-caption">{{ image.label }}</span>
             {% endif %}
@@ -59,3 +88,49 @@
     </span>
 {% endfor %}
 </div>
+
+{% if question.auto_resize %}
+<script>
+(function () {
+    var group = document.getElementById('picture-select-group-{{ question.id }}');
+    if (!group) return;
+    var images = group.querySelectorAll('img');
+    if (!images.length) return;
+    var isVertical = {{ 'true' if question.vertical else 'false' }};
+    var loaded = 0;
+    var total = images.length;
+
+    function adjust() {
+        var min = Infinity;
+        images.forEach(function (img) {
+            var dim = isVertical ? img.naturalWidth : img.naturalHeight;
+            if (dim && dim < min) min = dim;
+        });
+        if (min === Infinity) return;
+        images.forEach(function (img) {
+            if (isVertical) {
+                img.style.width = min + 'px';
+                img.style.height = 'auto';
+            } else {
+                img.style.height = min + 'px';
+                img.style.width = 'auto';
+            }
+        });
+    }
+
+    function onLoaded() {
+        loaded += 1;
+        if (loaded === total) adjust();
+    }
+
+    images.forEach(function (img) {
+        if (img.complete && img.naturalWidth) {
+            onLoaded();
+        } else {
+            img.addEventListener('load', onLoaded);
+            img.addEventListener('error', onLoaded);
+        }
+    });
+})();
+</script>
+{% endif %}

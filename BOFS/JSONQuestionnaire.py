@@ -57,6 +57,15 @@ class JSONQuestionnaireColumn(object):
         if question_type.lower() in ["slider", "num_field", "checklist"]:
             self.data_type = "integer"
 
+        if question_type.lower() == "picture_select":
+            images = definition.get('images', [])
+            values = [img.get('value') for img in images
+                      if isinstance(img, dict) and 'value' in img]
+            if values and all(isinstance(v, int) and not isinstance(v, bool) for v in values):
+                self.data_type = "integer"
+            elif values and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in values):
+                self.data_type = "float"
+
         if 'datatype' in definition:
             self.data_type = definition['datatype']
 

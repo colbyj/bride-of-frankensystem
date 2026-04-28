@@ -103,6 +103,83 @@ def test_slider_case_insensitive():
 
 
 # ===========================================================================
+# JSONQuestionnaireColumn — picture_select data type auto-detection
+# ===========================================================================
+
+def test_picture_select_string_values_stay_string():
+    defn = {
+        "id": "fav", "questiontype": "picture_select",
+        "images": [{"src": "/a.png", "value": "a"}, {"src": "/b.png", "value": "b"}],
+    }
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "string"
+    assert col.default == ""
+
+
+def test_picture_select_integer_values_become_integer():
+    defn = {
+        "id": "fav", "questiontype": "picture_select",
+        "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": 2}],
+    }
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "integer"
+    assert col.default == 0
+
+
+def test_picture_select_float_values_become_float():
+    defn = {
+        "id": "fav", "questiontype": "picture_select",
+        "images": [{"src": "/a.png", "value": 0.5}, {"src": "/b.png", "value": 1.5}],
+    }
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "float"
+    assert col.default == 0
+
+
+def test_picture_select_mixed_int_float_becomes_float():
+    defn = {
+        "id": "fav", "questiontype": "picture_select",
+        "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": 1.5}],
+    }
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "float"
+
+
+def test_picture_select_mixed_int_string_stays_string():
+    defn = {
+        "id": "fav", "questiontype": "picture_select",
+        "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": "two"}],
+    }
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "string"
+
+
+def test_picture_select_bool_values_stay_string():
+    """bool is a subclass of int in Python — make sure we don't pick it up as integer."""
+    defn = {
+        "id": "fav", "questiontype": "picture_select",
+        "images": [{"src": "/a.png", "value": True}, {"src": "/b.png", "value": False}],
+    }
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "string"
+
+
+def test_picture_select_no_images_stays_string():
+    defn = {"id": "fav", "questiontype": "picture_select"}
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "string"
+
+
+def test_picture_select_explicit_datatype_overrides_autodetect():
+    defn = {
+        "id": "fav", "questiontype": "picture_select", "datatype": "string",
+        "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": 2}],
+    }
+    col = JSONQuestionnaireColumn(defn)
+    assert col.data_type == "string"
+
+
+# ===========================================================================
 # JSONQuestionnaireColumn — explicit datatype override
 # ===========================================================================
 

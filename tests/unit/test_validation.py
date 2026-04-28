@@ -9,6 +9,7 @@ from BOFS.validation import (
     validate_question_types,
     validate_question_ids,
     validate_field_ids,
+    validate_picture_select,
     validate_calculations,
     validate_questionnaire,
     validate_page_list_references,
@@ -277,6 +278,99 @@ class TestValidateCalculations:
         # There may be warnings about preprocessed field refs, but no errors
         fatal = [e for e in errors if e.severity == "error"]
         assert len(fatal) == 0
+
+
+# ===========================================================================
+# validate_picture_select
+# ===========================================================================
+
+class TestValidatePictureSelect:
+    def test_valid_picture_select(self):
+        data = {"questions": [{
+            "questiontype": "picture_select",
+            "id": "fav",
+            "images": [
+                {"src": "/static/a.png", "value": "a", "label": "A"},
+                {"src": "/static/b.png", "value": "b", "label": "B"},
+            ]
+        }]}
+        errors = validate_picture_select(data, "test")
+        assert len(errors) == 0
+
+    def test_non_picture_select_questions_ignored(self, sample_questionnaire_json):
+        errors = validate_picture_select(sample_questionnaire_json, "test")
+        assert len(errors) == 0
+
+    def test_missing_images_field(self):
+        data = {"questions": [{"questiontype": "picture_select", "id": "fav"}]}
+        errors = validate_picture_select(data, "bad")
+        assert len(errors) == 1
+        assert errors[0].severity == "error"
+        assert "images" in errors[0].message
+
+    def test_images_not_a_list(self):
+        data = {"questions": [{
+            "questiontype": "picture_select", "id": "fav",
+            "images": "/static/foo.png"
+        }]}
+        errors = validate_picture_select(data, "bad")
+        assert len(errors) == 1
+        assert "must be a list" in errors[0].message
+
+    def test_empty_images_list(self):
+        data = {"questions": [{
+            "questiontype": "picture_select", "id": "fav", "images": []
+        }]}
+        errors = validate_picture_select(data, "bad")
+        assert len(errors) == 1
+        assert "empty" in errors[0].message
+
+    def test_image_missing_src(self):
+        data = {"questions": [{
+            "questiontype": "picture_select", "id": "fav",
+            "images": [{"value": "a"}]
+        }]}
+        errors = validate_picture_select(data, "bad")
+        assert any("src" in e.message for e in errors)
+
+    def test_image_missing_value(self):
+        data = {"questions": [{
+            "questiontype": "picture_select", "id": "fav",
+            "images": [{"src": "/static/a.png"}]
+        }]}
+        errors = validate_picture_select(data, "bad")
+        assert any("value" in e.message for e in errors)
+
+    def test_image_not_an_object(self):
+        data = {"questions": [{
+            "questiontype": "picture_select", "id": "fav",
+            "images": ["/static/a.png"]
+        }]}
+        errors = validate_picture_select(data, "bad")
+        assert any("not an object" in e.message for e in errors)
+
+    def test_duplicate_values_warning(self):
+        data = {"questions": [{
+            "questiontype": "picture_select", "id": "fav",
+            "images": [
+                {"src": "/static/a.png", "value": "x"},
+                {"src": "/static/b.png", "value": "x"},
+            ]
+        }]}
+        errors = validate_picture_select(data, "bad")
+        warnings = [e for e in errors if e.severity == "warning"]
+        assert any("reuses" in w.message for w in warnings)
+
+    def test_integer_values_ok(self):
+        data = {"questions": [{
+            "questiontype": "picture_select", "id": "fav",
+            "images": [
+                {"src": "/static/a.png", "value": 1},
+                {"src": "/static/b.png", "value": 2},
+            ]
+        }]}
+        errors = validate_picture_select(data, "test")
+        assert len(errors) == 0
 
 
 # ===========================================================================

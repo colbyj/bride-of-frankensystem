@@ -33,6 +33,7 @@ Currently, the following types of input are supported:
 -  ``num_field`` - Input a single number
 -  ``multi_field`` - Multi-line text entry
 -  ``drop_down`` - Select one option from a drop-down list
+-  ``picture_select`` - Select one option from a set of images
 -  ``textview`` - Display plain text (HTML syntax is supported)
 -  ``video`` - Embed an HTML5 video, optionally requiring the participant to
    watch it before continuing
@@ -332,6 +333,67 @@ drop_down
                "apples", "oranges", "watermelon"
            ]
        }
+
+picture_select
+--------------
+
+``questiontype == 'picture_select'``
+
+Select one option out of a set of images. Each image becomes a clickable
+thumbnail; the participant's selection is stored as the chosen image's
+``value``. Only one image can be selected at a time (radio behaviour).
+
+**Properties**
+
+-  ``id``: unique id for this question (required, string)
+-  ``instructions``: text shown above the image grid (optional, string)
+-  ``required``: whether a selection is required to submit the form
+   (optional, boolean: ``true`` or ``false``, default is ``false``)
+-  ``shuffle``: whether to shuffle the image order on each render
+   (optional, boolean: ``true`` or ``false``, default is ``false``)
+-  ``vertical``: stack the images in a single centered column instead of
+   wrapping them in a centered row (optional, boolean: ``true`` or
+   ``false``, default is ``false``)
+-  ``width``: explicit width (in pixels) applied to every image
+   (optional, integer). Ignored when ``auto_resize`` is ``true``.
+-  ``auto_resize``: normalize the rendered image dimensions on the client
+   so they all match the smallest image in the group. With
+   ``vertical: true`` all widths are matched to the smallest natural
+   width; otherwise all heights are matched to the smallest natural
+   height (optional, boolean: ``true`` or ``false``, default is
+   ``false``).
+-  ``images``: list of image entries (required). Each entry is an object:
+
+   -  ``src``: URL of the image (required, string), e.g.
+      ``/static/option_a.png``
+   -  ``value``: value stored in the database when this image is
+      selected (required, string / integer / float). When every entry's
+      ``value`` is an integer (or float), the database column is created
+      with that numeric type automatically.
+   -  ``label``: short caption shown beneath the image, also used as
+      ``alt`` text fallback (optional, string)
+   -  ``alt``: explicit ``alt`` text for the ``<img>`` tag. Use this when
+      the screen-reader description should differ from the visible
+      caption, or set it to ``""`` for a purely decorative image
+      (optional, string)
+
+**Example**
+
+.. code:: json
+
+       {
+           "questiontype": "picture_select",
+           "id": "favorite_picture",
+           "instructions": "Pick whichever you'd rather look at.",
+           "vertical": false,
+           "auto_resize": true,
+           "required": true,
+           "images": [
+               {"src": "/static/option_a.jpg", "value": 1, "label": "Option A"},
+               {"src": "/static/option_b.jpg", "value": 2, "label": "Option B"}
+           ]
+       }
+
 
 textview
 --------
