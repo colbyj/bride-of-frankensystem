@@ -113,6 +113,40 @@ def close_progress_submitted(path):
     ParticipantRoutingService.from_app().close_progress(path)
 
 
+def page_tables(*table_names: str):
+    """
+    Decorator that declares which custom JSONTables a page-level view writes
+    to, so the admin participant detail view can display rows from those
+    tables when reviewing a participant's run.
+
+    Apply to the view function whose route matches the path used in
+    ``PAGE_LIST``. When one function handles both GET and POST (the common
+    case) just decorate that. When a page renders from one URL but POSTs
+    answers to a different URL, decorate the **GET** handler — the
+    association is "this page is associated with these tables", not "this
+    handler INSERTs into them".
+
+    Example::
+
+        @my_blueprint.route("/task", methods=['POST', 'GET'])
+        @verify_correct_page
+        @page_tables('answers')
+        def task():
+            ...
+
+    Multiple names are allowed: ``@page_tables('answers', 'events')``.
+    Stacking the decorator merges the lists.
+    """
+    def decorator(f):
+        existing = list(getattr(f, '_bofs_tables', []))
+        for name in table_names:
+            if name not in existing:
+                existing.append(name)
+        f._bofs_tables = existing
+        return f
+    return decorator
+
+
 def suppress_activity_polling(f):
     """
     Decorator that opts a route out of the auto-injected activity-polling

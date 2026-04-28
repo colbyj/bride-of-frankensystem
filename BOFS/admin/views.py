@@ -179,12 +179,115 @@ def _format_response_value(value):
     return value
 
 
+def _resolve_view_for_path(url_path):
+    """Match a PAGE_LIST path against the URL map and return the view
+    function it routes to, or None if no rule matches. Used to find the
+    handler that owns a custom page so we can read attributes the user
+    stamped onto it (e.g. ``@page_tables``)."""
+    try:
+        adapter = current_app.url_map.bind('localhost')
+        endpoint, _ = adapter.match('/' + url_path.lstrip('/'))
+    except Exception:
+        return None
+    return current_app.view_functions.get(endpoint)
+
+
+def _compute_export_section(participant, export_definition):
+    """Run a single export definition for one participant and shape the result
+    for template rendering. ``export_definition`` is a dict from
+    ``JSONTable.create_exports_dict()`` — i.e. it already has the ``table``
+    key annotated, plus ``fields`` and optionally ``filter`` / ``group_by`` /
+    ``order_by`` / ``having``."""
+    # Reuse Results.create_export_base_query — it doesn't touch instance state,
+    # so skip __init__ to avoid running a full export against the whole DB.
+    helper = Results.__new__(Results)
+    try:
+        levels, fields, base_query = helper.create_export_base_query(export_definition)
+    except Exception as exc:
+        return {
+            'filter': export_definition.get('filter', ''),
+            'group_by': export_definition.get('group_by', ''),
+            'error': str(exc),
+            'rows': [],
+        }
+
+    query = base_query.filter(db.literal_column('participantID') == participant.participantID)
+    result_rows = query.all()
+    if not result_rows:
+        return None
+
+    output_rows = []
+    if levels:
+        for idx, level in enumerate(levels):
+            if idx >= len(result_rows):
+                break
+            row = result_rows[idx]
+            level_label = "_".join(str(x) for x in level)
+            output_rows.append({
+                'level': level_label,
+                'fields': [
+                    {'name': f, 'value': _format_response_value(getattr(row, f, None))}
+                    for f in fields
+                ],
+            })
+    else:
+        row = result_rows[0]
+        output_rows.append({
+            'level': None,
+            'fields': [
+                {'name': f, 'value': _format_response_value(getattr(row, f, None))}
+                for f in fields
+            ],
+        })
+
+    return {
+        'filter': export_definition.get('filter', ''),
+        'group_by': export_definition.get('group_by', ''),
+        'rows': output_rows,
+    }
+
+
+def _fetch_table_rows(participant, table_names):
+    """Return a list of {name, sections} dicts — one per named JSONTable that
+    has both an ``exports`` block and at least one matching row for this
+    participant. Each section is the output of one export definition (a single
+    ``fields`` row, or one row per ``group_by`` level)."""
+    tables_data = []
+    for name in table_names:
+        table = current_app.tables.get(name)
+        if table is None or table.db_class is None:
+            continue
+        exports = table.create_exports_dict()
+        if not exports:
+            continue
+        sections = []
+        for export in exports:
+            section = _compute_export_section(participant, export)
+            if section:
+                sections.append(section)
+        if not sections:
+            continue
+        tables_data.append({
+            'name': name,
+            'sections': sections,
+        })
+    return tables_data
+
+
 def _fetch_page_data(participant, page):
     """Return a dict describing the data submitted for this page, or None.
-    Currently only handles questionnaire pages."""
+    Handles questionnaire pages and any custom page whose view function is
+    decorated with ``@page_tables(...)``."""
     path = page['path']
     if not path.startswith('questionnaire/'):
-        return None
+        view = _resolve_view_for_path(path)
+        table_names = getattr(view, '_bofs_tables', None) if view else None
+        if not table_names:
+            return None
+        tables_data = _fetch_table_rows(participant, table_names)
+        if not tables_data:
+            return None
+        return {'kind': 'tables', 'tables': tables_data}
 
     name_and_tag = current_app.page_list.extract_questionnaire_from_path(path, include_tag=True)
     name, tag = questionnaire_name_and_tag(name_and_tag)

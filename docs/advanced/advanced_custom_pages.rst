@@ -124,6 +124,13 @@ Database Tables
 This example makes use of a database table. For more information on how to use database tables in your custom routes,
 see :doc:`database_tables`.
 
+If you want the data your page collects to show up alongside questionnaire
+responses on the admin's per-participant detail page, decorate the view with
+``@page_tables('<table_name>')`` — the participant detail view will run that
+table's calculated export fields scoped to the participant and display the
+result. See the "Showing Table Data in the Participant Detail View" section
+of :doc:`database_tables` (or :func:`BOFS.util.page_tables`) for details.
+
 Accessing Questionnaire Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -145,6 +145,41 @@ of of three intro levels completed.
     }
 
 
+Showing Table Data in the Participant Detail View
+-------------------------------------------------
+
+The admin's per-participant detail page (``/admin/participant/<id>``) walks
+through every page in ``PAGE_LIST`` for that participant and shows the data
+they submitted. For questionnaires this happens automatically; for custom
+pages that write to a JSONTable, you have to tell BOF which table(s) the page
+is associated with by decorating the page's view function with
+``@page_tables``:
+
+.. code-block:: python
+    :caption: views.py
+
+    from BOFS.util import verify_correct_page, verify_session_valid, page_tables
+
+    @my_blueprint.route("/task", methods=['POST', 'GET'])
+    @verify_correct_page
+    @verify_session_valid
+    @page_tables('answers')
+    def task():
+        ...
+
+The participant detail view will then run each export defined in the table's
+``exports`` block, scoped to that participant, and render the resulting fields
+underneath the page in the timeline. Tables without an ``exports`` block are
+not displayed — the admin view shows the calculated values, not the raw rows
+(use the table's CSV export from the admin panel for that).
+
+Multiple table names can be passed: ``@page_tables('trials', 'events')``. If
+your page renders from one URL but POSTs answers to a different URL (for
+example, JavaScript that POSTs to ``/table/<name>``), apply the decorator to
+the **GET** handler — the association is "this page is associated with these
+tables", not "this handler does the INSERT".
+
+
 Writing Data from JavaScript
 ----------------------------
 

@@ -119,6 +119,48 @@
                 </table>
             </div>
             {% endif %}
+            {% elif row.data and row.data.kind == 'tables' %}
+            {% for tbl in row.data.tables %}
+            <div class="mb-2">
+                <b>Table:</b> <code>{{ tbl.name }}</code>
+            </div>
+            {% for section in tbl.sections %}
+            <div class="mb-3">
+                {% if section.filter or section.group_by %}
+                <div class="text-muted small mb-1">
+                    {% if section.filter %}Filter: <code>{{ section.filter }}</code>{% endif %}
+                    {% if section.filter and section.group_by %} &nbsp;&middot;&nbsp; {% endif %}
+                    {% if section.group_by %}Grouped by: <code>{{ section.group_by }}</code>{% endif %}
+                </div>
+                {% endif %}
+                {% if section.error %}
+                <div class="text-danger small">Export failed: {{ section.error }}</div>
+                {% else %}
+                <table class="table table-sm table-striped border mb-0">
+                    <tbody>
+                        {% for r in section.rows %}
+                            {% if r.level is not none %}
+                            <tr><th colspan="2" class="bg-body-tertiary">{{ r.level }}</th></tr>
+                            {% endif %}
+                            {% for f in r.fields %}
+                            <tr>
+                                <td style="width: 35%;"><code>{{ f.name }}</code></td>
+                                <td>
+                                    {% if f.value == "" or f.value is none %}
+                                        <span class="text-muted fst-italic">(empty)</span>
+                                    {% else %}
+                                        {{ f.value }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% endfor %}
             {% elif row.path.startswith('questionnaire/') and row.status == 'completed' %}
             <div class="text-muted">No response data found for this questionnaire submission.</div>
             {% endif %}

@@ -68,6 +68,34 @@ The progress page includes summary statistics showing:
     Min/Max Duration         Fastest and slowest completion times
     ======================== ==================
 
+Participant Detail View
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Clicking a participant ID on the progress dashboard opens that participant's
+detail view (``/admin/participant/<id>``). This page reconstructs the
+participant's run through the experiment as a timeline, with one card per
+page in their ``PAGE_LIST`` (condition-aware, so participants in different
+conditions see only the pages that apply to them).
+
+Each timeline card shows:
+
+- **Status**: Completed, In Progress, or Not Reached.
+- **Timing**: when the page was started, when it was submitted, and the
+  duration on the page.
+- **Submitted data**, broken down by page type:
+
+  - *Questionnaire pages* — every field's prompt, field ID, and the
+    participant's response, plus any calculated fields defined on the
+    questionnaire.
+  - *Custom pages* writing to a JSONTable — the calculated export fields
+    from the table's ``exports`` block, scoped to this participant. To opt
+    a custom page in, decorate its view function with ``@page_tables``;
+    see :doc:`/advanced/database_tables` for details.
+
+The page header also shows the participant's external ID (e.g. Prolific PID),
+assigned condition, total duration, last-active timestamp, and an Excluded
+badge when applicable.
+
 Data Export
 ~~~~~~~~~~~
 
