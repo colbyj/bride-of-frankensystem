@@ -1,58 +1,31 @@
 Admin Panel
 ===========
 
-The BOFS admin panel provides a comprehensive interface for monitoring experiment progress, managing data, and analyzing results. This documentation covers all features and functionality of the admin interface.
+Every BOFS project ships with an admin panel for monitoring participants, exporting data, previewing questionnaires, and inspecting the underlying database.
 
-Getting Started
----------------
+Accessing the Panel
+-------------------
 
-Accessing the Admin Panel
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+The admin panel lives at ``/admin``. For a project running locally on port 5000, that's http://localhost:5000/admin.
 
-The admin panel is accessible at ``/admin`` when your BOFS application is running. For example, if your experiment is running at ``http://localhost:5000``, you can access the admin panel at ``http://localhost:5000/admin``.
-
-Authentication
-~~~~~~~~~~~~~~
-
-Admin access is protected by password authentication configured in your TOML file:
+Set the password in your ``.toml`` file:
 
 .. code-block:: toml
 
     ADMIN_PASSWORD = 'your_secure_password_here'
 
-After navigating to ``/admin``, you'll be redirected to a login page where you must enter this password. Once authenticated, you'll have access to all admin features until your session expires.
-
-.. note::
-    Use a strong, unique password for the ``ADMIN_PASSWORD`` setting. This password controls access to all participant data and experiment controls.
-
-Admin Panel Features
---------------------
+This password protects all participant data and any destructive controls (such as clearing the database), so use a strong, unique value rather than a placeholder.
 
 Progress Monitoring
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
-The progress dashboard (``/admin/progress``) provides real-time monitoring of participant progress through your experiment.
+``/admin/progress`` shows each active participant's position in the experiment. The page updates every 5 seconds via HTMX and includes per-participant exclusion checkboxes.
 
 .. image:: /examples/quickstart/page_admin.png
   :width: 800
-  :alt: The admin page.
+  :alt: The admin progress page.
 
-
-Real-time Dashboard
-^^^^^^^^^^^^^^^^^^^
-
-The dashboard automatically updates every 5 seconds and displays:
-
-- **Current Participants**: Shows each active participant's progress through the experiment pages
-- **Page Completion Status**: Visual indicators showing which pages each participant has completed
-- **Live Updates**: Uses HTMX for seamless real-time updates without page refreshes
-
-Participant exclusions can be toggled directly from this interface using checkboxes.
-
-Summary Statistics
-^^^^^^^^^^^^^^^^^^
-
-The progress page includes summary statistics showing:
+The same page reports summary statistics, broken down by experimental condition:
 
 .. table:: Progress Statistics
     :widths: 25,75
@@ -97,131 +70,48 @@ assigned condition, total duration, last-active timestamp, and an Excluded
 badge when applicable.
 
 Data Export
-~~~~~~~~~~~
+-----------
 
-Export Questionnaire Data
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+``/admin/export`` downloads questionnaire responses as CSV. Options include excluding unfinished or excluded participants, previewing the table in HTML before downloading, and automatic timestamping of the filename.
 
-The main export feature (``/admin/export``) allows you to download all questionnaire responses as CSV files.
+For radiogrid timing data (only collected when ``LOG_GRID_CLICKS`` is enabled), use ``/admin/export_item_timing``. This exports per-item response times and a click-by-click log.
 
-Export Options:
-
-- **Include Unfinished**: Option to include participants who haven't completed the experiment
-- **Include Excluded**: Option to include participants marked as excluded
-- **Preview Mode**: View data in HTML table format before downloading
-- **Automatic Timestamps**: CSV files include timestamp in filename
-
-Grid Timing Data Export
-^^^^^^^^^^^^^^^^^^^^^^^
-
-When ``LOG_GRID_CLICKS`` is enabled in your configuration, detailed timing data for radiogrid questions becomes available at ``/admin/export_item_timing``. This exports:
-
-- Individual item response times within grid questions
-- Click-by-click timing logs
-- Detailed interaction patterns
-
-Custom Table Exports
-^^^^^^^^^^^^^^^^^^^^^
-
-Any database table can be exported as CSV via ``/admin/table_csv/<table_name>``. This includes:
-
-- Built-in BOFS tables (Participant, Progress, Response)
-- Custom tables defined in your blueprints
-- Proper CSV escaping and formatting
+Any database table — built-in (``Participant``, ``Progress``, ``Response``) or defined by a custom blueprint — can be exported individually via ``/admin/table_csv/<table_name>``.
 
 Results Analysis
-~~~~~~~~~~~~~~~~
+----------------
 
-Summary Statistics
-^^^^^^^^^^^^^^^^^^
+``/admin/results`` calculates descriptive statistics (N, min/max, mean, median, standard deviation, standard error, variance) for every numeric field, grouped by condition. The page is cached for two minutes.
 
-The results page (``/admin/results``) automatically calculates descriptive statistics for all numeric fields in your data:
-
-- **N** (sample size)
-- **Min/Max** values
-- **Mean** and **Median**
-- **Standard Deviation** and **Standard Error**
-- **Variance**
-
-Results are grouped by experimental condition and cached for 2 minutes to improve performance.
-
-Interactive Visualizations
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Box plots are automatically generated for numeric fields at ``/admin/results_boxplot/<field_name>``. These interactive Plotly.js visualizations include:
-
-- Distribution by experimental condition
-- Outlier detection and highlighting
-- Interactive zoom and pan capabilities
-- Hover tooltips with detailed values
+For each numeric field, ``/admin/results_boxplot/<field_name>`` renders an interactive Plotly.js box plot showing the distribution by condition, with outliers, zoom, pan, and hover tooltips.
 
 Questionnaire Management
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
-Questionnaire Preview
-^^^^^^^^^^^^^^^^^^^^^
+``/admin/preview_questionnaire/<name>``
+  Renders a questionnaire as participants would see it. Surfaces JSON parsing errors, lets you switch conditions for previewing conditional questions, and marks questionnaires that already have live participant data with an asterisk.
 
-Individual questionnaires can be previewed at ``/admin/preview_questionnaire/<questionnaire_name>``. This feature:
+``/admin/questionnaire_html/<name>``
+  Plain HTML rendering with no admin chrome — useful for embedding, printing, or sharing.
 
-- Renders questionnaires exactly as participants see them
-- Displays JSON parsing errors for malformed questionnaire files
-- Allows condition switching for conditional questions
-- Marks questionnaires that have live participant data with an asterisk (*)
-
-Simple HTML Preview
-^^^^^^^^^^^^^^^^^^^
-
-Plain HTML rendering is available at ``/admin/questionnaire_html/<name>`` for:
-
-- Embedding questionnaires in other contexts
-- Printing questionnaire content
-- Viewing without admin template styling
-
-Procedure Visualization
-^^^^^^^^^^^^^^^^^^^^^^^
-
-The procedure page (``/admin/preview_procedure``) generates a visual flowchart of your experiment using Mermaid diagrams. This automatically creates:
-
-- Page flow diagrams based on your ``PAGE_LIST`` configuration
-- Branching logic visualization
-- Condition-specific routing paths
+``/admin/preview_procedure``
+  Generates a Mermaid flowchart of your ``PAGE_LIST``, including conditional branches.
 
 Database Management
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
-Table Viewer
-^^^^^^^^^^^^
+``/admin/table_view/<table_name>`` shows the live contents of any database table with AJAX-driven refresh and automatic column-type detection.
 
-The table viewer (``/admin/table_view/<table_name>``) provides:
+For SQLite databases only:
 
-- Live view of any database table contents
-- AJAX-based table refresh for real-time updates
-- Automatic column type detection and appropriate display formatting
-
-SQLite-specific Features
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-For SQLite databases, additional management options are available:
-
-Database Download (``/admin/database_download``):
-
-- Direct download of the complete SQLite database file
-- Useful for backup and offline analysis
-
-Database Delete (``/admin/database_delete``):
-
-- Password-protected database clearing functionality
-- Automatic backup creation before deletion
-- Preserves table structure while clearing data
+* ``/admin/database_download`` downloads the full database file — useful for backups or offline analysis.
+* ``/admin/database_delete`` clears the database. The action is password-protected and creates an automatic backup, but only the table structure survives.
 
 .. warning::
-    Database deletion is irreversible. Always ensure you have backups before using this feature.
+    Database deletion is irreversible (aside from the automatic backup). Make sure you have your own backup before using it.
 
-Configuration Options
----------------------
-
-Admin-related Configuration Variables
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuration
+-------------
 
 .. table:: Admin Configuration
     :widths: 30,15,55
@@ -229,16 +119,16 @@ Admin-related Configuration Variables
     ============================ ======= ==================
     Variable                     Type    Description
     ============================ ======= ==================
-    ADMIN_PASSWORD               string  **Required**. Password for admin panel access.
-    USE_ADMIN                    boolean Enable/disable admin panel entirely (default: True).
-    LOG_GRID_CLICKS              boolean Enable detailed radiogrid timing logs for export (default: False).
-    ADDITIONAL_ADMIN_PAGES       list    Custom admin pages from blueprints.
+    ADMIN_PASSWORD               string  **Required.** Password for admin panel access.
+    USE_ADMIN                    boolean Enable or disable the admin panel entirely (default: ``true``).
+    LOG_GRID_CLICKS              boolean Log radiogrid click timing for export (default: ``false``).
+    ADDITIONAL_ADMIN_PAGES       list    Custom admin pages from blueprints (see below).
     ============================ ======= ==================
 
-Custom Admin Pages
-~~~~~~~~~~~~~~~~~~
+Adding Custom Admin Pages
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Blueprints can extend the admin panel by defining custom pages in the ``ADDITIONAL_ADMIN_PAGES`` configuration:
+``ADDITIONAL_ADMIN_PAGES`` adds entries to the admin navigation. Each entry is either a Flask route from one of your blueprints or an external URL:
 
 .. code-block:: toml
 
@@ -247,36 +137,7 @@ Blueprints can extend the admin panel by defining custom pages in the ``ADDITION
         {name = "External Tool", url = "https://example.com/tool"}
     ]
 
-Custom pages appear in the admin navigation dropdown and can be either:
-
-- **Routes**: References to Flask routes in your blueprints
-- **URLs**: Direct links to external tools or pages
-
-Security Considerations
------------------------
-
-Admin Panel Security
-~~~~~~~~~~~~~~~~~~~~~
-
-- **Strong Passwords**: Use complex, unique passwords for ``ADMIN_PASSWORD``
-- **Access Control**: The admin panel provides access to all participant data
-- **Session Management**: Admin sessions expire and require re-authentication
-- **Network Security**: Consider using HTTPS for production deployments
-
-Data Protection
-~~~~~~~~~~~~~~~
-
-- **Backup Strategy**: Regularly backup your database, especially before using delete functions
-- **Export Security**: Be mindful of participant privacy when exporting data
-- **Access Logging**: Consider implementing access logging for audit trails
-
-Integration with Custom Blueprints
------------------------------------
-
-Custom Admin Routes
-~~~~~~~~~~~~~~~~~~~
-
-Blueprints can create admin-protected routes using the ``@verify_admin`` decorator:
+To protect a custom Flask route with the same authentication as the built-in admin pages, decorate it with ``@verify_admin``:
 
 .. code-block:: python
 
@@ -290,34 +151,27 @@ Blueprints can create admin-protected routes using the ``@verify_admin`` decorat
     def my_custom_admin_page():
         return render_template('my_admin_page.html')
 
-This ensures your custom admin pages are protected by the same authentication system as the built-in admin features.
+Security
+--------
+
+The admin panel exposes every participant's data and includes destructive controls. For production deployments:
+
+* Pick a strong, unique password for ``ADMIN_PASSWORD``.
+* Serve the site over HTTPS.
+* Back up the database before using ``/admin/database_delete``.
+* Be deliberate when exporting data — the CSV files contain anything participants entered.
 
 Troubleshooting
 ---------------
 
-Common Issues
-~~~~~~~~~~~~~
+**Login problems**
+  Confirm ``ADMIN_PASSWORD`` is set correctly. Try an incognito window to rule out a stale session, and check that cookies are enabled.
 
-**Login Problems**:
+**Export problems**
+  For large studies, check available disk space and that the application directory is writable. For timing exports specifically, ``LOG_GRID_CLICKS`` must be enabled.
 
-- Verify ``ADMIN_PASSWORD`` is set correctly in your configuration
-- Check for browser session issues (try incognito/private browsing)
-- Ensure cookies are enabled in your browser
+**Slow results page**
+  Results are cached for two minutes — wait for the cache to refresh before assuming new data isn't loading. For very large datasets, add database indexes on frequently queried columns.
 
-**Export Issues**:
-
-- Verify sufficient disk space for large exports
-- Check file permissions in the application directory
-- For timing exports, ensure ``LOG_GRID_CLICKS`` is enabled
-
-**Performance Issues**:
-
-- Results are cached for 2 minutes; wait for cache refresh for updated statistics
-- For large datasets, consider using database-specific optimization such as indexes
-- AJAX updates may slow with very large participant counts
-
-**Database Issues**:
-
-- SQLite features only work with SQLite databases
-- Ensure database file permissions allow read/write access
-- For database corruption, restore from backup
+**SQLite-only features unavailable**
+  ``/admin/database_download`` and ``/admin/database_delete`` only work when the project uses SQLite. With PostgreSQL or another backend, use the database's own tools.

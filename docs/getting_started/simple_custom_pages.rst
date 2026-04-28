@@ -1,21 +1,16 @@
 Simple Custom Pages
 ===================
 
-BOFS provides several ways to create custom pages beyond questionnaires. This section covers simple approaches that don't require programming - perfect for instruction pages, consent forms, and informational content.
+BOFS supports two kinds of custom pages that don't require any Python — *instruction pages*, which display static HTML with an automatic "Continue" button, and *simple pages*, which give you full control over the page (no automatic continue button) but still inherit the project's styling. Both are written as HTML templates inside your project directory.
 
 Instruction Pages
 -----------------
 
-Instruction pages are the most common way to display static content. They automatically include a "Continue" button and use your experiment's theme.
+Instruction pages display static content with a "Continue" button at the bottom that advances to the next page in ``PAGE_LIST``.
 
-**Creating Instruction Pages**
+To create one: drop an HTML file into ``templates/instructions/`` and reference it in ``PAGE_LIST`` as ``instructions/<filename>``.
 
-1. Create an HTML file in your project's ``templates/instructions/`` directory
-2. Add the page to your ``PAGE_LIST`` configuration
-
-**Example: Creating a Welcome Page**
-
-Create ``templates/instructions/welcome.html``:
+For example, ``templates/instructions/welcome.html``:
 
 .. code-block:: html
 
@@ -62,17 +57,9 @@ Instruction pages are Jinja2 templates, so you can use variables and logic:
 Simple HTML Pages
 -----------------
 
-For more control over navigation, use simple HTML pages. These don't include an automatic "Continue" button, so you control exactly how participants move through your study.
+Simple pages are like instruction pages but without the automatic "Continue" button — useful when you want to gate progress (a timer, a quiz the participant has to pass, a JavaScript task that decides when it's done). Drop an HTML file into ``templates/simple/`` and reference it in ``PAGE_LIST`` as ``simple/<filename>``.
 
-**Creating Simple Pages**
-
-1. Create an HTML file in your project's ``templates/simple/`` directory
-2. Add the page to your ``PAGE_LIST`` with the ``simple/`` prefix
-3. Include your own navigation elements
-
-**Example: Custom Navigation**
-
-Create ``templates/simple/custom_instructions.html``:
+For example, ``templates/simple/custom_instructions.html``:
 
 .. code-block:: html
 
@@ -259,7 +246,7 @@ Show different content in development vs. production:
     <p>Is this information correct?</p>
 
 .. note::
-    For comprehensive examples of accessing participant data, questionnaire responses, and custom table data, see :doc:`../reference/accessing_participant_data`.
+    For comprehensive examples of accessing participant data, questionnaire responses, and custom table data, see :doc:`../advanced/accessing_participant_data`.
 
 
 **Using Loop Variables**
@@ -274,48 +261,16 @@ Show different content in development vs. production:
         <p>Round {{ round_num }}: {{ config.ROUND_DESCRIPTIONS[round_num-1] }}</p>
     {% endfor %}
 
-Best Practices
---------------
+Choosing Between the Three
+--------------------------
 
-**When to Use Each Type**
-
-- **Instruction Pages**: For standard informational content with simple navigation
-- **Simple Pages**: When you need custom navigation, timing controls, or interactive elements
-- **Static Files**: For media content (images, videos, audio) and downloadable files
-
-**Content Guidelines**
-
-- Keep text concise and scannable
-- Use headings to organize information
-- Include progress indicators for long studies
-- Test content with your target population
-- Ensure accessibility (alt text for images, captions for videos)
-
-**File Organization**
-
-.. code-block:: text
-
-    your_project/
-    ├── static/
-    │   ├── css/           # Custom stylesheets
-    │   ├── js/            # Custom JavaScript
-    │   ├── images/        # Study images
-    │   └── media/         # Videos, audio
-    ├── templates/
-    │   ├── instructions/  # Standard instruction pages
-    │   └── simple/        # Custom navigation pages
-    └── config.toml
-
-**Performance Tips**
-
-- Optimize images for web (use appropriate formats and sizes)
-- Consider file sizes for participants with slow connections
-- Use progressive loading for large media files
-- Test media playback across different browsers and devices
+* **Instruction page** — static content with the standard Continue button. The default for any informational page.
+* **Simple page** — full control over the page. Use when you need custom navigation, a timer, or an interactive element to gate progress.
+* **Static file** — for media (images, videos, audio) and downloadable files. Reference it from any of the page types above using ``/static/<path>``.
 
 Next Steps
 ----------
 
 - For interactive pages that require programming, see :doc:`../advanced/advanced_custom_pages`
-- For integrating with external tasks, see :doc:`../examples/integrating_js_task`
-- For complete examples, see :doc:`../examples/ab_experiment`
+- For integrating with external tasks, see :doc:`tutorial_js_task`
+- For complete examples, see :doc:`../examples/example_projects`

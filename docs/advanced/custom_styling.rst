@@ -1,64 +1,26 @@
 Customizing BOFS's Appearance
 =============================
 
-BOFS provides flexible customization options that allow you to modify the visual appearance of your experiments without changing the core BOFS code. You can override templates, customize CSS styles, and add your own branding to create a unique look for your studies.
+BOFS pages are built from HTML templates and a ``style.css``, both of which you can override per project. Anything you place under your project's ``templates/`` or ``static/`` directories takes precedence over the BOFS defaults.
 
-.. note::
-    BOFS uses a template file override system. Any file you place in your project's ``templates/`` directory will take precedence over the default BOFS files.
+Template lookup order:
 
-    BOFS will also check for the presence of a ``style.css`` inside of your project's ``static/`` directory, which will take precedence over the default ``style.css``.
+1. Your project's ``templates/`` (highest priority)
+2. Blueprint ``templates/`` directories
+3. BOFS default templates (lowest priority)
 
-Overview of BOFS's Styling System
----------------------------------
+The BOFS default ``static/`` directory contains ``style.css`` (main stylesheet, defined with CSS custom properties), ``bootstrap.min.css``, ``style_admin.css``, and the bundled JavaScript libraries (jQuery, Bootstrap, HTMX).
 
-**Template Override System**
+Quick Start: Override the Stylesheet
+------------------------------------
 
-BOFS searches for templates in this order:
-
-1. **Your project's templates/** directory (highest priority)
-2. **Blueprint templates/** directories  
-3. **BOFS default templates/** (lowest priority)
-
-**Static File System**
-
-BOFS includes these key static files:
-
-- ``style.css`` - Main stylesheet with CSS custom properties
-- ``bootstrap.min.css`` - Bootstrap framework
-- ``style_admin.css`` - Admin panel styling
-- JavaScript libraries (jQuery, Bootstrap, HTMX)
-
-Quick Start: Basic Customization
----------------------------------
-
-**1. Create Your Project Structure**
+The simplest customization is to drop your own ``style.css`` into the project's ``static/`` directory. Copying the default as a starting point keeps everything that already works:
 
 .. code-block:: bash
 
-    my_experiment/
-    ├── config.toml
-    ├── templates/           # Your custom templates (optional)
-    ├── static/             # Your custom styles (optional)
-    │   └── style.css
-    └── questionnaires/
-        └── main.json
-
-**2. Copy and Modify Default Styles**
-
-.. code-block:: bash
-
-    # Copy BOFS default stylesheet to your project
     cp /path/to/BOFS/static/style.css ./static/style.css
-    
-    # Now edit ./static/style.css to customize appearance
 
-**3. Test Your Changes**
-
-.. code-block:: bash
-
-    BOFS config.toml -d
-
-Your custom ``style.css`` will automatically override the default BOFS stylesheet.
+Edit ``./static/style.css`` and restart BOFS (``BOFS run config.toml -d``). Your version takes over from the default.
 
 Quick: Header Color from Config
 -------------------------------
@@ -293,31 +255,15 @@ Override individual question type templates:
 Adding Custom Assets
 --------------------
 
-**Project Structure with Assets**
-
-.. code-block:: text
-
-    my_experiment/
-    ├── static/
-    │   ├── style.css           # Custom styles
-    │   ├── university-logo.png # Logo image
-    │   ├── custom.js           # Custom JavaScript
-    │   └── fonts/              # Custom fonts
-    │       └── UniversityFont.woff2
-    ├── templates/
-    │   └── template.html       # Custom base template
-    └── config.toml
-
-**Using Custom Assets**
+Anything you place under ``static/`` is served at ``/static/<path>`` — images, JavaScript, custom fonts, and so on. Reference them from your templates the same way you would in any HTML page:
 
 .. code-block:: html
 
-    <!-- In your templates -->
     <link href="/static/fonts/UniversityFont.woff2" rel="preload" as="font" type="font/woff2" crossorigin>
     <img src="/static/university-logo.png" alt="University Logo">
     <script src="/static/custom.js"></script>
 
-**Custom CSS with Fonts**
+For custom fonts, declare the ``@font-face`` in your ``style.css`` and apply it to ``body`` (or wherever you want it):
 
 .. code-block:: css
 
@@ -327,7 +273,7 @@ Adding Custom Assets
         font-weight: normal;
         font-style: normal;
     }
-    
+
     body {
         font-family: 'UniversityFont', 'Segoe UI', Arial, sans-serif;
     }

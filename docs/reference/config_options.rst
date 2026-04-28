@@ -1,12 +1,10 @@
 Configuration Reference
 =======================
 
-This page is a comprehensive reference for all configuration options in BOFS project ``.toml`` files. For a tutorial-style introduction, see :doc:`/getting_started/project_configuration`.
+Every option BOFS reads from a project's ``.toml`` file. For a guided introduction, see :doc:`/getting_started/project_configuration`.
 
 Required Settings
 -----------------
-
-These settings must be present in every BOFS configuration file.
 
 .. list-table::
    :header-rows: 1

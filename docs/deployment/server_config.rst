@@ -1,176 +1,95 @@
 Production Server Configuration
 ===============================
 
-This guide covers how to deploy BOFS experiments on production servers for participant data collection. Moving from development to production requires careful attention to security, performance, and reliability.
-
-.. note::
-    This page covers server deployment and hosting. For platform integration with MTurk and Prolific, see :doc:`mturk_prolific`.
+Deploying a BOFS project to a production server means switching off the development server, putting the application behind a real web server with HTTPS, and choosing a database that suits the study size. This guide covers the deployment pieces; for crowdsourcing-platform integration (MTurk, Prolific) see :doc:`mturk_prolific`.
 
 .. warning::
-    Production deployment involves security considerations that are critical for protecting participant data.
+    Production servers hold participant data. The choices in this guide affect the security and integrity of that data — pick a strong admin password, terminate TLS, and back up the database regularly.
 
-Production vs Development
--------------------------
+Why Not the Development Server?
+-------------------------------
 
-**Key Differences**
+The built-in development server (``BOFS run config.toml -d``) is single-threaded, doesn't terminate TLS, has no process manager to restart it on failure, and exposes debugging information that shouldn't be visible to participants. Production needs:
 
-Production environments require additional considerations beyond development:
-
-- **Security**: Strong secret keys, HTTPS, secure database connections
-- **Performance**: Optimized for multiple concurrent users
-- **Reliability**: Process management, monitoring, and automatic restart
-- **Data Protection**: Secure data storage, backup procedures, audit logging
-- **Scalability**: Database and server resources sized for expected load
-
-**Development Setup Limitations**
-
-The built-in development server (``BOFS config.toml -d``) is **not suitable for production** because:
-
-- Single-threaded processing
-- No SSL/HTTPS support
-- Limited security features
-- No process management
-- Performance limitations
+- HTTPS, with traffic routed through a reverse proxy (Nginx in this guide)
+- A process manager (systemd here) that restarts BOFS automatically if it crashes
+- A database sized to the study (SQLite for small studies, PostgreSQL for larger ones)
+- A strong admin password and a unique ``SECRET_KEY``
 
 System Requirements
 -------------------
 
-**Small Studies**
+These docs focus on a small-study setup — a single VM running BOFS with a reverse proxy in front of it. The sizing notes below sketch what larger studies look like, but the configuration details for those (load balancers, multi-instance deployments, dedicated database servers, connection pooling) are outside the scope of the BOFS documentation; consult your hosting provider's docs and a sysadmin if your study is in that territory.
 
-Studies where typically fewer than 25 concurrent users will be online can use a single shared VM (e.g., DigitalOcean droplet, Linode, AWS t2.micro).
+Sizing depends on the number of concurrent participants you expect.
 
-- **Operating System**: Linux is recommended (e.g., Ubuntu 20.04+)
-- **Python**: 3.9 or newer
-- **RAM**: 1GB or more
-- **CPU**: 1 vCPU core
-- **Storage**: 10GB+ (depending on expected data volume)
-- **Database**: Use a SQLite database (included with BOFS) or optionally a small PostgreSQL instance
+**Small studies (< 25 concurrent users)** can run on a single shared VM (DigitalOcean droplet, Linode, AWS t2.micro):
 
+- Ubuntu 20.04+ (or another recent Linux distribution)
+- Python 3.9 or newer
+- 1GB RAM, 1 vCPU, 10GB+ storage (more if you expect a lot of data)
+- SQLite (bundled) or a small PostgreSQL instance
 
-**Large Studies**
+**Large studies (50+ concurrent users)** want a dedicated database. Two layouts work:
 
-For studies with very large sample sizes, many concurrent users (e.g., 50+) will have higher system requirements. A dedicated database is also recommended.
+- *Single server*: 4GB+ RAM, 2+ cores, 50GB+ SSD, PostgreSQL on the same machine.
+- *Two servers*: 2GB / 2 cores for the BOFS application server, 2GB+ / 2 cores / 50GB+ SSD for a dedicated PostgreSQL server.
 
-- **Single Server Option** (recommended for most large studies):
+**Extremely large studies** can scale horizontally: multiple BOFS instances behind a load balancer, a shared PostgreSQL with connection pooling, and a CDN for static files. Most research studies never reach this point — a single-server setup handles hundreds of concurrent users.
 
-  - RAM: 4GB+ 
-  - CPU: 2+ cores
-  - Storage: 50GB+ (SSD recommended for better database performance)
-  - Database: PostgreSQL on same server
+Setting Up the Server
+---------------------
 
-- **Two-Server Option** (for very large studies or institutional requirements):
+This isn't a complete server administration tutorial; it covers the BOFS-specific pieces. Adapt the commands to your distribution and hosting setup.
 
-  - **BOFS Application Server**: 2GB RAM, 2+ cores, 20GB storage
-  - **PostgreSQL Database Server**: 2GB+ RAM, 2+ cores, 50GB+ SSD storage
-
-
-**Extremely Large Studies**
-
-For extremely large studies, consider adding the following.
-
-- Multiple BOFS instances behind a load balancer
-- Shared PostgreSQL database with connection pooling
-- CDN for static file delivery
-
-.. note::
-    Most research studies will never need this level of scaling. The single-server setup can handle hundreds of concurrent users.
-
-
-Setting Up a Server
--------------------
-
-.. note::
-    This section provides key deployment steps but is not a complete server administration tutorial.
-
-Overview
-~~~~~~~~
-
-The basic deployment process involves:
-
-1. **Environment Setup**: Create Python virtual environment and install BOFS
-2. **File Transfer**: Copy your experiment files to the server
-3. **Web Server**: Configure production web server (Waitress + Nginx)
-4. **Database**: Set up production database (PostgreSQL for large studies)
-5. **Security**: Configure SSL certificates and secure access
-6. **Process Management**: Set up automatic service restart
-7. **Testing**: Verify everything works before launching
-
-
-Create Production Environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Set up an environment for BOFS:
+Install BOFS in a Virtual Environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-    # Create virtual environment
     python3 -m venv bofs_production
     source bofs_production/bin/activate
-
-    # Install BOFS
     pip install --upgrade pip
     pip install bride-of-frankensystem
 
-Install Your Experiment
-~~~~~~~~~~~~~~~~~~~~~~~~
+Copy Your Experiment to the Server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Copy your experiment files to the production server:
+Use ``scp``, ``rsync``, or a ``git clone`` from a private repo:
 
 .. code-block:: bash
 
-    # Create experiment directory
     mkdir -p ~/experiments/my_study
-    cd ~/experiments/my_study
-
-    # Copy your files (questionnaires, templates, config)
-    # Either via scp, git, or file transfer
     scp -r /local/path/to/experiment/* user@server:~/experiments/my_study/
 
-Test Production Installation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Verify BOFS works in the production environment:
+Verify the Installation
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-    # Activate environment
     source bofs_production/bin/activate
-
-    # Test BOFS installation
     BOFS --help
-
-    # Test your experiment configuration
     cd ~/experiments/my_study
-    BOFS production.toml --check-config
+    BOFS run production.toml --check-config
 
 Web Server Configuration
 ------------------------
 
-BOFS Built-in Server (Waitress)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Run BOFS with Waitress
+~~~~~~~~~~~~~~~~~~~~~~
 
-BOFS includes a Waitress-based production server that's suitable for most research applications:
-
-**Starting the Production Server**
+BOFS ships with a Waitress-based production server that handles concurrent requests. To start it in production mode, **run BOFS without the** ``-d`` **flag**:
 
 .. code-block:: bash
 
-    # Production mode (no debug) automatically binds to 0.0.0.0 (all available IP addresses) at the port specified in the config file.
-    BOFS production.toml
+    BOFS run production.toml
 
-Your BOFS project should now be visible at ``http://your-ip-address:5000``.
+This binds to ``0.0.0.0`` on the port specified in your config, so the project is reachable at ``http://your-ip-address:<PORT>``. This is enough to collect data — the production server is fully functional on its own — but the connection is unencrypted, so anything participants submit (including consent, responses, and any IDs) travels in plaintext. For studies that recruit real participants you'll want to put a reverse proxy in front of BOFS so traffic is encrypted under HTTPS. The next two sections cover that.
 
-Process Management with systemd
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Run BOFS Under systemd
+~~~~~~~~~~~~~~~~~~~~~~
 
-Create a systemd service for automatic startup and restart:
-
-.. code-block:: bash
-
-    # Create service file
-    sudo nano /etc/systemd/system/bofs-experiment.service
-
-Add this content:
+A systemd unit ensures BOFS starts on boot and restarts on failure. Create ``/etc/systemd/system/bofs-experiment.service``:
 
 .. code-block:: ini
 
@@ -181,282 +100,194 @@ Add this content:
     [Service]
     Type=simple
     User=$USER  # Replace with your username
-    WorkingDirectory=/path/to/your/experiment  # Replace with your experiment directory
-    Environment=PATH=/path/to/bofs_production/bin  # Replace with your virtual environment path
-    ExecStart=/path/to/bofs_production/bin/python -m BOFS production.toml
+    WorkingDirectory=/path/to/your/experiment
+    Environment=PATH=/path/to/bofs_production/bin
+    ExecStart=/path/to/bofs_production/bin/python -m BOFS run production.toml
     Restart=always
     RestartSec=10
 
     [Install]
     WantedBy=multi-user.target
 
-Enable and start the service:
+Enable, start, and inspect the service:
 
 .. code-block:: bash
 
-    # Enable and start the service
     sudo systemctl enable bofs-experiment
     sudo systemctl start bofs-experiment
-
-    # Check status
     sudo systemctl status bofs-experiment
-
-    # View logs
     sudo journalctl -u bofs-experiment -f
 
-Reverse Proxy with Nginx
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Reverse Proxy
+~~~~~~~~~~~~~
 
-Set up Nginx as a reverse proxy for SSL termination and static file serving:
+A reverse proxy sits in front of BOFS, terminates TLS (so traffic is encrypted as HTTPS), and forwards requests on to BOFS over the local connection. Two common choices:
 
-.. code-block:: bash
+.. tabs::
 
-    # Install Nginx
-    sudo apt install nginx
+   .. tab:: Nginx
 
-    # Create site configuration
-    sudo nano /etc/nginx/sites-available/bofs-experiment
+      Nginx is the long-established option — wider tooling support and more configuration knobs at the cost of more setup work. Two pieces are involved: installing Nginx itself and obtaining a TLS certificate for your domain.
 
-Add this configuration:
+      **Install Nginx.** Follow the `official Nginx installation instructions <https://nginx.org/en/docs/install.html>`_ for your distribution. On Debian/Ubuntu it's typically:
 
-.. code-block:: nginx
+      .. code-block:: bash
 
-    server {
-        listen 80;
-        server_name yourdomain.com www.yourdomain.com;
-        
-        # Redirect HTTP to HTTPS
-        return 301 https://$server_name$request_uri;
-    }
+          sudo apt update
+          sudo apt install nginx
 
-    server {
-        listen 443 ssl http2;
-        server_name yourdomain.com www.yourdomain.com;
+      **Obtain a TLS certificate.** The Nginx configuration below references ``certificate.crt`` and ``private.key`` files — you'll need to fill those in with paths to a real certificate and key for your domain. The simplest route is `Let's Encrypt's Certbot <https://certbot.eff.org/>`_, which provisions free certificates and configures auto-renewal:
 
-        # SSL Configuration
-        ssl_certificate /path/to/ssl/certificate.crt;
-        ssl_certificate_key /path/to/ssl/private.key;
-        ssl_protocols TLSv1.2 TLSv1.3;
-        ssl_ciphers HIGH:!aNULL:!MD5;
+      .. code-block:: bash
 
-        # Security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header X-Content-Type-Options "nosniff" always;
+          sudo apt install certbot python3-certbot-nginx
+          sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
-        # Proxy to BOFS
-        location / {
-            proxy_pass http://127.0.0.1:5000;  # URL that BOFS is listening on
-            proxy_set_header Host $http_host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
+      Certbot can either modify your Nginx config in place to point at the issued certificate, or just produce the cert files for you to reference manually (typically under ``/etc/letsencrypt/live/yourdomain.com/fullchain.pem`` and ``/etc/letsencrypt/live/yourdomain.com/privkey.pem``). For commercial certificates, follow your CA's installation guide.
 
-        # Static file serving (optional optimization)
-        location /static {
-            alias /path/to/your/experiment/static;  # Replace with your experiment path
-            expires 1y;
-            add_header Cache-Control "public, immutable";
-        }
-    }
+      **Configure the site.** Create ``/etc/nginx/sites-available/bofs-experiment`` with:
 
-Enable the site:
+      .. code-block:: nginx
 
-.. code-block:: bash
+          server {
+              listen 80;
+              server_name yourdomain.com www.yourdomain.com;
+              return 301 https://$server_name$request_uri;
+          }
 
-    # Enable site and restart Nginx
-    sudo ln -s /etc/nginx/sites-available/bofs-experiment /etc/nginx/sites-enabled/
-    sudo nginx -t  # Test configuration
-    sudo systemctl restart nginx
+          server {
+              listen 443 ssl http2;
+              server_name yourdomain.com www.yourdomain.com;
 
-.. note::
-    The above Nginx configuration requires valid SSL certificates. For free SSL certificates, see `Let's Encrypt's Certbot tutorial <https://certbot.eff.org/>`_. For commercial certificates, consult your certificate authority's installation guide.
+              ssl_certificate /path/to/ssl/certificate.crt;
+              ssl_certificate_key /path/to/ssl/private.key;
+              ssl_protocols TLSv1.2 TLSv1.3;
+              ssl_ciphers HIGH:!aNULL:!MD5;
+
+              add_header X-Frame-Options "SAMEORIGIN" always;
+              add_header X-XSS-Protection "1; mode=block" always;
+              add_header X-Content-Type-Options "nosniff" always;
+
+              location / {
+                  proxy_pass http://127.0.0.1:5000;  # The port BOFS is listening on
+                  proxy_set_header Host $http_host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+              }
+
+              location /static {
+                  alias /path/to/your/experiment/static;
+                  expires 1y;
+                  add_header Cache-Control "public, immutable";
+              }
+          }
+
+      Enable the site:
+
+      .. code-block:: bash
+
+          sudo ln -s /etc/nginx/sites-available/bofs-experiment /etc/nginx/sites-enabled/
+          sudo nginx -t  # Test the configuration
+          sudo systemctl restart nginx
+
+   .. tab:: Caddy
+
+      Caddy provisions and renews TLS certificates automatically via Let's Encrypt — no separate certbot step. The trade-off is fewer configuration knobs than Nginx, which is rarely a problem for a BOFS deployment.
+
+      Install Caddy (`installation instructions <https://caddyserver.com/docs/install>`_) and put this in ``/etc/caddy/Caddyfile``:
+
+      .. code-block:: text
+
+          yourdomain.com, www.yourdomain.com {
+              # Forward everything to BOFS
+              reverse_proxy 127.0.0.1:5000
+
+              # Serve static files directly with a long cache lifetime
+              handle_path /static/* {
+                  root * /path/to/your/experiment/static
+                  file_server
+                  header Cache-Control "public, immutable, max-age=31536000"
+              }
+
+              # Sensible default security headers
+              header {
+                  X-Frame-Options "SAMEORIGIN"
+                  X-Content-Type-Options "nosniff"
+              }
+          }
+
+      Reload Caddy to pick up the change:
+
+      .. code-block:: bash
+
+          sudo systemctl reload caddy
+
+      Caddy will obtain a TLS certificate the first time someone hits the domain.
 
 Database Configuration
 ----------------------
 
-SQLite vs Production Databases
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**SQLite (Development/Small Studies)**
+Set ``SQLALCHEMY_DATABASE_URI`` in your TOML config. BOFS supports anything SQLAlchemy supports; the common options are:
 
 .. code-block:: toml
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
-
-**PostgreSQL (Recommended for Production)**
-
-.. code-block:: toml
-
     SQLALCHEMY_DATABASE_URI = "postgresql://username:password@localhost/study_db"
-
-**MySQL (Alternative)**
-
-.. code-block:: toml
-
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://username:password@localhost/study_db"
 
-For connection pooling and advanced database configuration, see the `Flask-SQLAlchemy documentation <https://flask-sqlalchemy.palletsprojects.com/en/3.0.x/config/>`_.
-
-PostgreSQL Setup
-~~~~~~~~~~~~~~~~
-
-For PostgreSQL installation and database setup, consult your hosting provider's documentation or the `official PostgreSQL documentation <https://www.postgresql.org/docs/>`_.
-
-To use PostgreSQL with BOFS, install the Python adapter:
+For PostgreSQL, install the Python adapter into the BOFS virtual environment:
 
 .. code-block:: bash
 
-    # In your BOFS virtual environment
     pip install psycopg2-binary
 
+PostgreSQL installation and database creation is outside the scope of this guide — see your hosting provider's documentation or the `official PostgreSQL documentation <https://www.postgresql.org/docs/>`_. For connection pooling and other advanced options, see the `Flask-SQLAlchemy configuration guide <https://flask-sqlalchemy.palletsprojects.com/en/3.0.x/config/>`_.
 
-Admin Panel Security Recommendations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Securing the Admin Panel
+------------------------
 
-**Strong Admin Password**
+The admin panel exposes participant data and includes destructive controls. Two pieces matter most.
+
+Set a long, random ``ADMIN_PASSWORD`` in your TOML config:
 
 .. code-block:: toml
 
-    # Use a long, random password
     ADMIN_PASSWORD = "ThisIsAVeryLongAndSecurePasswordForTheAdminPanel2024!"
 
-**IP Restriction (Optional)**
-
-Configure Nginx to restrict admin access to only your IP address:
+Optionally, restrict ``/admin`` to a specific IP at the Nginx layer:
 
 .. code-block:: nginx
 
-    # In your Nginx configuration
     location /admin {
         allow xxx.xxx.xxx.xxx/32;  # Your IP address
         deny all;
-        
+
         proxy_pass http://127.0.0.1:5000;
         # ... other proxy settings
     }
 
-Production Configuration
-------------------------
+Troubleshooting
+---------------
 
-Complete Production Configuration Example
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+**Service won't start.** Check the logs first: ``sudo journalctl -u bofs-experiment --lines=50``. Usual causes are TOML syntax errors, database connection failures, file-permission problems, and a port already in use.
 
-Here's a complete production TOML configuration that brings together all the elements:
+**SSL certificate expired.** With Let's Encrypt: ``sudo certbot renew && sudo systemctl reload nginx``.
 
-.. code-block:: toml
+**PostgreSQL connection refused.** Confirm the service is running (``sudo systemctl status postgresql``) and inspect ``/var/log/postgresql/postgresql-*-main.log``.
 
-    # Basic Settings
-    TITLE = "Research Study - Production"
-
-    # Server Configuration
-    PORT = 5000
-    
-    # Database (choose one)
-    SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"  # For small studies
-    # SQLALCHEMY_DATABASE_URI = "postgresql://username:password@localhost/study_db"  # For large studies
-    
-    # Admin Security
-    ADMIN_PASSWORD = "very-secure-admin-password-here"
-    USE_ADMIN = true
-    
-    # External Platform Integration (if using MTurk/Prolific)
-    EXTERNAL_ID_LABEL = "Participant ID"
-    GENERATE_COMPLETION_CODE = true
-    RETRIEVE_SESSIONS = true
-    ALLOW_RETAKES = false
-    
-    # Study Configuration
-    PAGE_LIST = [
-        {name="Consent", path="consent"},
-        {name="Demographics", path="questionnaire/demographics"},
-        {name="Main Task", path="questionnaire/main_task"},
-        {name="End", path="end"}
-    ]
-
-
-
-Troubleshooting Common Issues
------------------------------
-
-Service Won't Start
-~~~~~~~~~~~~~~~~~~~
-
-**Check logs for errors:**
-
-.. code-block:: bash
-
-    sudo journalctl -u bofs-experiment --lines=50
-
-**Common causes:**
-
-- Configuration file syntax errors
-- Database connection failures
-- Permission issues
-- Port already in use
-
-SSL Certificate Issues
-~~~~~~~~~~~~~~~~~~~~~~
-
-**Certificate expired:**
-
-.. code-block:: bash
-
-    # Renew Let's Encrypt certificate (if used)
-    sudo certbot renew
-
-    # Restart nginx
-    sudo systemctl reload nginx
-
-
-Database Connection Problems
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Connection refused (PostgreSQL):**
-
-.. code-block:: bash
-
-    # Check PostgreSQL status
-    sudo systemctl status postgresql
-    
-    # Check PostgreSQL logs
-    sudo tail -f /var/log/postgresql/postgresql-*-main.log
-
-**Too many connections:**
+**PostgreSQL "too many connections".** Tune the pool in your TOML:
 
 .. code-block:: toml
 
-    # Reduce connection pool size
     SQLALCHEMY_ENGINE_OPTIONS = {pool_size=5, max_overflow=10}
 
-Performance Issues
-~~~~~~~~~~~~~~~~~~
+**High CPU or memory.** Look for runaway processes or query patterns first. If the workload genuinely justifies it, scale up the VM or add swap. For slow responses, add indexes on frequently queried columns and enable compression at the Nginx layer.
 
-**High CPU usage:**
+After Deployment
+----------------
 
-- Check for runaway processes
-- Monitor database queries
-- Consider scaling up server resources
-
-**High memory usage:**
-
-- Monitor database connection pools
-- Check for memory leaks in logs
-- Consider adding swap space
-
-**Slow response times:**
-
-- Add database indexes
-- Optimize database queries
-- Enable compression
-- Use CDN for static files
-
-Next Steps
-----------
-
-After successful deployment, always run a small pilot study to verify all systems. Ensure that all data is being logged correctly by inspecting the database, and that there are no errors by inspecting the logs.
+Run a small pilot study before opening the project to real participants. Walk through the experiment yourself, verify rows appear in the database as expected, and confirm the logs are clean.
 
 .. warning::
-    Remember that production servers handling research data may need to comply with institutional IRB requirements, GDPR, HIPAA, or other data protection regulations. Consult with your institution's IT and compliance teams as needed.
-
+    Production servers handling research data may need to comply with IRB requirements, GDPR, HIPAA, or other regulations. Consult your institution's IT and compliance teams as needed.

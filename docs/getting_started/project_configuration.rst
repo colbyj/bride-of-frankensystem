@@ -1,34 +1,20 @@
 Configuring Your Experiment
 ===========================
 
-Every BOFS experiment is defined by a TOML configuration file that describes how your study works. This configuration controls everything from the sequence of pages participants see to how they're assigned to experimental conditions.
+A BOFS experiment is configured by a single TOML file — typically ``config.toml`` — that defines the page sequence, database connection, condition assignment, completion handling, and so on. This page covers the configuration concepts you'll use most often. The full setting-by-setting reference lives in :doc:`../reference/config_options`.
 
-.. note::
-    For a complete reference of all configuration options, see :doc:`../reference/config_options`.
-
-Understanding TOML Configuration Files
----------------------------------------
-
-BOFS uses TOML (Tom's Obvious, Minimal Language) files to configure experiments. TOML is designed to be easy to read and write, using a simple key-value format:
+TOML uses a plain key-value format with ``#`` for comments and ``[brackets]`` for lists:
 
 .. code-block:: toml
 
-    # This is a simple key-value pair
     TITLE = "My Research Study"
 
-    # Any line starting with "#" is a comment and not parsed
-    
-    # This is a list
+    # Comments start with #.
+
     CONDITIONS = [
         {label="Control", enabled=true},
         {label="Treatment", enabled=true}
     ]
-
-**Key Benefits of TOML:**
-- Human-readable and easy to edit
-- Supports comments for documentation
-- Clear data types (strings, numbers, booleans, lists)
-- No complex syntax to learn
 
 Basic Configuration Structure
 -----------------------------
@@ -304,148 +290,36 @@ In custom pages and templates, access the participant's condition:
         <p>You are in the high reward condition.</p>
     {% endif %}
 
-.. note::
-    For a complete working example of A/B testing, see :doc:`../examples/ab_experiment`.
+Settings for MTurk and Prolific
+-------------------------------
 
-Settings for MTurk and Prolific Deployment
--------------------------------------------
+Recruiting through MTurk or Prolific brings in a few additional settings — external ID handling, completion codes, return URLs, and session-recovery rules. The full picture is covered in :doc:`../deployment/mturk_prolific`; the settings themselves are described in :doc:`../reference/config_options`.
 
-When deploying to crowdsourcing platforms, additional configuration options become important:
+Multiple Configuration Files
+----------------------------
 
-.. code-block:: toml
-
-    # External ID management
-    EXTERNAL_ID_LABEL = "MTurk Worker ID"
-    EXTERNAL_ID_PROMPT = "Please enter your MTurk Worker ID. You can find this on your MTurk dashboard."
-    RETRIEVE_SESSIONS = true
-    ALLOW_RETAKES = false
-    
-    # Completion codes
-    GENERATE_COMPLETION_CODE = true
-    COMPLETION_CODE_MESSAGE = "Please copy and paste this code into the MTurk form:"
-    
-    # Session management
-    ABANDONED_MINUTES = 30
-    COUNTS_INCLUDE_ABANDONED = false
-
-============================== =======================================================
-Setting                        Description
-============================== =======================================================
-**EXTERNAL_ID_LABEL**          Label for external ID field (e.g., "MTurk Worker ID")
-**EXTERNAL_ID_PROMPT**         Instructions for external ID entry
-**RETRIEVE_SESSIONS**          Allow participants to resume if they return with same ID
-**ALLOW_RETAKES**              If false, reject duplicate external IDs
-**GENERATE_COMPLETION_CODE**   Create random completion codes
-**COMPLETION_CODE_MESSAGE**    Instructions for using completion code
-**ABANDONED_MINUTES**          Minutes before participant considered abandoned
-**COUNTS_INCLUDE_ABANDONED**   Include abandoned participants in condition balancing
-============================== =======================================================
-
-For complete deployment guidance, see :doc:`../deployment/mturk_prolific`.
-
-Multiple Configuration Files Strategy
---------------------------------------
-
-For complex projects, you might use multiple configuration files for different purposes:
-
-**Development vs. Production**
-
-``config.toml`` (base configuration):
-
-.. code-block:: toml
-
-    TITLE = "My Study"
-    ADMIN_PASSWORD = "admin123"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
-
-    PAGE_LIST = [
-        {name="Consent", path="consent"},
-        {name="Demographics", path="questionnaire/demographics"},
-        {name="Main Task", path="task/experiment"},
-        {name="End", path="end"}
-    ]
-
-``production.toml`` (production overrides):
-
-.. code-block:: toml
-
-    ADMIN_PASSWORD = "secure_production_password"
-    SQLALCHEMY_DATABASE_URI = "postgresql://user:pass@host/database"
-    
-    # Production-specific settings
-    GENERATE_COMPLETION_CODE = true
-    EXTERNAL_ID_LABEL = "Prolific ID"
-
-**Testing Different Flows**
-
-``testing.toml`` (minimal flow for testing):
-
-.. code-block:: toml
-
-    # Minimal flow for testing just the main task
-    PAGE_LIST = [
-        {name="Create Participant", path="create_participant"},
-        {name="Main Task", path="task/experiment"},
-        {name="End", path="end"}
-    ]
-
-``full_study.toml`` (complete experiment):
-
-.. code-block:: toml
-
-    # Full experimental flow with all questionnaires
-    PAGE_LIST = [
-        {name="External ID", path="external_id"},
-        {name="Consent", path="consent"},
-        {name="Demographics", path="questionnaire/demographics"},
-        {name="Pre-task Survey", path="questionnaire/pre_task"},
-        {name="Instructions", path="instructions/task_intro"},
-        {name="Practice", path="task/practice"},
-        {name="Main Task", path="task/experiment"},
-        {name="Post-task Survey", path="questionnaire/post_task"},
-        {name="Debrief", path="questionnaire/debrief"},
-        {name="End", path="end"}
-    ]
-
-**Using Different Configurations**
+A project can have more than one ``.toml`` file — useful for separating development and production settings, or for keeping a stripped-down ``testing.toml`` that skips straight to the main task. Each file is self-contained (BOFS doesn't merge them); pick the one you want when you launch:
 
 .. code-block:: bash
 
-    # Development
-    BOFS config.toml -d
-    
-    # Production
-    BOFS production.toml
-    
-    # Testing just the main task
-    BOFS testing.toml -d
+    BOFS run config.toml -d         # Development
+    BOFS run production.toml        # Production
+    BOFS run testing.toml -d        # A minimal PAGE_LIST for testing the task
 
-Database and Data Considerations
----------------------------------
+A common split is a ``config.toml`` with the development settings (SQLite, simple admin password, full ``PAGE_LIST``) and a ``production.toml`` that overrides the database URI, admin password, and external-ID settings.
 
-**Database Changes Warning**
+Database
+--------
 
-.. warning::
-    If you change a questionnaire in any way (adding/removing questions, changing question IDs), your existing database may become invalid. During development, simply delete your ``.db`` file and restart BOFS. For live studies with participant data, use the admin panel's questionnaire preview feature to safely add new database columns.
-
-**Essential Settings**
-
-=========================== =======================================================
-Setting                     Description
-=========================== =======================================================
-**PORT**                    Port for local development (default: 5000)
-**SQLALCHEMY_DATABASE_URI** Database connection string
-=========================== =======================================================
-
-**Database Examples**
+The ``SQLALCHEMY_DATABASE_URI`` setting tells BOFS where to keep its data. SQLite is the easy choice for development; PostgreSQL is the usual choice for production:
 
 .. code-block:: toml
 
-    # Development (SQLite)
     SQLALCHEMY_DATABASE_URI = "sqlite:///my_study.db"
-    
-    # Production (PostgreSQL)  
     SQLALCHEMY_DATABASE_URI = "postgresql://username:password@host:port/database"
+
+.. warning::
+    Adding, removing, or renaming questions in a questionnaire after the database has been created may invalidate the existing schema. During development, delete the ``.db`` file and restart BOFS to recreate it. For live studies with participant data, use the admin panel's "Preview Questionnaire" feature, which can add new columns without touching existing data.
 
 Example Configurations
 ----------------------
@@ -495,66 +369,23 @@ Example Configurations
         {name="End", path="end"}
     ]
 
-**MTurk Study**
+For a full MTurk or Prolific configuration, see :doc:`../deployment/mturk_prolific`.
 
-.. code-block:: toml
+Common Configuration Issues
+---------------------------
 
-    TITLE = "Cognitive Task Study"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///mturk_study.db"
-    ADMIN_PASSWORD = "admin_password"
-    
-    # MTurk-specific settings
-    EXTERNAL_ID_LABEL = "MTurk Worker ID"
-    EXTERNAL_ID_PROMPT = "Please enter your MTurk Worker ID. You can find this on your MTurk dashboard."
-    GENERATE_COMPLETION_CODE = true
-    COMPLETION_CODE_MESSAGE = "Please copy and paste this code into the MTurk form:"
-    ALLOW_RETAKES = false
-    
-    PAGE_LIST = [
-        {name="External ID", path="external_id"},
-        {name="Consent", path="consent"},
-        {name="Demographics", path="questionnaire/demographics"},
-        {name="Task Instructions", path="instructions/task_intro"},
-        {name="Cognitive Task", path="task/cognitive"},
-        {name="Post-task Survey", path="questionnaire/post_task"},
-        {name="End", path="end"}
-    ]
-
-Validation and Testing
-----------------------
-
-**Test Your Configuration**
-
-1. **Syntax Check**: Start your project with ``BOFS config.toml -d``
-2. **Participant Flow**: Visit ``http://localhost:5000`` to test the complete participant experience
-3. **Admin Access**: Visit ``http://localhost:5000/admin`` to test admin panel access
-4. **Error Checking**: Watch the console for configuration errors or warnings
-
-**Common Configuration Issues**
-
-- **Missing questionnaire files**: Ensure ``.json`` files exist in ``questionnaires/`` directory
-- **Template not found**: Check that instruction and simple page templates exist in correct directories
-- **Database errors**: Verify database URI format and file permissions
-- **Invalid secret key**: Use a proper random secret key, not a simple string like "abc123"
-- **PAGE_LIST errors**: Ensure first page is a participant creation route and last page is "end"
-
-**Configuration Best Practices**
-
-- Use descriptive names in PAGE_LIST for easier admin panel navigation
-- Keep development and production configurations separate
-- Document your experimental design with comments in the TOML file
-- Test with multiple participants to verify condition assignment works correctly
-- Backup your configuration files along with your questionnaire and template files
+* **Missing questionnaire files** — every path of the form ``questionnaire/foo`` requires a ``questionnaires/foo.json`` file in the project directory.
+* **Template not found** — instruction pages need an ``.html`` file under ``templates/instructions/``; simple pages need one under ``templates/simple/``.
+* **Database errors** — check the ``SQLALCHEMY_DATABASE_URI`` syntax and that the user has read/write access to the file or database.
+* **PAGE_LIST shape** — the first page must be one of the participant-creation routes (``consent``, ``consent_nc``, ``create_participant``, ``create_participant_nc``); the last page must be ``end``.
 
 Next Steps
 ----------
 
-Now that you understand BOFS configuration:
-
-- **Create questionnaires**: See :doc:`basic_questionnaires` to learn about defining survey questions
-- **Add custom pages**: See :doc:`simple_custom_pages` for instruction pages and custom content
-- **See complete examples**: Explore :doc:`../examples/ab_experiment` and :doc:`../examples/quickstart`
-- **Deploy your study**: When ready for participants, see :doc:`../deployment/server_config`
+* **Create questionnaires** — see :doc:`basic_questionnaires`.
+* **Add custom pages** — see :doc:`simple_custom_pages`.
+* **See a complete example project** — walk through :doc:`quickstart_existing`.
+* **Deploy your study** — see :doc:`../deployment/server_config`.
 
 .. note::
-    Remember to restart your BOFS application whenever you modify the configuration file to ensure changes take effect.
+    Restart BOFS whenever you change the configuration file — settings are read at startup.
