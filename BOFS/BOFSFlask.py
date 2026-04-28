@@ -89,7 +89,7 @@ class BOFSFlask(Flask):
         self.questionnaire_paths = {}
         self.table_paths = {}
 
-    # Overriding this ensures compatibility with existing run.py files regardless of whether socketio is used or not
+    # Overriding Flask.run so production mode uses waitress instead of Flask's dev server.
     def run(self, host=None, port=None, **options) -> None:
         actual_port = port if port is not None else 5000
         actual_host = host if not host is None else '127.0.0.1'
@@ -111,46 +111,13 @@ class BOFSFlask(Flask):
 
             super(BOFSFlask, self).run(host, port, debug=True, use_reloader=not self.run_with_reloader_off, **options)
         else:
-            self.eventlet_run(self, host=host, port=port, **options)
+            self.waitress_run(host=host, port=port)
 
-    # This method is straight from Flask-SocketIO
-    # (https://github.com/miguelgrinberg/Flask-SocketIO/blob/master/flask_socketio/__init__.py)
-    # MIT License, Copyright holder Miguel Grinberg
-    def eventlet_run(self, app, host=None, port=None, **kwargs) -> None:
-        import threading
-        import time
-        import eventlet.wsgi
-        import eventlet.green
-
-        addresses = eventlet.green.socket.getaddrinfo(host, port)
-        if not addresses:
-            raise RuntimeError('Could not resolve host to a valid address')
-        eventlet_socket = eventlet.listen(addresses[0][4], addresses[0][0])
-
-        # If provided an SSL argument, use an SSL socket
-        ssl_args = ['keyfile', 'certfile', 'server_side', 'cert_reqs',
-                    'ssl_version', 'ca_certs',
-                    'do_handshake_on_connect', 'suppress_ragged_eofs',
-                    'ciphers']
-        ssl_params = {k: kwargs[k] for k in kwargs if k in ssl_args}
-        if len(ssl_params) > 0:
-            for k in ssl_params:
-                kwargs.pop(k)
-            ssl_params['server_side'] = True  # Listening requires true
-            eventlet_socket = eventlet.wrap_ssl(eventlet_socket, **ssl_params)
-
-        # Run server in daemon thread so main thread can handle Ctrl+C
-        server_thread = threading.Thread(
-            target=eventlet.wsgi.server,
-            args=(eventlet_socket, app),
-            kwargs=kwargs,
-            daemon=True
-        )
-        server_thread.start()
+    def waitress_run(self, host=None, port=None) -> None:
+        from waitress import serve
 
         try:
-            while server_thread.is_alive():
-                time.sleep(0.5)
+            serve(self, host=host, port=port)
         except KeyboardInterrupt:
             pass
 

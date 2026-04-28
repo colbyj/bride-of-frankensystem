@@ -119,6 +119,6 @@ BOFS requires Python 3.9+, along with the following Python packages.
 * ``flask`` - The web framework that BOF is based off of.
 * ``sqlalchemy`` - An object-relational manager that is used for database table definitions and query access.
 * ``flask-sqlalchemy`` - A bridge between Flask and SQLAlchemy.
-* ``eventlet`` - This is used as the production (live) web server, as an alternative to Flask's built in web server or the Apache web server.
+* ``waitress`` - This is used as the production (live) web server, as an alternative to Flask's built in web server or the Apache web server.
 * ``toml`` - The configuration files use the toml format.
 

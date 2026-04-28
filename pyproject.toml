@@ -17,7 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "flask>=2.3.0",
-    "eventlet",
+    "waitress>=3.0.0",
     "sqlalchemy>=1.4.18",
     "flask-sqlalchemy>=3.0.0",
     "flask-compress",

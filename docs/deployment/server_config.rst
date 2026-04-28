@@ -89,7 +89,7 @@ The basic deployment process involves:
 
 1. **Environment Setup**: Create Python virtual environment and install BOFS
 2. **File Transfer**: Copy your experiment files to the server
-3. **Web Server**: Configure production web server (Eventlet + Nginx)
+3. **Web Server**: Configure production web server (Waitress + Nginx)
 4. **Database**: Set up production database (PostgreSQL for large studies)
 5. **Security**: Configure SSL certificates and secure access
 6. **Process Management**: Set up automatic service restart
@@ -146,10 +146,10 @@ Verify BOFS works in the production environment:
 Web Server Configuration
 ------------------------
 
-BOFS Built-in Server (Eventlet)
+BOFS Built-in Server (Waitress)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-BOFS includes an Eventlet-based production server that's suitable for most research applications:
+BOFS includes a Waitress-based production server that's suitable for most research applications:
 
 **Starting the Production Server**
 
