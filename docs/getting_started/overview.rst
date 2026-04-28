@@ -3,96 +3,55 @@ Overview
 
 What is BOFS?
 -------------
-Bride of Frankensystem (BOFS) is **an open-source framework that bridges the gap between simple survey tools and complex custom experiments, designed by researchers for researchers.**
 
-BOFS gives you complete control over your experiment flow and data collection. BOFS includes backend infrastructure, data management, and admin tools out of the box.
+Bride of Frankensystem (BOFS) is an open-source framework for building and running online behavioral experiments. It sits between general survey tools (which can't host arbitrary tasks) and a fully custom web app (which you'd otherwise build from scratch). BOFS provides the surrounding infrastructure — participant routing, condition assignment, questionnaires, data storage, and an admin panel — so you can focus on the experiment itself.
 
 How BOFS Development Works
 --------------------------
 
-BOFS follows a simple workflow that lets you create experiments safely before sharing them with participants:
+A BOFS project moves through three stages:
 
-1. **Develop Locally**: You create and test your experiment on your own computer (called "local development"). Only you can see it while you're building it.
+1. **Develop locally**. Build and run your experiment on your own machine. The project is a folder of configuration and content files that you can edit freely.
+2. **Test and debug**. Preview the experiment exactly as participants will see it. The admin panel and debug tools surface any errors before you go live.
+3. **Deploy to a server**. Copy the project to a web server when you're ready to recruit participants.
 
-2. **Test and Debug**: You can preview exactly what participants will see, fix any issues, and make sure everything works perfectly.
+Do I Need Programming Experience?
+---------------------------------
 
-3. **Deploy to Server**: When ready, you copy your experiment to a web server so participants anywhere can access it via a web link.
+For surveys, simple tasks, and A/B testing, no programming is required. You configure your experiment by editing a few plain text files — a settings file that controls the project's behaviour, questionnaire files that describe each set of questions, and HTML files for any custom content (like the consent page or task instructions). The format of each is documented with examples; you'll be copying and adapting more than writing from scratch.
 
+For interactive tasks (clicking on a canvas, dragging things around, watching a video and answering questions about it), some programming experience helps. JavaScript is the usual language for that kind of in-browser task. For tasks that need server-side logic — generating stimuli on the fly, talking to an external service, complex data processing — you'd write Python on top of BOFS. In both cases, BOFS handles the surrounding plumbing (sessions, routing, data storage), so the code you write is just the experiment-specific logic.
 
-**Do I Need Programming Experience?**
+BOFS is intended for behavioural researchers who need:
 
-For basic experiments (surveys, simple tasks, A/B testing), *minimal programming is required*. You'll work with configuration files and templates that use simple, readable formats. You can create simple custom pages by using HTML.
+* Custom experiment logic that goes beyond what a survey tool offers
+* Integration with external tasks (JavaScript, Unity WebGL, etc.)
+* Full ownership of the data, with no licensing fees or vendor lock-in
+* Built-in participant tracking, progress monitoring, and data export
 
-For advanced features (custom interactive tasks, complex data processing), *programming is helpful*. BOFS uses Python and web technologies, but provides a solid foundation to build on.
+How BOFS Compares
+-----------------
 
-BOFS is perfect for behavioral researchers who need:
-
-* **Custom experiment logic** that goes beyond simple questionnaires
-* **Integration with external tasks** (JavaScript tasks, Unity WebGL games, etc.)
-* **Complete data ownership** with no licensing fees or vendor lock-in
-* **Production-ready features** like participant tracking, progress monitoring, and data export
-
-Why Choose BOFS?
-----------------
-
-**vs. Survey Platforms (Qualtrics, Survey Monkey)**
-  * More flexible for custom experiments
-  * Better integration with external tasks  
-  * Open source with no licensing fees
-  * Programmer-friendly extensibility
+**vs. Survey Platforms (Qualtrics, SurveyMonkey)**
+  * Custom experimental tasks alongside questionnaires, not just questionnaires
+  * Open source with no licensing fees or vendor lock-in
+  * Direct access to the data and the code that collects it
 
 **vs. JavaScript Libraries for Online Experiments (jsPsych, lab.js)**
-  * Backend included with data management
-  * Admin interface to track participant progress
-  * Production-ready features (sessions, exports)
-  * Leverage technologies you already know to build experimental tasks (e.g., Unity)
+  * Backend included — sessions, data storage, condition assignment, admin panel
+  * Not an either/or — a jsPsych or lab.js task can run inside a BOFS project, with BOFS providing the consent flow, data storage, and admin panel around it
 
 **vs. Building from Scratch**
-  * Domain-specific features for behavioral research
-  * Participant tracking and condition assignment built-in
-  * Proven architecture used by real research labs
-  * Extensive documentation and examples
+  * Participant tracking, condition assignment, and consent flows ready out of the box
+  * Documentation and example projects to start from
 
-Getting Started Paths
----------------------
+Where to Go Next
+----------------
 
-**New to BOFS?** Start with the :doc:`installation guide <installation>`, then follow the :doc:`minimal quickstart tutorial </examples/quickstart>` to see BOFS in action.
+Start with the :doc:`installation guide <installation>`, then pick a quickstart depending on how you prefer to learn:
 
-**Need Simple Surveys?** Learn about :doc:`basic questionnaires </getting_started/basic_questionnaires>` and :doc:`simple custom pages </getting_started/simple_custom_pages>`.
-
-**Running A/B Tests?** Check out :doc:`conditional routing and A/B testing </getting_started/project_configuration>` and the :doc:`A/B experiment example </examples/ab_experiment>`.
-
-**Integrating Custom Tasks?** See :doc:`integrating JavaScript tasks </examples/integrating_js_task>` and :doc:`advanced custom pages </advanced/advanced_custom_pages>`.
-
-**Deploying to Production?** Read about :doc:`server configuration </deployment/server_config>` and :doc:`MTurk/Prolific integration </deployment/mturk_prolific>`.
-
-Key Features
-------------
-BOFS includes everything you need for online behavioral experiments:
-
-**Core Experiment Features**
-  * Automatic participant routing and progress tracking
-  * Random condition assignment with balanced allocation
-  * Built-in consent forms and completion codes
-  * Session management with participant recovery
-
-**Flexible Content System**
-  * JSON-defined questionnaires with many question types
-  * Static HTML pages for instructions and materials
-  * Custom Flask blueprints for complex interactive tasks
-  * Unity WebGL integration for games and simulations
-
-**Data Management**
-  * Automatic response storage with timestamps
-  * Custom database tables for experiment-specific data
-  * Real-time admin panel for monitoring progress
-  * CSV export with configurable data formats
-
-**Production Ready**
-  * Bot and crawler detection
-  * Honeypot implementation for data quality
-  * Abandoned participant recovery
-  * Integration with MTurk and Prolific
+* :doc:`Quickstart: Create a New Experiment <quickstart_create>` — generate a fresh project with the ``BOFS init`` wizard and build outward from there.
+* :doc:`Quickstart: Run an Existing Experiment <quickstart_existing>` — download the examples repository and walk through a working project end-to-end.
 
 Citation
 --------
@@ -114,11 +73,12 @@ If you use BOFS for your research, please cite it:
 
 Dependencies
 ------------
-BOFS requires Python 3.9+, along with the following Python packages.
 
-* ``flask`` - The web framework that BOF is based off of.
-* ``sqlalchemy`` - An object-relational manager that is used for database table definitions and query access.
-* ``flask-sqlalchemy`` - A bridge between Flask and SQLAlchemy.
-* ``eventlet`` - This is used as the production (live) web server, as an alternative to Flask's built in web server or the Apache web server.
-* ``toml`` - The configuration files use the toml format.
+BOFS requires Python 3.9+ and the following packages, which are installed automatically alongside BOFS:
+
+* ``flask`` — the web framework BOFS is built on.
+* ``sqlalchemy`` — an object-relational mapper used for database table definitions and queries.
+* ``flask-sqlalchemy`` — bridge between Flask and SQLAlchemy.
+* ``eventlet`` — production web server, used in place of Flask's built-in development server.
+* ``toml`` — parser for the TOML configuration files.
 

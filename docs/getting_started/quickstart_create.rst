@@ -1,14 +1,14 @@
-Quickstart Guide
-================
+Quickstart: Create a New Experiment
+====================================
 
-This guide will walk you through creating your first BOFS project. By the end, you'll have a working
-experiment with a consent form, participant ID collection, instructions, and a survey.
+This guide walks through creating a new BOFS project from scratch using the ``BOFS init`` wizard. By the end you'll have a working experiment with a consent form, participant ID collection, instructions, and a survey — generated from the wizard's prompts and ready to extend.
+
+If you'd rather start from a pre-built example project, see :doc:`quickstart_existing` instead.
 
 Prerequisites
 -------------
 
-Make sure BOFS is installed before continuing. If you haven't installed it yet, follow the
-:doc:`/getting_started/installation` guide first.
+Make sure BOFS is installed before continuing — see :doc:`installation`.
 
 Creating Your Project
 ---------------------
@@ -57,12 +57,10 @@ The wizard creates the following files:
         └── instructions/
             └── welcome.html             # Instructions page content
 
-Let's examine the key files.
-
 config.toml
 ~~~~~~~~~~~
 
-This is the main configuration file that controls your experiment:
+Configuration for the project — database, page list, admin password, and more:
 
 .. code-block:: toml
 
@@ -104,7 +102,7 @@ For a complete list of options, see :doc:`/reference/config_options`.
 consent.html
 ~~~~~~~~~~~~
 
-This file contains the HTML content for your consent form:
+The HTML shown on the consent page:
 
 .. code-block:: html
 
@@ -128,7 +126,7 @@ Edit this file to include your actual consent information before running a real 
 survey.json
 ~~~~~~~~~~~
 
-Questionnaires are defined in JSON format. Here's the structure of the generated survey:
+Questionnaires are defined in JSON. The generated survey looks like:
 
 .. code-block:: json
 
@@ -175,18 +173,12 @@ You should see output similar to:
     Listening on http://0.0.0.0:5000
     Preview locally at http://127.0.0.1:5000
 
-Open http://localhost:5000 in your browser to view your experiment.
-
-Stopping the Server
-~~~~~~~~~~~~~~~~~~~
-
-To stop BOFS, press **Ctrl+C** in the terminal where it's running. You'll see a message confirming
-the server has shut down.
+Open http://localhost:5000 in your browser to view your experiment. To stop the server, press **Ctrl+C** in the terminal.
 
 Walking Through the Experiment
 ------------------------------
 
-Let's go through each page a participant would see.
+Each page below is one stop in the participant's journey through the project the wizard generated.
 
 Consent Page
 ~~~~~~~~~~~~
@@ -240,8 +232,7 @@ This is automatically generated and can be configured in your config file.
 The Admin Panel
 ---------------
 
-Every BOFS project includes an admin panel at ``/admin``. Navigate to http://localhost:5000/admin
-and enter your admin password.
+Every BOFS project has an admin panel at ``/admin`` (so http://localhost:5000/admin for this project). Log in with the password you set in the wizard.
 
 .. image:: /examples/quickstart/page_admin.png
    :width: 800
@@ -249,29 +240,32 @@ and enter your admin password.
 
 The admin panel provides:
 
-- **Progress**: Real-time view of participant progress through the study
-- **Export**: Download collected data as CSV files
-- **Preview Questionnaires**: Test questionnaires without creating participant records
-- **Database Tables**: Browse the raw database contents
+- **Progress** — live view of each participant's place in the experiment
+- **Export** — download the collected data as CSV
+- **Preview Questionnaires** — render a questionnaire without creating a participant record
+- **Database Tables** — browse the underlying database
 
-For detailed documentation of admin features, see :doc:`/getting_started/admin`.
+Full reference: :doc:`/getting_started/admin`.
 
-Next Steps
-----------
+Up Next
+-------
 
-Now that you have a working project, here are some ways to extend it:
+.. note::
+    Continue with :doc:`tutorial_js_task`. It builds a second project — ``p5_example`` — using the same ``BOFS init`` scaffolding you just learned, and then layers a custom blueprint, a custom database table, and a JavaScript task on top. Everything you saw on this page (the wizard, ``config.toml``, ``consent.html``, ``PAGE_LIST``) carries over.
+
+Other Next Steps
+----------------
+
+Once you've finished the tutorial, the rest of the BOFS basics:
 
 **Customize your questionnaires**
-    Edit the JSON files in ``questionnaires/`` or create new ones. See :doc:`/getting_started/basic_questionnaires` for all available question types.
+    Edit the JSON files in ``questionnaires/`` or create new ones. See :doc:`/getting_started/basic_questionnaires`.
 
 **Add custom pages**
     Create HTML templates for tasks or additional content. See :doc:`/getting_started/simple_custom_pages`.
 
 **Set up experimental conditions**
     Randomly assign participants to different groups. See the conditions section in :doc:`/getting_started/project_configuration`.
-
-**Add custom logic with Python**
-    Create Flask blueprints for advanced functionality. See :doc:`/advanced/advanced_custom_pages`.
 
 **Store custom data**
     Define your own database tables for task data. See :doc:`/advanced/database_tables`.

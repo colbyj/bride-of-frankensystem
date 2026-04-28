@@ -1,5 +1,5 @@
 A/B Experiment Example
-=====================
+======================
 
 .. note::
     This is a placeholder page. Content will be added in a future update.

@@ -40,17 +40,11 @@ notice that if a "type" is not specified, then it defaults to being a string.
 Calculated Export Fields
 ------------------------
 
-By default, you can view and export data collected in your database tables on the Administration section of BOF, by
-viewing a table and clicking "Export as CSV". However, this approach requires additional data processing for all but
-the simplest use cases, and relevant information is often missing from this table (e.g., assigned condition) and must
-be added in after the export. A more automated approach that allows you to include all relevant information and
-transform your data in different ways involves defining rules for exporting data. Once defined, your desired data will
-be exported alongside all of the questionnaire data on the "Export" page in a "wide" format.
+The admin panel's per-table CSV export gives you the raw rows of a custom table. That's enough for some studies, but it doesn't include participant-level information like the assigned condition, and aggregating across rows (totals per participant, summary stats, repeated-measures pivots) has to happen after the export.
 
-These exports use the terminology and features of SQL, so if further clarification is needed, you can refer to a SQL
-tutorial (e.g., `https://www.sqlitetutorial.net/ <https://www.sqlitetutorial.net/>`_).
+Calculated exports let you define those aggregations alongside the table itself. Once defined, the calculated fields appear in the participant-level export on the admin panel's "Export" page, in wide format. The expressions use SQL syntax — if it's been a while, the `SQLite tutorial <https://www.sqlitetutorial.net/>`_ is a good refresher.
 
-Exports can be defined within the same file as the table by including an "exports" entry in the file.
+Add an ``"exports"`` entry to the table's JSON file:
 
 .. code-block:: JSON
 

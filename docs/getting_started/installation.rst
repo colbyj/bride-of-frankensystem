@@ -1,17 +1,7 @@
 Installation Instructions
 =========================
 
-This guide will help you install BOFS on your computer so you can create and test experiments locally before deploying them for participants.
-
-**What You'll Need**
-- A computer running Windows, Mac, or Linux
-- About 15 minutes
-- An internet connection for downloading software
-
-**What We'll Install**
-- **Python**: The programming language BOFS is built with
-- **BOFS**: The framework itself
-- **A text editor**: For editing configuration files (optional but recommended)
+BOFS runs on Windows, Mac, and Linux. You'll install Python, then BOFS itself, then a text editor to work with configuration files.
 
 Step 1: Install Python
 -----------------------
@@ -24,107 +14,94 @@ BOFS requires Python 3.9 or newer. Check if you already have Python:
 
 If you see something like "Python 3.9.x" or higher, you're good! If not, download Python from https://python.org.
 
-Step 2: Install BOFS (Recommended Method)
-------------------------------------------
+Step 2: Install BOFS
+--------------------
 
-We'll install BOFS in a "virtual environment" - think of this as a separate workspace that keeps BOFS organized and prevents conflicts with other software.
+Install BOFS into an isolated environment so its dependencies don't conflict with other Python projects on your machine. Pick whichever toolchain you're more comfortable with — both arrive at the same result.
 
-**2.1 Open Your Command Line**
+.. note::
+   If you only ever plan to work on a single BOFS project, you can skip the isolated environment entirely and install BOFS into your system Python with ``pip install bride-of-frankensystem``. Working on multiple projects this way can cause dependency conflicts down the line.
 
-- **Windows**: Search for "Command Prompt" or "PowerShell" and open it
-- **Mac**: Search for "Terminal" in Spotlight
-- **Linux**: Open your terminal application
+.. tabs::
 
-**2.2 Create a Workspace for BOFS**
+   .. tab:: pip + venv
 
-Type this command and press Enter:
-``python -m venv bofs_venv``
+      The standard approach using Python's built-in tools.
 
-This creates a folder called "bofs_venv" that will contain BOFS and its dependencies.
+      **2.1 Open Your Command Line**
 
-**2.3 Activate Your Workspace**
+      - **Windows**: Command Prompt or PowerShell
+      - **Mac**: Terminal (via Spotlight)
+      - **Linux**: your terminal application
 
-**Windows (Command Prompt)**: ``.\bofs_venv\Scripts\activate.bat``
+      **2.2 Create the Virtual Environment**
 
-**Windows (PowerShell)**: ``.\bofs_venv\Scripts\Activate.ps1``
+      ``python -m venv bofs_venv``
 
-**Mac/Linux**: ``source bofs_venv/bin/activate``
+      This creates a ``bofs_venv`` folder containing its own copy of Python. Anything you install while the environment is active goes here instead of into your system Python, so different projects can use different package versions without conflicting.
 
-You should see "(bofs_venv)" appear at the beginning of your command line, indicating the workspace is active.
+      **2.3 Activate It**
 
-**2.4 Install BOFS**
+      **Windows (Command Prompt)**: ``.\bofs_venv\Scripts\activate.bat``
 
-Type this command: ``pip install bride-of-frankensystem``
+      **Windows (PowerShell)**: ``.\bofs_venv\Scripts\Activate.ps1``
 
-This downloads and installs BOFS. It may take a few minutes.
+      **Mac/Linux**: ``source bofs_venv/bin/activate``
 
-**2.5 Test the Installation**
+      Your prompt should now be prefixed with ``(bofs_venv)``, which means subsequent ``python`` and ``pip`` commands will use the virtual environment. You'll need to activate the environment again each time you open a new terminal.
 
-Type: ``BOFS``
+      **2.4 Install BOFS**
 
-You should see a help message listing BOFS commands. If you see this, congratulations - BOFS is installed!
+      ``pip install bride-of-frankensystem``
 
+      ``pip`` is Python's package installer. This downloads BOFS and its dependencies from the Python Package Index and installs them into your virtual environment. It may take a minute or two.
 
-Alternative: Simple Installation
-----------------------------------
+      **2.5 Test the Installation**
 
-If you prefer a simpler approach (though less recommended for multiple projects):
+      Run ``BOFS``. You should see a help message listing the available commands.
 
-1. Open your command line
-2. Type: ``pip install bride-of-frankensystem``
-3. Test by typing: ``BOFS``
+   .. tab:: uv
 
-This installs BOFS system-wide but may cause issues if you work on multiple BOFS projects over time.
+      `uv <https://docs.astral.sh/uv/>`_ is a faster, newer Python package manager from Astral. Its ``uv tool`` command installs Python applications into their own isolated environments and adds them to your PATH, so you don't need to activate anything before running BOFS.
+
+      **2.1 Install uv**
+
+      Follow the `uv installation instructions <https://docs.astral.sh/uv/getting-started/installation/>`_ for your operating system.
+
+      **2.2 Install BOFS as a Tool**
+
+      ``uv tool install bride-of-frankensystem``
+
+      This creates a dedicated environment for BOFS behind the scenes and makes the ``BOFS`` command available globally. Open a new terminal afterwards so the updated PATH takes effect.
+
+      **2.3 Test the Installation**
+
+      Run ``BOFS``. You should see a help message listing the available commands.
 
 Step 3: Get a Text Editor or IDE
 --------------------------------
 
-You'll need to edit text files (configuration files, HTML templates). While you can use basic text editors like Notepad, these editors make the process much easier:
+You'll be editing config files and HTML templates. Any text editor works; these have syntax highlighting and project navigation that make the job easier:
 
-- **Visual Studio Code** (free, excellent for beginners): https://code.visualstudio.com
+- **Visual Studio Code** (free): https://code.visualstudio.com
 - **Sublime Text**: https://www.sublimetext.com
-
-These editors can be extended via plugins to better support Python code, but this isn't strictly necessary.
-
-Alternatively, download a fully-featured IDE such as PyCharm, which is specifically designed to work with Python projects.
-
-- **PyCharm**: https://www.jetbrains.com/pycharm/
-
-Step 4: Try Your First Experiment
-----------------------------------
-
-1. **Download Example Projects**: Get the examples from `here <https://github.com/colbyj/bride-of-frankensystem-examples/archive/refs/heads/master.zip>`_ and unzip them.
-
-2. **Navigate to the Example**: Open your command line and navigate to the minimal example folder.
-
-3. **Activate BOFS** (if you used the virtual environment): Run the activation command from Step 2.3 above.
-
-4. **Run the Example**: Type ``BOFS run minimal.toml -d``
-
-5. **View Your Experiment**: Open a web browser and go to ``http://localhost:5000``
-
-You should see a working experiment! Press Ctrl+C in the command line to stop it.
-
-**What Just Happened?**
-
-- BOFS read the ``minimal.toml`` configuration file
-- It started a local web server on your computer
-- You accessed your experiment through your web browser
-- The ``-d`` flag enabled debug mode (helpful while developing)
+- **PyCharm** (full IDE, with Python tooling built in): https://www.jetbrains.com/pycharm/
 
 Next Steps
 ----------
 
-- Continue with the :doc:`/examples/quickstart` to understand how the example works
-- Read about :doc:`/getting_started/project_configuration` to learn how to configure experiments
-- When ready to deploy for participants, see :doc:`/deployment/server_config`
+You're ready to build a BOFS project. There are two starting points:
 
-**Troubleshooting**
+* :doc:`quickstart_create` — generate a fresh project from scratch with the ``BOFS init`` wizard.
+* :doc:`quickstart_existing` — download the examples repository and run the *minimal example* to see a working project end-to-end.
+
+When you're ready to put your project in front of real participants, see :doc:`/deployment/server_config`.
+
+Troubleshooting
+---------------
 
 - **"python not found"**: Make sure Python is installed and added to your system PATH.
-- **"pip not found"**: If on Windows, make sure you allowed the installer to allow Python to your PATH. If on Linux, you may need to install ``pip`` separately.
-- **"BOFS not found"**: Make sure you activated your virtual environment (Step 2.3) and that BOFS was installed via ``pip``. You can also try ``python -m BOFS run config.toml``, which is equivalent.
+- **"pip not found"**: On Windows, make sure you allowed the installer to add Python to your PATH. On Linux, you may need to install ``pip`` separately.
+- **"BOFS not found"**: If you used pip + venv, make sure your virtual environment is activated. As a fallback, ``python -m BOFS run config.toml`` is equivalent to ``BOFS run config.toml``.
 - **"Permission denied"**: Try running your command line as administrator (Windows) or using ``sudo`` (Mac/Linux).
-- **"Address Already in Use"**: Try configuring your project to work with a different port (by editing the ``.toml`` config file).
-
-**Remember**: Each time you want to work with BOFS, you'll need to activate your virtual environment first (Step 2.3).
+- **"Address already in use"**: Another program is using the same port. Edit your project's ``.toml`` file to set a different ``PORT``.

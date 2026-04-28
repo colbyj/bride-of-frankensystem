@@ -1,40 +1,49 @@
-Accessing Participant Data
-=========================
+Accessing Participant Data in Templates and Routes
+===================================================
 
-This reference guide explains how to access participant data from templates, questionnaires, and custom pages in BOFS. Understanding these patterns is essential for creating dynamic content that adapts based on participant responses and progress.
+When you're writing a custom template (an instruction page, a simple page, a custom question type) or a custom blueprint route, you'll often want to use the participant's existing data — earlier questionnaire responses, rows from a custom table, the assigned condition, the project's configuration. This page covers the variables and methods BOFS exposes for that.
 
-Template Variables Overview
----------------------------
+Template Variables
+------------------
 
-BOFS automatically provides several variables in templates:
+BOFS provides these variables to every template it renders:
 
-==================== ========================================= ===================================
-Variable             Available In                              Description
-==================== ========================================= ===================================
-``participant``      Instructions, Simple pages, Questions    Current participant object with all data access methods
-``session``          All templates                             Flask session with participant ID, condition, etc.
-``debug``            All templates                             Boolean indicating if running in debug mode
-``config``           All templates                             Access to TOML configuration settings
-``flat_page_list``   All templates                             List of all pages in the experiment
-==================== ========================================= ===================================
+.. list-table::
+   :header-rows: 1
+   :widths: 20 35 45
+
+   * - Variable
+     - Available In
+     - Description
+   * - ``participant``
+     - Instructions, Simple pages, Questions
+     - Current participant object with all data access methods
+   * - ``session``
+     - All templates
+     - Flask session with participant ID, condition, etc.
+   * - ``debug``
+     - All templates
+     - Boolean indicating if running in debug mode
+   * - ``config``
+     - All templates
+     - Access to TOML configuration settings
+   * - ``flat_page_list``
+     - All templates
+     - List of all pages in the experiment
 
 The Participant Object
 ----------------------
 
-The ``participant`` variable provides access to all participant data through several key methods:
-
-Basic Participant Properties
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Basic Properties
+~~~~~~~~~~~~~~~~
 
 .. code-block:: html
 
-    <!-- Core participant information -->
     <p>Participant ID: {{ participant.participantID }}</p>
     <p>Condition: {{ participant.condition }}</p>
     <p>External ID: {{ participant.mTurkID }}</p>
     <p>Started: {{ participant.timeStarted }}</p>
-    
-    <!-- Status information -->
+
     {% if participant.finished %}
         <p>Completed: {{ participant.timeEnded }}</p>
         <p>Duration: {{ participant.display_duration() }}</p>
@@ -230,7 +239,7 @@ Advanced Usage Examples
 
 **Performance Feedback Based on Multiple Sources**
 
-.. code-block:: html
+.. code-block:: html+jinja
 
     {% set task_responses = participant.questionnaire('task_questions') %}
     {% set performance_data = participant.table('task_performance') %}
@@ -263,67 +272,26 @@ Advanced Usage Examples
     </div>
 
 
-Best Practices
---------------
-
-**Error Handling**
-
-Always check if data exists before using it:
-
-.. code-block:: html
-
-    {% set survey = participant.questionnaire('optional_survey') %}
-    
-    {% if survey and survey.completed %}
-        <p>Survey rating: {{ survey.rating }}</p>
-    {% else %}
-        <p>Optional survey not completed</p>
-    {% endif %}
-
-**Performance Considerations**
-
-- Cache complex calculations in variables
-- Avoid repeated database queries in loops
-- Use conditional logic to only process data when needed
-
-**Data Privacy**
-
-- Only display data that participants should see
-- Be careful about showing data from other participants
-- Consider what information is appropriate to display
-
-**Testing**
-
-- Test templates with participants in different conditions
-- Verify data access with both complete and incomplete responses
-- Check behavior when questionnaires or tables are empty
-
 Using Data in Custom Blueprint Routes
 -------------------------------------
 
-In custom Flask routes, access participant data through the model:
+In a custom Flask route, look up the participant by ID and use the same ``participant.questionnaire()`` / ``participant.table()`` methods, then pass whatever you need into ``render_template``:
 
 .. code-block:: python
 
     from flask import session
     from BOFS.default.models import Participant
-    
+
     @blueprint.route('/custom_analysis')
     def custom_analysis():
         participant = Participant.query.get(session['participantID'])
-        
-        # Access questionnaire data
+
         demographics = participant.questionnaire('demographics')
         task_data = participant.questionnaire('main_task')
-        
-        # Access custom table data
         performance = participant.table('task_performance')
-        
-        # Pass to template
+
         return render_template('custom_analysis.html',
                              participant=participant,
                              demographics=demographics,
                              task_data=task_data,
                              performance=performance)
-
-This comprehensive data access system allows you to create highly personalized and dynamic experiment experiences that adapt based on participant responses, performance, and progress through your study.

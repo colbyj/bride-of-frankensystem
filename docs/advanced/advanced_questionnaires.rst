@@ -1,12 +1,10 @@
 Advanced Questionnaires
-======================
-
-This section covers advanced questionnaire features including calculations, custom question types, and complex layouts.
+=======================
 
 Participant Calculations
 ------------------------
 
-You can perform calculations with questionnaire responses on a per-participant basis. This is useful for computing scores, scales, or derived metrics.
+A questionnaire can compute derived values from a participant's responses — scale scores, reverse-scored items, categorical bins. The result is stored alongside the raw responses and shows up in CSV exports.
 
 Calculations are defined in the ``participant_calculations`` section of your questionnaire:
 
@@ -67,11 +65,11 @@ Calculations can use any valid Python expression, including:
 
 
 Creating Custom Question Types
------------------------------
+------------------------------
 
-For maximum flexibility, you can create entirely custom question types using HTML templates.
+If none of the built-in question types fit, you can define your own by writing an HTML template. BOFS treats any file in ``templates/questions/`` as a custom question type, named after the file.
 
-**Step 1: Create Template File**
+**Step 1: Create the template**
 
 Create a file in your project's ``templates/questions/`` directory (e.g., ``custom_scale.html``):
 
@@ -107,9 +105,9 @@ Create a file in your project's ``templates/questions/`` directory (e.g., ``cust
     }
     </style>
 
-**Step 2: Use in Questionnaire**
+**Step 2: Reference it from a questionnaire**
 
-Reference your custom question type in your questionnaire JSON:
+In a questionnaire JSON, set ``questiontype`` to the template's filename (without the ``.html`` extension):
 
 .. code-block:: json
 
@@ -162,7 +160,7 @@ Then loop through them in your template:
     {% endfor %}
 
 Advanced Features
-----------------
+-----------------
 
 **Conditional Display**
 
@@ -216,33 +214,14 @@ Add client-side validation to custom question types:
     </script>
 
 Database Considerations
-----------------------
+-----------------------
 
-**Column Names**
+Question IDs become column names in the questionnaire's database table. Use lowercase with underscores (``my_question``, not ``MyQuestion``), start with a letter, and avoid SQL reserved words (``select``, ``from``, ``where``, etc.).
 
-Question IDs become database column names. Follow these guidelines:
-- Use lowercase with underscores (``my_question`` not ``MyQuestion``)
-- Start with a letter, not a number
-- Avoid SQL reserved words (``select``, ``from``, ``where``, etc.)
-
-**Data Types**
-
-BOFS automatically infers column types:
-
-- Text fields → TEXT
-- Number fields → INTEGER or FLOAT
-- All others → TEXT (JSON stored as string)
-
-**Schema Changes**
-
-When you modify questionnaires with existing data:
-1. Use the admin panel preview to add new columns automatically
-2. For complex changes, manually alter the database schema
-3. For development, delete the database file and restart
+BOFS infers column types from the question type — text fields map to ``TEXT``, number fields to ``INTEGER`` or ``FLOAT``, everything else to ``TEXT`` (JSON-encoded). For changing the schema after participants have submitted data, see "Modifying Questionnaires with Existing Data" in :doc:`../getting_started/basic_questionnaires`.
 
 Next Steps
 ----------
 
-- For database table customization, see :doc:`database_tables`
-- For integrating questionnaires with custom logic, see :doc:`advanced_custom_pages`
-- For complete examples, see :doc:`../examples/ab_experiment`
+* For custom database tables, see :doc:`database_tables`.
+* For tying questionnaires together with server-side logic, see :doc:`advanced_custom_pages`.

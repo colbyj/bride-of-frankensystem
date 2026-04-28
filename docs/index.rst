@@ -3,12 +3,10 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Bride of Frankensystem's documentation!
-==================================================
+Bride of Frankensystem
+======================
 
-Welcome to Bride of Frankensystem's documentation! If you're just getting started, start with the :doc:`getting_started/overview` to understand what BOFS is and how it can help your research.
-
-`Bride of Frankensystem <https://frankensystem.net>`_ (BOFS) is an open-source framework designed specifically for behavioral researchers who need more flexibility than survey platforms offer, but don't want to build everything from scratch.
+`Bride of Frankensystem <https://frankensystem.net>`_ (BOFS) is an open-source framework for behavioral researchers who need more flexibility than survey platforms offer, but don't want to build everything from scratch. New here? Start with the :doc:`getting_started/overview`.
 
 .. note::
     If you need additional help, please `join us on Discord <https://discord.gg/XzXtUKFCJA>`_.
@@ -20,6 +18,14 @@ Welcome to Bride of Frankensystem's documentation! If you're just getting starte
 
    getting_started/overview
    getting_started/installation
+   getting_started/quickstart_create
+   getting_started/quickstart_existing
+   getting_started/tutorial_js_task
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Create Your Own Experiment:
+
    getting_started/project_configuration
    getting_started/basic_questionnaires
    getting_started/simple_custom_pages
@@ -29,10 +35,18 @@ Welcome to Bride of Frankensystem's documentation! If you're just getting starte
    :maxdepth: 2
    :caption: Example Projects:
 
-   examples/quickstart
+   examples/example_projects
+   examples/p5_example
+   examples/advanced_example
+   examples/unity_example
+
+.. Placeholders kept in the doc graph (so existing :doc: cross-references resolve)
+   but hidden from navigation until they're filled in.
+.. toctree::
+   :hidden:
+
    examples/ab_experiment
    examples/longitudinal
-   examples/integrating_js_task
 
 .. toctree::
    :maxdepth: 2
@@ -47,6 +61,7 @@ Welcome to Bride of Frankensystem's documentation! If you're just getting starte
 
    advanced/advanced_custom_pages
    advanced/advanced_questionnaires
+   advanced/accessing_participant_data
    advanced/database_tables
    advanced/custom_styling
 
@@ -55,7 +70,6 @@ Welcome to Bride of Frankensystem's documentation! If you're just getting starte
    :caption: Reference:
 
    reference/cli-reference
-   reference/accessing_participant_data
    reference/config_options
    reference/question_types
    reference/default_routes

@@ -1,48 +1,32 @@
 Advanced Custom Pages
 =====================
 
-For complex interactive pages that go beyond simple HTML content, BOFS uses Flask Blueprints. This allows you to create fully custom pages with Python logic, dynamic content, data processing, and complex user interactions.
+For pages that need server-side logic — interactive tasks, form processing, dynamic content, or anything that talks to a custom database table or external API — BOFS uses `Flask Blueprints <https://flask.palletsprojects.com/en/latest/tutorial/views/>`_. A blueprint is a folder containing Python code, HTML templates, and static files (images, JavaScript), and BOFS auto-discovers any blueprint folder inside your project directory.
 
 .. note::
-    This section requires basic Python programming knowledge. If you just need simple instruction or content pages, see :doc:`../getting_started/simple_custom_pages` instead.
+    This section assumes basic Python programming knowledge. For static instruction or content pages that don't need any code, see :doc:`../getting_started/simple_custom_pages` instead.
 
-**When to Use Advanced Custom Pages**
+Blueprint Layout
+----------------
 
-- Interactive tasks (games, experiments, simulations)
-- Pages that need to process form data
-- Dynamic content based on participant responses
-- Integration with external APIs or services
-- Complex data validation or calculations
-
-Flask Blueprints in BOFS
-------------------------
-
-BOFS uses Flask's blueprint system to organize custom functionality. The Flask documentation describes `blueprints <https://flask.palletsprojects.com/en/latest/tutorial/views/>`_ as a way to organize groups of related views and other code.
-
-Your custom blueprints must be structured in a specific way and placed in their own directory inside your project's root directory.
-
-For example, consider a blueprint called "my_blueprint":
+Each blueprint lives in its own folder at the project root. For a blueprint named ``my_blueprint``:
 
 .. code-block:: text
 
     /my_blueprint/__init__.py
     /my_blueprint/views.py
-    /my_blueprint/templates
-    /my_blueprint/static
+    /my_blueprint/templates/
+    /my_blueprint/static/
 
-* ``__init__.py`` is a mandatory file to indicate that this is a Python package. It will typically be empty.
-* ``views.py`` is a mandatory file that contains your code for your custom Flask views (web pages).
+* ``__init__.py`` marks the folder as a Python package. It can be empty.
+* ``views.py`` holds your route definitions.
+* ``templates/`` holds Jinja2 HTML templates rendered by your routes.
+* ``static/`` holds static assets — images, JavaScript, CSS — served alongside the blueprint.
 
 The Views File
 --------------
 
-Views are made up of three different components.
-
-* **HTML templates**, which are defined in HTML and the Jinja2 templating system and are placed within ``/my_blueprint/templates``.
-* **Static files**, such as images and Javascript and are placed within ``/my_blueprint/static``.
-* **Python code** that controls what BOFS should do and display, within ``/my_blueprint/views.py``.
-
-Your ``views.py`` will initially look something like this (feel free to use this as a starting point in your own blueprint):
+Your ``views.py`` starts out something like this:
 
 .. code-block:: python
     :caption: views.py
@@ -58,20 +42,17 @@ Your ``views.py`` will initially look something like this (feel free to use this
                              static_folder='static')
 
 
-The arguments passed to the ``Blueprint()`` constructor generally do not need to be adjusted (aside from the name, "my_blueprint").
-If you want to learn more about how this works then refer to the Flask documentation.
-
+The ``Blueprint()`` arguments rarely need adjusting beyond the name. The Flask documentation explains the constructor in full if you're curious.
 
 Creating Routes
 ---------------
 
-Routes define the actual pages that users can visit. This documentation will not go into much detail as to how routes
-work, so if you have further questions, do visit the Flask documentation and see if your questions are answered there.
+Routes define the pages users can visit. The Flask documentation covers routing in depth; this section sticks to BOFS-specific concerns.
 
 Writing Code
 ~~~~~~~~~~~~
 
-In BOFS, your routes will look something like this (this route is directly from the `advanced example <https://github.com/colbyj/bride-of-frankensystem-examples/blob/master/advanced_example/my_blueprint/views.py>`_):
+A typical route, taken from the `advanced example <https://github.com/colbyj/bride-of-frankensystem-examples/blob/master/advanced_example/my_blueprint/views.py>`_:
 
 .. code-block:: python
     :caption: views.py
@@ -98,31 +79,17 @@ In BOFS, your routes will look something like this (this route is directly from 
 
         return render_template("task.html", example="This is example text.", incorrect=incorrect)
 
-This ``task()`` function has three decorators on it. The first one (``@my_blueprint.route()``) registers the function as
-a route associated with the ``/task`` URL, and indicates that the URL will accept POST requests (e.g., form submissions)
-and GET requests (in which the user asks to see what is at that URL). Note that within the function, ``request.method``
-is checked and if it is a POST request, then something is added to the database.
+Three decorators are stacked on this route:
 
-The second decorator (``@verify_correct_page``) ensures that the user does not access this page except for when accessed
-by following the order defined within ``PAGE_LIST``.
+* ``@my_blueprint.route("/task", methods=['POST', 'GET'])`` registers the function at ``/task`` and accepts both GET (loading the page) and POST (form submission) requests.
+* ``@verify_correct_page`` prevents participants from visiting this page out of order — they have to reach it by following ``PAGE_LIST``.
+* ``@verify_session_valid`` redirects participants to the first page of ``PAGE_LIST`` if their session is missing the expected values.
 
-The third decorator (``@verify_session_valid``) checks that the user has the correct session values set and if not,
-redirects them to the first page listed in ``PAGE_LIST``.
+The function has two return paths. On a GET (or a wrong POST answer), it renders ``task.html`` with the ``example`` and ``incorrect`` variables. On a correct POST it writes the answer to the ``answers`` table and redirects to ``/redirect_next_page``, which sends the participant to the next entry in ``PAGE_LIST``.
 
-This function has two return values. At the bottom, the return value of the function in this example renders a template
-that will show the user the task. Two variables are sent to the template that configure aspects of how the template
-should render to the participant (``example`` and ``incorrect``). If a POST request was made, then an alternative return
-value is to do a redirection to ``/redirect_next_page``, which takes the user to the next page in ``PAGE_LIST`` after
-the ``/task`` page.
+.. tip:: Run the advanced example project locally and visit its ``/task`` page to see this in action.
 
-.. tip:: To better understand this example, you may want to run the provided advanced example project and see what ``/task`` looks like for yourself.
-
-
-Database Tables
-~~~~~~~~~~~~~~~
-
-This example makes use of a database table. For more information on how to use database tables in your custom routes,
-see :doc:`database_tables`.
+The example also writes to a custom database table (``db.answers()``); custom tables are described in :doc:`database_tables`.
 
 Accessing Questionnaire Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,7 +121,7 @@ Therefore, for a questionnaire named "demographics" and a question id of "age", 
     age = participant.questionnaire('demographics').age
 
 
-For more details, please see :doc:`/reference/accessing_participant_data`.
+For more details, please see :doc:`accessing_participant_data`.
 
 
 Redirecting Participants

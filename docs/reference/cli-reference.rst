@@ -1,20 +1,15 @@
 CLI Reference
 =============
 
-This page provides comprehensive documentation for the Bride of Frankensystem (BOFS) command-line interface.
+BOFS provides two commands:
 
-Commands Overview
------------------
-
-BOFS provides two main commands:
-
-- ``BOFS init`` - Create a new project interactively
-- ``BOFS run <config>`` (or simply ``BOFS <config>``) - Run an existing project
+- ``BOFS init`` — create a new project interactively.
+- ``BOFS run <config>`` (or simply ``BOFS <config>``) — run an existing project.
 
 init Command
 ------------
 
-The ``init`` command launches an interactive wizard that guides you through creating a new BOFS project.
+``BOFS init`` launches an interactive wizard that scaffolds a new project.
 
 .. code-block:: bash
 
@@ -352,6 +347,7 @@ See Also
 --------
 
 - :doc:`/getting_started/installation` - Installation instructions
-- :doc:`/examples/quickstart` - Getting started guide
+- :doc:`/getting_started/quickstart_create` - Generate a project with ``BOFS init``
+- :doc:`/getting_started/quickstart_existing` - Download and run an example project
 - :doc:`/reference/config_options` - Configuration reference
 - :doc:`/getting_started/admin` - Admin panel documentation

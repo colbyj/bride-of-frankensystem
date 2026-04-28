@@ -7,3 +7,4 @@ toml
 bride-of-frankensystem
 sphinx
 sphinx-rtd-theme
+sphinx-tabs

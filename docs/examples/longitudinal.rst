@@ -1,5 +1,5 @@
 Longitudinal Experiments
-=======================
+========================
 
 .. note::
     This is a placeholder page. Content will be added in a future update.

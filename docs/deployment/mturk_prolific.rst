@@ -1,239 +1,22 @@
 MTurk and Prolific Integration
 ==============================
 
-This guide covers how to configure BOFS experiments for deployment on crowdsourcing platforms like Amazon Mechanical Turk (MTurk) and Prolific. BOFS provides built-in support for external platform integration through configurable external ID handling, completion codes, and session management.
+This guide covers how to configure a BOFS project for recruiting through Amazon Mechanical Turk or Prolific. Most of the wiring is the same across platforms — capturing the participant's ID from a URL parameter, optionally letting them resume an interrupted session, and either showing a completion code or redirecting them back to the platform when they're done. The platform-specific parts are limited to URL formats and the completion-redirect target.
 
-.. note::
-    This page focuses on platform integration configuration. For server deployment and hosting setup, see :doc:`server_config`.
+For server deployment (TLS, systemd, Nginx), see :doc:`server_config`.
 
-Overview of Platform Integration
---------------------------------
+External IDs
+------------
 
-BOFS supports crowdsourcing platforms through several key features:
+An *external ID* is the participant identifier issued by the recruiting platform (MTurk Worker ID, Prolific PID, etc.). BOFS can capture it two ways.
 
-- **External ID Collection**: Automatic capture of participant IDs from URL parameters or dedicated collection pages
-- **Session Persistence**: Ability to resume incomplete sessions based on external IDs
-- **Completion Codes**: Automatic generation or static completion codes for platform submission
-- **Return URLs**: Configurable redirect URLs back to external platforms
-- **Quality Control**: Duplicate prevention and session recovery mechanisms
+**1. URL parameter (automatic).** When a participant arrives via a link that includes a known parameter, BOFS picks it up without showing them anything. The recognised parameters are:
 
-Amazon Mechanical Turk Integration
------------------------------------
+- ``external_id`` — generic
+- ``PROLIFIC_PID`` — Prolific
+- ``mTurkID`` — MTurk (legacy)
 
-Basic MTurk Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Add these settings to your TOML configuration file for MTurk integration:
-
-.. code-block:: toml
-
-    # Basic Settings
-    TITLE = "Research Study - MTurk"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///mturk_study.db"
-    SECRET_KEY = "your-unique-secret-key-here"
-    ADMIN_PASSWORD = "secure_admin_password"
-
-    # MTurk Integration Settings
-    EXTERNAL_ID_LABEL = "MTurk Worker ID"
-    EXTERNAL_ID_PROMPT = "Please enter your MTurk Worker ID exactly as it appears in your dashboard."
-    
-    # Completion Code Configuration
-    GENERATE_COMPLETION_CODE = true
-    COMPLETION_CODE_MESSAGE = "Please copy this completion code and paste it into the MTurk HIT to receive payment:"
-    
-    # Session Management
-    RETRIEVE_SESSIONS = true  # Load a user's session via their Worker ID if they try to access the task from the start again
-    ALLOW_RETAKES = false     # Prevent a worker from completing the task twice
-
-.. image:: /examples/quickstart/page_external_id.png
-  :width: 800
-  :alt: The external ID page.
-
-.. image:: /examples/quickstart/page_end.png
-  :width: 800
-  :alt: The end page.
-
-Setting Up MTurk HITs
-~~~~~~~~~~~~~~~~~~~~~
-
-When creating your HIT in MTurk, you have two options for participant ID collection:
-
-**Option A: URL Parameter (Recommended)**
-
-Set your HIT URL to automatically pass the Worker ID:
-
-.. code-block:: text
-
-    https://yourdomain.com/consent?external_id=${mturk.workerId}
-
-**Option B: Manual Entry**
-
-Use a simple URL and include the external ID collection page:
-
-.. code-block:: text
-
-    https://yourdomain.com/consent
-
-**Configuration for Both Options**
-
-Add the external ID page to your PAGE_LIST:
-
-.. code-block:: toml
-
-    PAGE_LIST = [
-        {name="Consent", path="consent"},
-        {name="Worker ID", path="external_id"},
-        {name="Study", path="questionnaire/main"},
-        {name="End", path="end"}
-    ]
-
-For option A, the input field for the external ID will be automatically populated with the Worker ID.
-
-MTurk Completion Handling
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Generated Completion Codes**
-
-BOFS can generate unique completion codes for each participant:
-
-.. code-block:: toml
-
-    GENERATE_COMPLETION_CODE = true
-    COMPLETION_CODE_MESSAGE = "Please copy this completion code and paste it into the MTurk HIT to receive payment:"
-
-**Static Completion Codes**
-
-For studies where all participants use the same code:
-
-.. code-block:: toml
-
-    GENERATE_COMPLETION_CODE = false
-    STATIC_COMPLETION_CODE = "BOFS2024"
-    COMPLETION_CODE_MESSAGE = "Your completion code is: BOFS2024"
-
-**Return URL Integration**
-
-To redirect participants back to MTurk after completion:
-
-.. code-block:: toml
-
-    # Replace with your actual MTurk submission URL
-    OUTGOING_URL = "https://workersandbox.mturk.com/mturk/externalSubmit?assignmentId=ASSIGNMENT_ID_FROM_HIT"
-
-.. note::
-    You cannot use both ``GENERATE_COMPLETION_CODE = true`` and ``OUTGOING_URL`` together. Choose one approach based on your HIT setup.
-
-Advanced MTurk Features
-~~~~~~~~~~~~~~~~~~~~~~~
-
-**Multiple HITs per Worker**
-
-To allow workers to complete multiple HITs (you usually don't want this for studies or experiments):
-
-.. code-block:: toml
-
-    ALLOW_RETAKES = true
-    RETRIEVE_SESSIONS = false
-
-**Session Recovery**
-
-To help workers who accidentally close their browser load their progress:
-
-.. code-block:: toml
-
-    RETRIEVE_SESSIONS = true
-    ALLOW_RETAKES = false
-
-Prolific Integration
---------------------
-
-Basic Prolific Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Prolific has specific requirements for participant ID handling and completion:
-
-.. code-block:: toml
-
-    # Basic Settings
-    TITLE = "Research Study - Prolific"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///prolific_study.db"
-    SECRET_KEY = "your-unique-secret-key-here"
-    ADMIN_PASSWORD = "secure_admin_password"
-
-    # Prolific Integration Settings
-    EXTERNAL_ID_LABEL = "Prolific ID"
-    EXTERNAL_ID_PROMPT = "Your Prolific ID should be automatically detected. If not, please enter it manually."
-    
-    # Completion Configuration (no code generation for Prolific)
-    GENERATE_COMPLETION_CODE = false
-    OUTGOING_URL = "https://app.prolific.co/submissions/complete?cc=COMPLETION_CODE"
-    
-    # Session Management
-    RETRIEVE_SESSIONS = true
-    ALLOW_RETAKES = false
-
-    PAGE_LIST = [
-        {name="Consent", path="consent"},
-        {name="Prolific ID", path="external_id"},
-        {name="Study", path="questionnaire/main"},
-        {name="End", path="end"}
-    ]
-
-
-Setting Up Prolific Studies
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-In your Prolific study setup, set the study URL to:
-
-.. code-block:: text
-
-    https://yourdomain.com/consent?PROLIFIC_PID={{%PROLIFIC_PID%}}
-
-BOFS automatically captures the ``PROLIFIC_PID`` parameter and stores it as the participant's external ID.
-
-Prolific Completion Requirements
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Prolific requires participants to be redirected to a specific completion URL. Configure it with your study's completion code:
-
-.. code-block:: toml
-
-    OUTGOING_URL = "https://app.prolific.co/submissions/complete?cc=C1ABC123"
-
-Replace ``C1ABC123`` with your actual Prolific completion code found in your study settings.
-
-Custom Completion Pages for Prolific
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-If you need custom completion handling, you can skip the automatic redirect and customize the end page template:
-
-.. code-block:: toml
-
-    # Don't use OUTGOING_URL for custom completion pages
-    GENERATE_COMPLETION_CODE = false
-
-Then customize your ``templates/end.html`` template to show Prolific-specific instructions.
-
-
-External ID Management In General
----------------------------------
-
-Understanding External ID Collection
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-BOFS can collect external IDs (participant identifiers from external platforms) in two ways:
-
-**1. URL Parameters (Automatic)**
-
-BOFS automatically processes these URL parameters:
-
-- ``external_id``: Generic external platform ID
-- ``PROLIFIC_PID``: Prolific participant ID  
-- ``mTurkID``: MTurk Worker ID (for backward compatibility)
-
-**2. Manual Entry**
-
-Include the ``external_id`` page in your PAGE_LIST to prompt participants:
+**2. Manual entry page.** Add the ``external_id`` page to your ``PAGE_LIST`` and BOFS prompts the participant to type their ID:
 
 .. code-block:: toml
 
@@ -244,58 +27,46 @@ Include the ``external_id`` page in your PAGE_LIST to prompt participants:
         {name="End", path="end"}
     ]
 
-Customizing External ID Collection
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+When a known URL parameter is present, the manual page pre-fills the field with it, so it's safe to include the page either way.
 
-Configure the external ID collection interface:
+Customise the label and prompt:
 
 .. code-block:: toml
 
     EXTERNAL_ID_LABEL = "Your Platform Participant ID"
     EXTERNAL_ID_PROMPT = "Please enter the participant ID provided by the research platform."
 
-Session Management Options
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. image:: /examples/quickstart/page_external_id.png
+  :width: 800
+  :alt: The external ID page.
 
-Control how BOFS handles returning participants:
+Session Management
+------------------
+
+Two settings control what happens when a participant returns with an external ID that's already been seen:
 
 .. code-block:: toml
 
-    # Allow participants to resume incomplete sessions
-    RETRIEVE_SESSIONS = true
-    
-    # Prevent duplicate participation (default)
-    ALLOW_RETAKES = false
-    
-    # Allow multiple participations from same ID
-    ALLOW_RETAKES = true
+    RETRIEVE_SESSIONS = true   # Resume incomplete sessions for known IDs
+    ALLOW_RETAKES = false      # Prevent the same ID from completing twice
 
-When ``RETRIEVE_SESSIONS = true``, BOFS will:
+With ``RETRIEVE_SESSIONS = true``, BOFS checks each external ID against existing participants, loads the previous session if it's incomplete, resumes from the last completed page, and preserves the original condition assignment. The combination above is the right default for crowdsourced studies — it lets workers who closed their browser come back, while preventing repeat submissions.
 
-1. Check if an external ID has been used before
-2. Load the previous session if incomplete
-3. Resume from the last completed page
-4. Preserve condition assignments
+Completion
+----------
 
-Completion Code Strategies
---------------------------
+There are three options for how a participant's run ends, configured in TOML:
 
-Generated Completion Codes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For unique codes per participant:
+**Generated completion code** (a unique code per participant):
 
 .. code-block:: toml
 
     GENERATE_COMPLETION_CODE = true
-    COMPLETION_CODE_MESSAGE = "Please enter this code to complete the study:"
+    COMPLETION_CODE_MESSAGE = "Please copy this completion code and paste it into the HIT to receive payment:"
 
-BOFS creates UUID-based unique codes automatically.
+BOFS generates a UUID-derived code automatically.
 
-Static Completion Codes
-~~~~~~~~~~~~~~~~~~~~~~~
-
-For the same code across all participants:
+**Static completion code** (the same code for everyone):
 
 .. code-block:: toml
 
@@ -303,68 +74,106 @@ For the same code across all participants:
     STATIC_COMPLETION_CODE = "STUDY2024"
     COMPLETION_CODE_MESSAGE = "Your completion code is: STUDY2024"
 
-Redirect-Only Completion
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-To skip completion codes and redirect immediately:
+**Redirect** (skip the code entirely and send the participant back to the platform):
 
 .. code-block:: toml
 
     GENERATE_COMPLETION_CODE = false
-    OUTGOING_URL = "https://external-platform.com/complete"
+    OUTGOING_URL = "https://app.prolific.co/submissions/complete?cc=C1ABC123"
 
+.. note::
+    ``GENERATE_COMPLETION_CODE = true`` and ``OUTGOING_URL`` are mutually exclusive — pick one.
 
+.. image:: /examples/quickstart/page_end.png
+  :width: 800
+  :alt: The end page.
 
-Troubleshooting Common Issues
------------------------------
+MTurk
+-----
 
-Debug Mode for Troubleshooting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For MTurk you typically want a generated completion code (workers paste it into the HIT to claim payment).
 
-Run BOFS in debug mode for detailed error information:
+**HIT URL.** When creating the HIT in MTurk, set the URL to pass the Worker ID as a parameter:
 
-.. code-block:: bash
+.. code-block:: text
 
-    BOFS config.toml -d
+    https://yourdomain.com/consent?external_id=${mturk.workerId}
 
-Debug mode provides:
+You can also leave it as ``https://yourdomain.com/consent`` and rely on the manual ``external_id`` page if you'd rather have the worker confirm their ID.
 
-- Detailed error messages in the browser
-- Console logging of configuration issues  
-- Step-by-step request processing information
-- Database query logging
-
-Admin Panel Monitoring
-~~~~~~~~~~~~~~~~~~~~~~
-
-Use the admin panel to monitor external platform integration:
-
-1. Navigate to ``/admin`` with your admin password
-2. View the **Participants** table to check external ID storage
-3. Check the **Progress** table for session flow tracking
-4. Monitor **Results** for questionnaire response collection
-
-Security Considerations
------------------------
-
-External ID Privacy
-~~~~~~~~~~~~~~~~~~~
-
-- External IDs are stored in the database along with responses
-- Consider anonymization requirements for your research
-- MTurk Worker IDs and Prolific IDs are considered personal identifiers
-- Follow your institution's IRB guidelines for external ID handling
-
-Configuration Security
-~~~~~~~~~~~~~~~~~~~~~~
-
-Always use strong, unique secret keys:
+**Example TOML for MTurk:**
 
 .. code-block:: toml
 
-    SECRET_KEY = "generated-secret-key-here-not-simple-text"
+    TITLE = "Research Study - MTurk"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///mturk_study.db"
+    SECRET_KEY = "your-unique-secret-key-here"
+    ADMIN_PASSWORD = "secure_admin_password"
 
-Generate secure keys using:
+    EXTERNAL_ID_LABEL = "MTurk Worker ID"
+    EXTERNAL_ID_PROMPT = "Please enter your MTurk Worker ID exactly as it appears in your dashboard."
+
+    GENERATE_COMPLETION_CODE = true
+    COMPLETION_CODE_MESSAGE = "Please copy this completion code and paste it into the MTurk HIT to receive payment:"
+
+    RETRIEVE_SESSIONS = true
+    ALLOW_RETAKES = false
+
+    PAGE_LIST = [
+        {name="Consent", path="consent"},
+        {name="Worker ID", path="external_id"},
+        {name="Study", path="questionnaire/main"},
+        {name="End", path="end"}
+    ]
+
+If you want to redirect workers back to MTurk's external-submit endpoint instead of showing a code, set ``OUTGOING_URL`` to the MTurk submit URL and disable the generated code.
+
+Prolific
+--------
+
+Prolific provides each study with a completion URL containing the study's completion code. Participants must hit that URL for the platform to credit their submission, so the redirect approach is the natural fit.
+
+**Study URL.** Configure the Prolific study URL as:
+
+.. code-block:: text
+
+    https://yourdomain.com/consent?PROLIFIC_PID={{%PROLIFIC_PID%}}
+
+BOFS picks up ``PROLIFIC_PID`` automatically and stores it as the external ID.
+
+**Example TOML for Prolific:**
+
+.. code-block:: toml
+
+    TITLE = "Research Study - Prolific"
+    SQLALCHEMY_DATABASE_URI = "sqlite:///prolific_study.db"
+    SECRET_KEY = "your-unique-secret-key-here"
+    ADMIN_PASSWORD = "secure_admin_password"
+
+    EXTERNAL_ID_LABEL = "Prolific ID"
+    EXTERNAL_ID_PROMPT = "Your Prolific ID should be automatically detected. If not, please enter it manually."
+
+    GENERATE_COMPLETION_CODE = false
+    OUTGOING_URL = "https://app.prolific.co/submissions/complete?cc=C1ABC123"
+
+    RETRIEVE_SESSIONS = true
+    ALLOW_RETAKES = false
+
+    PAGE_LIST = [
+        {name="Consent", path="consent"},
+        {name="Prolific ID", path="external_id"},
+        {name="Study", path="questionnaire/main"},
+        {name="End", path="end"}
+    ]
+
+Replace ``C1ABC123`` with your study's actual completion code from Prolific. If you want a custom completion page instead of an immediate redirect, leave ``OUTGOING_URL`` unset and override ``templates/end.html`` with Prolific-specific instructions.
+
+Security
+--------
+
+External IDs are personally identifiable. MTurk Worker IDs and Prolific PIDs in particular can be linked back to the participant's account and other studies they've taken part in. They're stored in the database alongside the participant's responses, so check your IRB's guidance on retention and consider whether your analysis pipeline needs to anonymise them.
+
+Generate a strong ``SECRET_KEY`` (used for session cookies) with the standard library:
 
 .. code-block:: python
 
@@ -372,45 +181,17 @@ Generate secure keys using:
     print(secrets.token_hex(32))
 
 .. warning::
-    Never commit secret keys to public version control or share them publicly.
+    Never commit ``SECRET_KEY`` or ``ADMIN_PASSWORD`` to public version control.
 
-Best Practices
---------------
+Troubleshooting
+---------------
 
-**Pre-Deployment**
+**Debug mode** surfaces detailed error messages, request flow, and database query logs:
 
-1. **Always test integration** with a small pilot study before full deployment
-3. **Test session recovery** scenarios thoroughly with realistic interruptions
-4. **Document your specific configuration** for future reference and replication
+.. code-block:: bash
 
-**During Data Collection**
+    BOFS run config.toml -d
 
-1. **Monitor the admin panel** regularly during active data collection
-2. **Keep completion instructions clear** and platform-specific
-3. **Watch for duplicate external IDs** that might indicate configuration issues
-4. **Backup your database** regularly during active studies
-5. **Collect data in small batches** to avoid overloading the server
+The browser also gets a debug toolbar at the bottom of each page during ``-d`` runs.
 
-**Platform-Specific Guidelines**
-
-- **MTurk**: Use qualification requirements to pre-screen participants when possible
-- **Prolific**: Take advantage of Prolific's built-in screening and demographic filters  
-- **Both**: Clearly communicate completion requirements in your study description
-
-**Quality Control**
-
-1. Consider adding attention checks to your questionnaires
-2. Monitor participant completion times in the admin panel
-3. Use the ``ABANDONED_MINUTES`` setting to identify incomplete sessions and ensure participants are balanced between conditions
-
-Next Steps
-----------
-
-After configuring your platform integration:
-
-- **Deploy your experiment to a server**: See :doc:`server_config` for production deployment guidance
-- **Monitor data collection**: Use the admin panel to track participant progress
-- **Export your data**: Use the built-in CSV export functionality for analysis
-
-.. note::
-    Remember that changes to questionnaires after data collection begins may require database management. Always test configuration changes on a separate instance of the database first.
+**Admin panel** is the fastest way to verify external IDs are being captured and sessions are being recovered correctly. Check the ``Participant`` table for stored IDs and the ``Progress`` table for session flow. Watching for duplicate IDs there is a good way to catch configuration mistakes before they affect a real cohort.

@@ -1,15 +1,12 @@
 Basic Questionnaires
 ====================
 
-BOFS includes a powerful questionnaire system for collecting survey data from participants. Questionnaires are defined using JSON files, making them easy to create, modify, and share across projects.
-
-.. note::
-    One questionnaire = one page in your experiment. If you need multiple pages of questions, create multiple questionnaire files.
+Questionnaires in BOFS are defined as JSON files in your project's ``questionnaires/`` directory. Each file is one questionnaire and renders as one page; for multiple pages of questions, create multiple files.
 
 Creating Your First Questionnaire
 ----------------------------------
 
-Questionnaires are stored as ``.json`` files in your project's ``questionnaires/`` directory. Here's the basic structure:
+A minimal questionnaire looks like this:
 
 .. code-block:: json
 
@@ -32,9 +29,9 @@ Questionnaires are stored as ``.json`` files in your project's ``questionnaires/
         ]
     }
 
-**Complete Questionnaire Structure**
+**Full set of top-level properties**
 
-For more complex questionnaires, you can use additional optional properties. For example, if you want to remember the source of a questionnaire, you can include the following properties:
+A questionnaire can also include citation metadata, runtime JavaScript, and per-participant calculations:
 
 .. code-block:: json
 
@@ -82,118 +79,32 @@ Property            Required   Description
 Common Question Types
 ---------------------
 
-Text Input
-^^^^^^^^^^
+A few representative examples follow. The full set of question types — checklists, dropdowns, sliders, multi-line text, and so on — along with every supported property, lives in :doc:`../reference/question_types`.
 
-  For short text responses:
-
-  .. code-block:: json
-
-      {
-          "id": "name",
-          "questiontype": "field",
-          "instructions": "What is your name?"
-      }
-
-Number Input
-^^^^^^^^^^^^
-
-  For numeric responses:
-
-  .. code-block:: json
-
-      {
-          "id": "age",
-          "questiontype": "num_field",
-          "instructions": "What is your age?",
-          "min": 18,
-          "max": 99
-      }
-
-Multiple Choice (Radio List)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-  For single selection from options:
-
-  .. code-block:: json
-
-      {
-          "id": "satisfaction",
-          "questiontype": "radiolist",
-          "instructions": "How satisfied are you?",
-          "labels": ["Very satisfied", "Satisfied", "Neutral", "Dissatisfied", "Very dissatisfied"]
-      }
-
-Checkboxes
-^^^^^^^^^^
-
-  For multiple selections:
-
-  .. code-block:: json
-
-      {
-          "questiontype": "checklist",
-          "instructions": "Select your interests:",
-          "questions": [
-              {"id": "music", "text": "Music"},
-              {"id": "sports", "text": "Sports"},
-              {"id": "reading", "text": "Reading"},
-              {"id": "travel", "text": "Travel"},
-              {"id": "technology", "text": "Technology"}
-          ]
-      }
-
-**With Text Entry**
-
-You can allow participants to add custom text to specific options:
+**Single-line text** (``field``)
 
 .. code-block:: json
 
     {
-        "questiontype": "checklist",
-        "instructions": "Select your interests:",
-        "questions": [
-            {"id": "music", "text": "Music"},
-            {"id": "other", "text": "Other", "text_entry": true, "text_entry_width": 200}
-        ]
+        "id": "name",
+        "questiontype": "field",
+        "instructions": "What is your name?"
     }
 
-Dropdown Menu
-^^^^^^^^^^^^^
+**Single-choice from a list of labels** (``radiolist``)
 
-  For single selection from a long list:
+.. code-block:: json
 
-  .. code-block:: json
+    {
+        "id": "satisfaction",
+        "questiontype": "radiolist",
+        "instructions": "How satisfied are you?",
+        "labels": ["Very satisfied", "Satisfied", "Neutral", "Dissatisfied", "Very dissatisfied"]
+    }
 
-      {
-          "id": "country",
-          "questiontype": "drop_down",
-          "instructions": "Select your country:",
-          "items": ["United States", "Canada", "United Kingdom", "Other"]
-      }
+**Rating multiple items on the same scale** (``radiogrid``)
 
-
-Slider Scale
-^^^^^^^^^^^^
-
-  For slider scales:
-
-  .. code-block:: json
-
-      {
-          "id": "confidence",
-          "questiontype": "slider",
-          "instructions": "Rate your confidence:",
-          "left": "Not confident",
-          "right": "Very confident",
-          "tick_count": 101
-      }
-
-
-Radio Grids
-^^^^^^^^^^^
-
-Radio grids allow participants to rate multiple items using the same scale, displayed in a table format:
+Renders as a table where each row is an item to rate and each column is a point on the scale.
 
 .. code-block:: json
 
@@ -214,17 +125,7 @@ Radio grids allow participants to rate multiple items using the same scale, disp
         ]
     }
 
-This creates a table where each row is an item to rate and each column is a rating option.
-
-Additional Radiogrid Options:
-
-- ``shuffle: true`` - Randomize the order of questions
-- ``required: true`` - Make all questions in the grid required
-
-
-.. note::
-
-    For more details about configuring the different types of questions, see :doc:`../reference/question_types`.
+Add ``"shuffle": true`` to randomize the row order, or ``"required": true`` to require an answer for every row.
 
 
 Adding Questionnaires to Your Experiment
@@ -245,18 +146,13 @@ The path format is always ``questionnaire/filename`` (without the ``.json`` exte
 Previewing Questionnaires
 -------------------------
 
-Before adding questionnaires to your live experiment, preview them in the admin panel:
+Preview a questionnaire from the admin panel before exposing it to participants:
 
-1. Start your BOFS project: ``BOFS config.toml -d``
-2. Visit ``http://localhost:5000/admin`` 
-3. Enter your admin password
-4. Click "Preview Questionnaire" and select your questionnaire
+1. Start your BOFS project: ``BOFS run config.toml -d``
+2. Visit ``http://localhost:5000/admin`` and enter your admin password.
+3. Click "Preview Questionnaire" and select the questionnaire to view.
 
-The preview will:
-
-- Show you how the questionnaire looks to participants
-- Check for syntax errors
-- Offer to add new database columns if needed
+The preview renders the questionnaire as participants would see it, surfaces any JSON syntax errors, and offers to add new database columns if the questionnaire structure has changed since the last run.
 
 Required vs Optional Questions
 ------------------------------
@@ -278,41 +174,24 @@ Required questions must be answered before participants can continue.
 Modifying Questionnaires with Existing Data
 -------------------------------------------
 
-If you need to modify a questionnaire after participants have already completed it, you need to be careful about database changes:
+The database schema for a questionnaire is derived from its question IDs. Changing the questionnaire after participants have submitted responses needs care.
 
-**During Development**
+**During development**, the simplest approach is to delete the database file (e.g., ``your_study.db``) and restart BOFS — the schema is recreated from scratch on the next run.
 
-- Simply delete your database file (e.g., ``your_study.db``) and restart BOFS
-- The database will be recreated with the new structure
+**With live participant data**, you have three options:
 
-**With Live Participant Data**
+1. **Admin panel preview**. Visit ``/admin`` → "Preview Questionnaire". BOFS will offer to add columns for any new question IDs without touching existing data.
+2. **Drop the questionnaire's table**. You lose responses for that one questionnaire; everything else (demographics, custom tables) stays intact.
+3. **Manual schema migration**. For more involved changes, alter the database schema by hand. This preserves all data but requires SQL knowledge.
 
-When you have real participant data, you have several options:
-
-1. **Use Admin Panel Preview** (Recommended)
-   - Go to ``/admin`` → "Preview Questionnaire"
-   - BOFS will automatically offer to add new columns if needed
-   - This is the safest approach for adding new questions
-
-2. **Drop the Questionnaire Table**
-   - You lose only the data from that specific questionnaire
-   - Other data (demographics, custom tables) remains intact
-
-3. **Manual Database Migration**
-   - For complex changes, manually alter the database schema
-   - This requires database knowledge but preserves all data
-
-**Important Notes**
-- Changing question IDs will break the connection to existing data
-- Removing questions may cause errors if the data is referenced elsewhere
-- Always backup your database before making changes
+Either way: changing or removing existing question IDs breaks the link to any responses already collected, and you should back up the database before making changes.
 
 .. warning::
-    If you change a questionnaire, restart your BOFS application to ensure you've loaded in the updated questionnaires.
+    Restart BOFS after changing a questionnaire — the JSON files are loaded at startup.
 
 Next Steps
 ----------
 
-- For radio button grids and custom question types, see :doc:`../advanced/advanced_questionnaires`
-- For examples of questionnaires in complete experiments, see :doc:`../examples/ab_experiment`
-- For all available question types and their options, see :doc:`../reference/question_types`
+- For embedding custom calculations into questionnaires and creating custom question types, see :doc:`../advanced/advanced_questionnaires`.
+- For complete example projects, see :doc:`../examples/example_projects`.
+- For all available question types and their options, see :doc:`../reference/question_types`.
