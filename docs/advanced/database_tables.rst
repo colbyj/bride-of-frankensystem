@@ -8,7 +8,14 @@ Column Types
 ------------
 
 Tables are made up of columns. Each column can have its own data type. Possible data types are ``integer``, ``float``,
-``boolean``, or ``string``.
+``boolean``, ``string``, ``datetime``, or ``json``.
+
+.. note::
+
+   The ``json`` type stores structured data (arrays, objects, nested records) as a single column. It is intended for
+   per-trial event logs, mouse trajectory samples, keystroke timings, or any situation where storing many scalar
+   columns would be impractical. On disk the value is kept as a TEXT blob; the HTTP API serialises/deserialises it
+   transparently so JavaScript always sees a native object or array.
 
 Like questionnaires, tables are defined in JSON format. Below is an example of a table with every different possible
 type of data. Notice that each column has a "default" value; this entry can be omitted if not required. Additionally,
@@ -32,9 +39,19 @@ notice that if a "type" is not specified, then it defaults to being a string.
         },
         "string_column": {
           "default": "this is a test"
+        },
+        "datetime_column": {
+          "type": "datetime"
+        },
+        "json_column": {
+          "type": "json"
         }
       }
     }
+
+The ``datetime`` and ``json`` types do not take a ``default``: ``datetime``
+defaults to a sentinel low value (``datetime.min``), and ``json`` defaults to
+``NULL`` so an unset row is unambiguous.
 
 
 Calculated Export Fields
@@ -126,6 +143,114 @@ of of three intro levels completed.
         }
       ]
     }
+
+
+Writing Data from JavaScript
+----------------------------
+
+The recommended way to send data from your experiment's JavaScript code is a ``fetch`` POST to
+``/table/<name>``.  The server attaches ``participantID`` and ``timeSubmitted`` automatically from
+the current session — you should **not** include those fields in your payload.
+
+On success the endpoint always returns ``204 No Content``.  On a validation error it returns ``400``.
+
+**Single row — JSON (recommended)**
+
+.. code-block:: javascript
+
+    fetch('/table/my_task', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({score: 42, label: 'correct'})
+    });
+
+**Batch insert — JSON array**
+
+Send a JSON array to insert multiple rows in a single round-trip.  All rows are committed together;
+if any row is malformed the entire batch is rolled back and ``400`` is returned.
+
+.. code-block:: javascript
+
+    const trials = [
+        {trial: 1, rt: 312, response: 'left'},
+        {trial: 2, rt: 498, response: 'right'},
+        {trial: 3, rt: 271, response: 'left'},
+    ];
+
+    fetch('/table/my_task', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(trials)
+    });
+
+**Single row — form-encoded (legacy)**
+
+Form-encoded POSTs are also accepted for compatibility with older code or simple HTML forms.  Note
+that batch inserts are **not** supported in this mode.
+
+.. code-block:: javascript
+
+    fetch('/table/my_task', {
+        method: 'POST',
+        body: new URLSearchParams({score: 42, label: 'correct'})
+    });
+
+**Storing structured data with the** ``json`` **column type**
+
+If your table has a column of type ``json`` you can send a JavaScript object or array directly —
+no manual ``JSON.stringify`` needed for that field:
+
+.. code-block:: javascript
+
+    const mouseTrajectory = [
+        {t: 0,  x: 512, y: 300},
+        {t: 16, x: 510, y: 298},
+        {t: 32, x: 505, y: 290},
+    ];
+
+    fetch('/table/my_task', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({trial: 1, trajectory: mouseTrajectory})
+    });
+
+When you later GET the row, ``trajectory`` will already be a JavaScript array — no client-side
+``JSON.parse`` required.
+
+
+Reading Data from JavaScript
+-----------------------------
+
+A GET request to ``/table/<name>`` returns a JSON array of all rows belonging to the current
+participant.
+
+**Fetch all rows**
+
+.. code-block:: javascript
+
+    fetch('/table/my_task')
+        .then(r => r.json())
+        .then(rows => {
+            // rows is an array of objects, e.g. [{trial: 1, score: 42}, ...]
+            console.log(rows);
+        });
+
+**Filter by column value**
+
+Query-string parameters are applied as exact-match filters.  The comparison is string-cast, so this
+is best suited to integer or string columns with known values.
+
+.. code-block:: javascript
+
+    // Retrieve only the rows where score equals 42
+    fetch('/table/my_task?score=42')
+        .then(r => r.json())
+        .then(rows => console.log(rows));
+
+.. note::
+
+   Filters currently use string-cast equality only (``CAST(column AS TEXT) = 'value'``).  Range
+   queries and more complex filtering must be done in Python or post-processed on the client.
 
 
 Accessing Tables from Python
