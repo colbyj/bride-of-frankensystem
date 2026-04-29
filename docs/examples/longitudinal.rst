@@ -2,11 +2,10 @@ Longitudinal Experiment Example
 ===============================
 
 A longitudinal study runs the same participants through several sessions,
-typically days or weeks apart. BOFS does not (yet) have a single-config
-"multi-day study" primitive — each session is configured as its own BOFS
-project, with its own ``.toml`` and its own database. Participants are linked
-across days by an external ID (a Prolific ID, MTurk Worker ID, etc.) entered
-on each day's ``/external_id`` page.
+typically days or weeks apart. In BOFS, each session is configured with its
+own ``.toml`` and its own database. Participants are linked across days by an
+external ID (a Prolific ID, MTurk Worker ID, etc.) entered on each day's
+``/external_id`` page.
 
 The piece that needs the most care in this setup is **condition assignment**:
 once you randomize a participant on day 1, every subsequent day must use the
@@ -70,8 +69,8 @@ in any source produces a hard error: the participant is shown an
 longitudinal study, an unknown ID means the person did not complete the
 prior day's session and should not be in this one. There is no fallback to
 the balancer; if you genuinely want mixed pre-assigned-plus-randomized
-behavior, write a custom blueprint that calls the lookup service directly
-(see below).
+behavior, simply don't make use of the condition loading feature, or write
+a custom blueprint that calls the lookup service directly (see below).
 
 Page list ordering
 ------------------
@@ -91,11 +90,10 @@ explicit ``assign_condition`` step:
         {name='End', path='end'},
     ]
 
-If you use the regular ``/consent`` route, condition assignment runs at
-consent — *before* ``/external_id`` — and the lookup will be skipped
-(an empty external ID always falls through to the balancer). For
-longitudinal studies you almost always want ``consent_nc`` plus explicit
-``assign_condition`` so the lookup actually fires.
+If you use the regular ``/consent`` route, condition assignment runs after
+consent is given — *before* ``/external_id`` — and the lookup will be skipped.
+For longitudinal studies you almost always want ``consent_nc`` plus explicit
+``assign_condition`` so the lookup actually occurs.
 
 A complete two-day example
 --------------------------

@@ -3,8 +3,8 @@ requires      = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bride-of-frankensystem"
-version = "2.0.0.10"
+name = "bride-of-frankensystem-dev"
+version = "2.0.0.50"
 description = "A framework that allows for the development of custom online experiments and surveys."
 readme = "README.md"
 authors = [{ name = "Colby Johanson", email = "colby.g.j@gmail.com" }]
