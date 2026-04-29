@@ -10,6 +10,13 @@ A small project that exercises only the questionnaire system: consent, an exampl
 
 The :doc:`/getting_started/quickstart_existing` walks through running the minimal example. `Source on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/minimal_example>`__.
 
+A/B Experiment Example
+----------------------
+
+A two-condition between-subjects study: participants are randomly assigned to one of two menu styles and only see the instructions and task for that condition. The smallest example that uses ``CONDITIONS`` and ``conditional_routing``, with a custom blueprint that registers one route per condition and per-trial logging via a JSONTable.
+
+See :doc:`ab_experiment` for a description, or `view the source on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/ab_experiment>`__.
+
 Advanced Example
 ----------------
 
@@ -30,3 +37,10 @@ Unity Example
 Two parallel projects (Unity 2021.1 and Unity 2023.2) showing one approach to embedding a Unity WebGL build inside a BOFS study. Each contains a ready-to-run BOFS project plus the Unity source project that produced the build. The integration covers hosting the WebGL build in three layouts (BOFS chrome, fullscreen, fully custom), pushing the participant ID and condition into Unity, posting data back from Unity into a custom BOFS table, and advancing the BOFS page flow from inside the Unity build.
 
 See :doc:`unity_example` for a description. Source on GitHub: `unity_example_2021.1 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2021.1>`_ and `unity_example_2023.2 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2023.2>`_.
+
+Longitudinal Example
+--------------------
+
+A two-session study where participants come back the next day and need to land in the same condition they were assigned the first day. Demonstrates ``CONDITIONS_FROM_DB`` (and the ``CONDITIONS_FROM_CSV`` alternative), ``consent_nc`` plus an explicit ``assign_condition`` step, and the page-list ordering that makes the lookup actually fire.
+
+See :doc:`longitudinal` for a walkthrough of the mechanics, or `view the source on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/longitudinal_example>`__.

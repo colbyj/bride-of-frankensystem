@@ -36,16 +36,10 @@ Bride of Frankensystem
    :caption: Example Projects:
 
    examples/example_projects
+   examples/ab_experiment
    examples/p5_example
    examples/advanced_example
    examples/unity_example
-
-.. Placeholders kept in the doc graph (so existing :doc: cross-references resolve)
-   but hidden from navigation until they're filled in.
-.. toctree::
-   :hidden:
-
-   examples/ab_experiment
    examples/longitudinal
 
 .. toctree::

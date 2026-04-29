@@ -1,7 +1,7 @@
 Unity Example
 =============
 
-A worked example of integrating a Unity WebGL build with a BOFS project. Two parallel copies live in the examples repo, one built against Unity 2021.1 and one against Unity 2023.2 — pick whichever matches your local Unity install:
+A worked example of integrating a Unity WebGL build with a BOFS project. Two parallel copies live in the examples repo, one built against Unity 2021.1 and one against Unity 2023.2. Newer versions of Unity should continue to work (but if not, `ask for help on on Discord <https://discord.gg/XzXtUKFCJA>`_):
 
 * `unity_example_2021.1 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2021.1>`_
 * `unity_example_2023.2 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2023.2>`__

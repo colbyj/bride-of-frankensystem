@@ -1,5 +1,5 @@
-Longitudinal Experiments
-========================
+Longitudinal Experiment Example
+===============================
 
 A longitudinal study runs the same participants through several sessions,
 typically days or weeks apart. BOFS does not (yet) have a single-config
@@ -9,8 +9,13 @@ across days by an external ID (a Prolific ID, MTurk Worker ID, etc.) entered
 on each day's ``/external_id`` page.
 
 The piece that needs the most care in this setup is **condition assignment**:
-once you randomize a participant on day 0, every subsequent day must use the
+once you randomize a participant on day 1, every subsequent day must use the
 same condition. Two config keys handle this without any custom code.
+
+A complete worked example — two ``.toml`` files, a custom interactive task,
+per-trial logging, and per-condition recall pages — lives in
+`longitudinal_example/ <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/longitudinal_example>`__
+in the BOFS examples repository. The snippets below are drawn from it.
 
 Pre-assigning conditions by external ID
 ---------------------------------------
@@ -21,7 +26,7 @@ participants and applies them in place of the balancer.
 ``CONDITIONS_FROM_CSV``
     Path to a two-column CSV (``id,condition``). Read once at startup and
     cached in memory. Use this when you have an explicit list of participants
-    and the conditions you want them in — for example, exporting day-0
+    and the conditions you want them in — for example, exporting day-1
     assignments as a CSV between days.
 
     .. code-block:: toml
@@ -49,10 +54,10 @@ participants and applies them in place of the balancer.
 
     .. code-block:: toml
 
-        CONDITIONS_FROM_DB = 'sqlite:///day0.db'
+        CONDITIONS_FROM_DB = 'sqlite:///day1.db'
 
-    For a longitudinal study where day 0 already exists, this is usually
-    simpler than maintaining a CSV — day 1 just points back at day 0's DB.
+    For a longitudinal study where day 1 already exists, this is usually
+    simpler than maintaining a CSV — day 2 just points back at day 1's DB.
 
 If both keys are set, the CSV is consulted first and the DB is the fallback.
 
@@ -92,38 +97,75 @@ consent — *before* ``/external_id`` — and the lookup will be skipped
 longitudinal studies you almost always want ``consent_nc`` plus explicit
 ``assign_condition`` so the lookup actually fires.
 
-A complete day-1 example
-------------------------
+A complete two-day example
+--------------------------
+
+The ``longitudinal_example/`` project pairs two ``.toml`` files: day 1
+randomizes participants via the standard balancer and writes their
+assignments into its own database; day 2 reads that database back to
+re-place returning participants.
+
+**Day 1** — uses the standard ``/consent`` route, which assigns a balanced
+condition at submission time. The Participant ID captured on the next page
+is stored on that same participant row, which is what day 2 looks up:
 
 .. code-block:: toml
 
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///stress_hexagon_day1.db'
-    TITLE = 'Stress Hexagon — Day 1'
-    ADMIN_PASSWORD = 'changeme'
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///longitudinal_day1.db'
+    TITLE = 'Menu Learning Study - Day 1'
 
-    CONDITIONS = [{label='Stress'}, {label='No Stress'}]
-    CONDITIONS_FROM_DB = 'sqlite:///stress_hexagon_day0.db'
+    CONDITIONS = [
+        {label='Linear Menu', enabled=true},
+        {label='Marking Menu', enabled=true},
+    ]
 
-    EXTERNAL_ID_LABEL = "Prolific ID"
-    EXTERNAL_ID_PROMPT = "Please enter your Prolific ID now."
+    EXTERNAL_ID_LABEL = "Participant ID"
 
     PAGE_LIST = [
-        {name='Start', path='consent_nc'},
-        {name='External ID', path='external_id'},
-        {name='', path='assign_condition'},
-        {name='Questionnaire', path='sam/before'},
+        {name='Consent', path='consent'},
+        {name='Participant ID', path='external_id'},
+        {name='Background', path='questionnaire/demographics'},
         {conditional_routing=[
-            {condition=1, page_list=[{name='Task', path='pasat'}]},
-            {condition=2, page_list=[{name='Task', path='sparkle'}]},
+            {condition=1, page_list=[{name='Practice', path='learn_linear'}]},
+            {condition=2, page_list=[{name='Practice', path='learn_marking'}]},
         ]},
-        {name='Questionnaire', path='sam/after'},
         {name='End', path='end'},
     ]
 
-Day 0 has its own ``.toml`` that *doesn't* set ``CONDITIONS_FROM_*`` — it
-randomizes via the normal balancer and writes those assignments into
-``stress_hexagon_day0.db``. Day 1 (above) reuses those assignments by
-pointing back at that file.
+**Day 2** — uses ``consent_nc`` plus an explicit ``assign_condition`` step,
+and points ``CONDITIONS_FROM_DB`` at day 1's database. ``CONDITIONS`` must
+list the same labels in the same order so the integers line up:
+
+.. code-block:: toml
+
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///longitudinal_day2.db'
+    TITLE = 'Menu Learning Study - Day 2'
+
+    CONDITIONS_FROM_DB = 'sqlite:///longitudinal_day1.db'
+
+    CONDITIONS = [
+        {label='Linear Menu', enabled=true},
+        {label='Marking Menu', enabled=true},
+    ]
+
+    EXTERNAL_ID_LABEL = "Participant ID"
+
+    PAGE_LIST = [
+        {name='Consent', path='consent_nc'},
+        {name='Participant ID', path='external_id'},
+        {name='', path='assign_condition'},
+        {conditional_routing=[
+            {condition=1, page_list=[{name='Recall Test', path='recall_linear'}]},
+            {condition=2, page_list=[{name='Recall Test', path='recall_marking'}]},
+        ]},
+        {name='Self-Report', path='questionnaire/recall'},
+        {name='End', path='end'},
+    ]
+
+The full project — including the custom ``menu_task/`` blueprint, per-trial
+``JSONTable`` logging, per-condition instruction pages, and a sample
+``conditions.csv`` for the ``CONDITIONS_FROM_CSV`` alternative — is in
+`longitudinal_example/ <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/longitudinal_example>`__.
 
 Reading prior-day data programmatically
 ---------------------------------------
@@ -144,15 +186,4 @@ blueprint:
         # returns the underlying SQLAlchemy Engine.
         ...
 
-Aspects not yet covered
------------------------
 
-The following aspects of longitudinal studies are not yet handled by BOFS
-itself and remain on the researcher to coordinate externally:
-
-- Sending day-N reminder emails or scheduling day-N invitations.
-- Joining the per-day databases for analysis (typically done offline by
-  ``mTurkID``).
-- A single shared participant registry across days.
-
-These are tracked for a future native multi-session feature.
