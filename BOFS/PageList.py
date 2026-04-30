@@ -1,7 +1,22 @@
 from typing import Union
-from flask import current_app, request
+from flask import current_app, request, session
 from BOFS import util
+from BOFS.expressions import (
+    ExpressionError,
+    build_participant_env,
+    default_functions,
+    evaluate,
+    parse_page_predicate,
+    referenced_fields,
+)
 from urllib.parse import urlsplit
+
+
+# Sentinel for ``flat_page_list(participant_id=...)``. It distinguishes
+# "the caller didn't pass anything, fall back to the Flask session"
+# (the default for participant-facing routes) from "the caller explicitly
+# passed None, do not filter by show_if at all" (admin views).
+_RESOLVE_FROM_SESSION = object()
 
 
 class PageList(object):
@@ -10,7 +25,77 @@ class PageList(object):
 
     def __init__(self, page_list):
         self.page_list = page_list
+        self._compile_show_if(self.page_list)
         #self.procedure = self.parse_list_into_procedure()
+
+    @staticmethod
+    def _compile_show_if(page_list):
+        """Parse any ``show_if`` predicate strings on page entries and any
+        nested ``conditional_routing.page_list`` entries. The parsed AST is
+        attached as ``_show_if_ast`` so evaluation at navigation time skips
+        the parser. Failures are raised so they surface at app startup."""
+        for entry in page_list:
+            if not isinstance(entry, dict):
+                continue
+            if "conditional_routing" in entry:
+                for cr in entry["conditional_routing"]:
+                    PageList._compile_show_if(cr.get("page_list", []))
+                continue
+            expr = entry.get("show_if")
+            if expr is None:
+                continue
+            if not isinstance(expr, str) or not expr.strip():
+                raise Exception(
+                    f"PAGE_LIST entry {entry.get('name', entry.get('path'))!r} "
+                    f"has a non-string show_if: {expr!r}"
+                )
+            try:
+                ast_node, refs = parse_page_predicate(expr)
+            except ExpressionError as e:
+                raise Exception(
+                    f"Unable to parse show_if on page "
+                    f"{entry.get('name', entry.get('path'))!r}: "
+                    f"`{expr}`. {e}"
+                )
+            entry["_show_if_ast"] = ast_node
+            entry["_show_if_refs"] = refs
+
+    @staticmethod
+    def _page_visible(entry, participant_id):
+        """Evaluate an entry's ``_show_if_ast`` against the given participant.
+        Returns True if the page should be included.
+
+        When there is no AST, no participant context, or no Flask app
+        context (e.g. during early startup), the page is included by
+        default — ``show_if`` only filters when we have everything needed
+        to evaluate it.
+        """
+        ast = entry.get("_show_if_ast")
+        refs = entry.get("_show_if_refs", {})
+        if ast is None:
+            return True
+        if participant_id is None:
+            return True
+        try:
+            app = current_app._get_current_object()
+        except RuntimeError:
+            return True
+        env = build_participant_env(
+            participant_id,
+            referenced_fields(ast),
+            refs,
+            getattr(app, "questionnaires", {}),
+            app.db,
+        )
+        try:
+            value = evaluate(ast, env, functions=default_functions())
+        except ExpressionError:
+            # Unresolved references typically mean the prior questionnaire
+            # has not been submitted yet — keep the page visible so the
+            # participant doesn't get locked out of a path that's still
+            # being decided.
+            return True
+        return bool(value)
 
     def unconditional_pages(self):
         pages = []
@@ -35,6 +120,28 @@ class PageList(object):
         return pages
 
     @staticmethod
+    def _resolve_participant_id(participant_id):
+        """Resolve the participant_id arg into an effective ID for show_if
+        evaluation. Three cases:
+
+        * a concrete integer  → use it.
+        * ``None``             → caller explicitly opts out of filtering;
+                                 return ``None`` (do not filter).
+        * the ``_RESOLVE_FROM_SESSION`` sentinel → caller didn't pass
+                                 anything; fall back to the Flask session.
+
+        The sentinel pattern is what lets admin views ask for the
+        unfiltered page list without the lookup latching onto whatever
+        the admin's session happens to contain.
+        """
+        if participant_id is _RESOLVE_FROM_SESSION:
+            try:
+                return session.get("participantID")
+            except RuntimeError:
+                return None
+        return participant_id
+
+    @staticmethod
     def extract_questionnaire_from_path(path, include_tag=False):
         questionnaire = path.replace("questionnaire/", "", 1)
 
@@ -44,15 +151,30 @@ class PageList(object):
 
         return questionnaire
 
-    def flat_page_list(self, condition=None) -> list[str]:
+    def flat_page_list(self, condition=None,
+                       participant_id=_RESOLVE_FROM_SESSION) -> list[str]:
         """
         This is the typical access point for the page_list variable.
         By default, it tries to get the current condition from the session variable.
-        :param condition: Set this to override the default functionality
-        :return:
+
+        :param condition: Set this to override the default functionality.
+        :param participant_id: Controls how ``show_if`` predicates are
+            evaluated.
+
+            * Omit it (the default) and BOFS reads ``participantID`` from
+              the Flask session — the right thing for participant-facing
+              routes and template breadcrumbs.
+            * Pass an integer to filter against that specific participant.
+            * Pass ``None`` to skip ``show_if`` filtering entirely; every
+              page that any participant could possibly visit is returned.
+              Use this from admin views, where filtering by the admin's
+              session participant ID would hide pages other participants
+              actually visited.
         """
         if condition is None:
             condition = util.fetch_current_condition()
+
+        participant_id = self._resolve_participant_id(participant_id)
 
         flat_page_list = list()
 
@@ -61,10 +183,12 @@ class PageList(object):
                 for conditional_route in entry['conditional_routing']:
                     if condition == 0 or conditional_route['condition'] == condition:
                         for conditional_entry in conditional_route['page_list']:
-                            flat_page_list.append(conditional_entry)
+                            if self._page_visible(conditional_entry, participant_id):
+                                flat_page_list.append(conditional_entry)
                         break  # once a match has been found, then we're done
             else:
-                flat_page_list.append(entry)
+                if self._page_visible(entry, participant_id):
+                    flat_page_list.append(entry)
 
         return flat_page_list
 

@@ -290,6 +290,21 @@ In custom pages and templates, access the participant's condition:
         <p>You are in the high reward condition.</p>
     {% endif %}
 
+**Skipping a page based on prior answers**
+
+Any entry in ``PAGE_LIST`` (including entries inside a ``conditional_routing`` block) can carry a ``show_if`` predicate. When the predicate evaluates to false against the participant's stored questionnaire answers, the page is removed from that participant's flow — ``next_path`` and the breadcrumb skip past it.
+
+.. code-block:: toml
+
+    PAGE_LIST = [
+        {name="Consent", path="consent"},
+        {name="Demographics", path="questionnaire/demographics"},
+        {name="Followup", path="questionnaire/followup", show_if="demographics.age < 18"},
+        {name="End", path="end"}
+    ]
+
+The expression syntax, the qualified reference forms for repeated-measures designs (``qname.tag.field``), and the behaviour when a referenced questionnaire has not been submitted yet are all described in :doc:`../advanced/expressions`.
+
 Settings for MTurk and Prolific
 -------------------------------
 
@@ -311,7 +326,7 @@ A common split is a ``config.toml`` with the development settings (SQLite, simpl
 Database
 --------
 
-The ``SQLALCHEMY_DATABASE_URI`` setting tells BOFS where to keep its data. SQLite is the easy choice for development; PostgreSQL is the usual choice for production:
+The ``SQLALCHEMY_DATABASE_URI`` setting tells BOFS where to keep its data. SQLite is a good choice for most cases. Use PostgreSQL if you will be collecting data from a large number of concurrent participants.
 
 .. code-block:: toml
 

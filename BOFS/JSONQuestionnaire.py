@@ -1,11 +1,16 @@
 import os
 import json
-import re
 from typing import Union
 from datetime import datetime
 from sqlalchemy import inspect as sa_inspect
 from .globals import db
-from BOFS.util import mean, stdev, std, var, variance, median
+from .expressions import (
+    ExpressionError,
+    default_functions,
+    evaluate as expr_evaluate,
+    parse_with_field_ids,
+    referenced_fields,
+)
 from .validation import EXPANDED_TYPES
 
 
@@ -150,11 +155,49 @@ class JSONQuestionnaire(object):
 
         return self.__fields
 
+    def compile_show_if(self) -> None:
+        """Parse any ``show_if`` predicate strings on top-level questions into
+        the engine's JSON AST and attach them as ``_show_if_ast`` on the
+        question dict so the renderer can emit them without re-parsing.
+
+        Raises if a predicate is unparseable — show_if errors should fail
+        loudly at app startup, not silently at request time.
+        """
+        if not self.__fields:
+            self.fetch_fields()
+
+        if not self.json_data or 'questions' not in self.json_data:
+            return
+
+        field_ids = [f.id for f in self.__fields]
+
+        for question in self.json_data['questions']:
+            expr = question.get('show_if')
+            if expr is None:
+                continue
+            if not isinstance(expr, str) or not expr.strip():
+                raise Exception(
+                    f"show_if on questionnaire `{self.file_name}` must be a "
+                    f"non-empty string expression, got {expr!r}"
+                )
+            try:
+                ast_node = parse_with_field_ids(expr, field_ids)
+            except ExpressionError as e:
+                raise Exception(
+                    f"Unable to parse show_if on questionnaire "
+                    f"`{self.file_name}` for question "
+                    f"`{question.get('id', '<no id>')}`. "
+                    f"Expression: `{expr}`. {e}"
+                )
+            question['_show_if_ast'] = ast_node
+
     def create_db_class(self):
         #print "createDBClass() for " + self.fileName
 
         if not self.__fields:  # If list is empty
             self.fetch_fields()
+
+        self.compile_show_if()
 
         if not self.__calc_fields:
             self.__calc_fields = []
@@ -177,21 +220,49 @@ class JSONQuestionnaire(object):
             table_attr[field.id] = field.generate_db_column()
 
         if "participant_calculations" in self.json_data:
-            def execute_calculation(self, calculation):
-                try:
-                    return eval(calculation)
-                except Exception as e:
-                    error = "Unable to add calculated field `{0}` to the export of questionnaire `{1}`. \n" \
-                            "The preprocessed calculation string was: `{2}`\n" \
-                            "The thrown exception was: {3}".format(field_name, self.__tablename__, calculation, e)
-                    print(error)
-                    raise Exception(error)
+            field_ids = [f.id for f in self.__fields]
+            funcs = default_functions()
+
+            def make_calc_method(calc_name, ast_node):
+                referenced = referenced_fields(ast_node)
+
+                def _calc(self):
+                    env = {}
+                    for fid in referenced:
+                        if not hasattr(self, fid):
+                            raise ExpressionError(
+                                f"calculation {calc_name!r} on questionnaire "
+                                f"{table_name!r} references unknown field {fid!r}"
+                            )
+                        raw = getattr(self, fid)
+                        # Match the original eval-based behavior: numeric
+                        # coercion via float() so int/None/numeric-string
+                        # fields all participate in arithmetic uniformly.
+                        try:
+                            env[fid] = float(raw) if raw is not None else 0.0
+                        except (TypeError, ValueError):
+                            env[fid] = raw
+                    try:
+                        return expr_evaluate(ast_node, env, functions=funcs)
+                    except Exception as e:
+                        raise Exception(
+                            f"Unable to evaluate calculated field "
+                            f"`{calc_name}` on questionnaire `{table_name}`: {e}"
+                        )
+
+                return _calc
 
             for field_name, calculation in self.json_data["participant_calculations"].items():
                 self.__calc_fields.append(field_name)
-                calculation = self.preprocess_calculation_string(calculation)
-
-                table_attr[field_name] = lambda self, calculation=calculation: execute_calculation(self, calculation)
+                try:
+                    ast_node = parse_with_field_ids(calculation, field_ids)
+                except ExpressionError as e:
+                    raise Exception(
+                        f"Unable to parse calculated field `{field_name}` on "
+                        f"questionnaire `{table_name}`. Expression: "
+                        f"`{calculation}`. {e}"
+                    )
+                table_attr[field_name] = make_calc_method(field_name, ast_node)
 
         # Detect orphaned columns and type mismatches by reflecting the existing DB table
         self._orphaned_columns = []
@@ -225,14 +296,6 @@ class JSONQuestionnaire(object):
             pass  # Skip if reflection fails (e.g., new database, table doesn't exist yet)
 
         self.db_class = type(self.file_name, (db.Model,), table_attr)
-
-    # Replace field_name with self.field_name
-    def preprocess_calculation_string(self, calculationString):
-        for field in self.__fields:
-            calculationString = re.sub("{}(?=,|\]|\)|-|\+|/|\*| |$)".
-                                       format(field.id), "float(getattr(self, '{}'))".format(field.id), calculationString)
-
-        return calculationString
 
     def create_blank(self):
         blank = self.db_class()

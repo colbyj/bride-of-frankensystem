@@ -39,6 +39,7 @@ Bride of Frankensystem
    examples/ab_experiment
    examples/p5_example
    examples/advanced_example
+   examples/branching_example
    examples/unity_example
    examples/longitudinal
 
@@ -55,6 +56,7 @@ Bride of Frankensystem
 
    advanced/advanced_custom_pages
    advanced/advanced_questionnaires
+   advanced/expressions
    advanced/accessing_participant_data
    advanced/database_tables
    advanced/custom_styling

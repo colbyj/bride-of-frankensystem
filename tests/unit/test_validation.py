@@ -13,6 +13,7 @@ from BOFS.validation import (
     validate_calculations,
     validate_questionnaire,
     validate_page_list_references,
+    validate_show_if,
     BUILTIN_QUESTION_TYPES,
     RESERVED_COLUMNS,
 )
@@ -471,3 +472,86 @@ class TestValidationResult:
     def test_repr(self):
         r = ValidationResult("error", "test", "msg")
         assert "ValidationResult" in repr(r)
+
+
+# ===========================================================================
+# validate_show_if
+# ===========================================================================
+
+class TestValidateShowIf:
+    def test_no_show_if_no_findings(self, sample_questionnaire_json):
+        errors = validate_show_if(sample_questionnaire_json, "test")
+        assert errors == []
+
+    def test_valid_show_if(self):
+        data = {
+            "questions": [
+                {"questiontype": "num_field", "id": "age"},
+                {"questiontype": "field", "id": "guardian",
+                 "show_if": "age < 18"},
+            ]
+        }
+        errors = validate_show_if(data, "ok")
+        assert errors == []
+
+    def test_unparseable_show_if_is_error(self):
+        data = {
+            "questions": [
+                {"questiontype": "num_field", "id": "age"},
+                {"questiontype": "field", "id": "broken",
+                 "show_if": "age <"},
+            ]
+        }
+        errors = validate_show_if(data, "bad")
+        assert any(e.severity == "error" and "show_if" in e.message
+                   for e in errors)
+
+    def test_disallowed_construct_is_error(self):
+        data = {
+            "questions": [
+                {"questiontype": "field", "id": "x",
+                 "show_if": "__import__('os')"},
+            ]
+        }
+        errors = validate_show_if(data, "bad")
+        assert any(e.severity == "error" for e in errors)
+
+    def test_unknown_field_reference_is_warning(self):
+        data = {
+            "questions": [
+                {"questiontype": "num_field", "id": "age"},
+                {"questiontype": "field", "id": "guardian",
+                 "show_if": "agee < 18"},  # typo
+            ]
+        }
+        errors = validate_show_if(data, "typo")
+        assert any(e.severity == "warning" and "agee" in e.message
+                   for e in errors)
+
+    def test_non_string_show_if_is_error(self):
+        data = {
+            "questions": [
+                {"questiontype": "num_field", "id": "age"},
+                {"questiontype": "field", "id": "g", "show_if": 42},
+            ]
+        }
+        errors = validate_show_if(data, "bad")
+        assert any(e.severity == "error" for e in errors)
+
+    def test_show_if_with_non_python_identifier_field(self):
+        # Field IDs that aren't valid Python identifiers (real BOFS pattern)
+        # must still resolve through validate_show_if without crashing.
+        data = {
+            "questions": [
+                {
+                    "questiontype": "radiogrid",
+                    "questions": [{"id": "01_inv", "text": "First"}],
+                },
+                {"questiontype": "field", "id": "follow",
+                 "show_if": "01_inv > 3"},
+            ]
+        }
+        errors = validate_show_if(data, "exotic")
+        assert all(e.severity != "error" for e in errors), [
+            (e.severity, e.message) for e in errors
+        ]

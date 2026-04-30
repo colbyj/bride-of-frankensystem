@@ -25,12 +25,12 @@
     <div class="bg-body-tertiary p-3 rounded">
         <h4>Summary</h4>
         <div style="display: grid; grid-template-columns: 160px auto; row-gap: 4px;">
-            <b>External ID</b> <span>{{ participant.mTurkID or "—" }}</span>
-            <b>Condition</b> <span>{{ condition_num_to_label(participant.condition) or "—" }}</span>
-            <b>Started</b> <span>{{ participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') if participant.timeStarted else "—" }}</span>
-            <b>Ended</b> <span>{{ participant.timeEnded.strftime('%Y-%m-%d %H:%M:%S') if participant.timeEnded else "—" }}</span>
+            <b>External ID</b> <span>{{ participant.mTurkID or "-" }}</span>
+            <b>Condition</b> <span>{{ condition_num_to_label(participant.condition) or "-" }}</span>
+            <b>Started</b> <span>{{ participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') if participant.timeStarted else "-" }}</span>
+            <b>Ended</b> <span>{{ participant.timeEnded.strftime('%Y-%m-%d %H:%M:%S') if participant.timeEnded else "-" }}</span>
             <b>Duration</b> <span>{{ participant.display_duration() }}</span>
-            <b>Last Active</b> <span>{{ participant.lastActiveOn.strftime('%Y-%m-%d %H:%M:%S') if participant.lastActiveOn else "—" }}</span>
+            <b>Last Active</b> <span>{{ participant.lastActiveOn.strftime('%Y-%m-%d %H:%M:%S') if participant.lastActiveOn else "-" }}</span>
             {% set completed_count = timeline | selectattr('status', 'equalto', 'completed') | list | length %}
             <b>Progress</b> <span>{{ completed_count }} of {{ total_pages }} pages completed</span>
         </div>

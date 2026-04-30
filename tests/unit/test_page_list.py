@@ -674,3 +674,153 @@ def test_mermaid_conditional_only():
     assert output.startswith("flowchart TB\n")
     assert "A" in output
     assert "B" in output
+
+
+# ---------------------------------------------------------------------------
+# show_if — page-level conditional skipping
+# ---------------------------------------------------------------------------
+
+class TestShowIfCompilation:
+    def test_show_if_attaches_ast(self):
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b', 'show_if': 'age < 18'},
+            {'name': 'C', 'path': 'c'},
+        ]
+        pl = PageList(data)
+        assert '_show_if_ast' in data[1]
+        ast = data[1]['_show_if_ast']
+        assert ast == {'op': '<', 'args': [{'var': 'age'}, {'const': 18}]}
+        assert '_show_if_ast' not in data[0]
+        assert '_show_if_ast' not in data[2]
+
+    def test_show_if_in_conditional_routing(self):
+        data = [
+            {'conditional_routing': [
+                {'condition': 1, 'page_list': [
+                    {'name': 'X', 'path': 'x', 'show_if': 'flag == True'},
+                ]},
+            ]},
+        ]
+        PageList(data)
+        nested = data[0]['conditional_routing'][0]['page_list'][0]
+        assert '_show_if_ast' in nested
+
+    def test_show_if_two_part_reference(self):
+        data = [
+            {'name': 'X', 'path': 'x', 'show_if': 'demographics.age >= 18'},
+        ]
+        PageList(data)
+        ast = data[0]['_show_if_ast']
+        refs = data[0]['_show_if_refs']
+        # The dotted reference is replaced with a placeholder var; the
+        # side table records what the placeholder resolves to.
+        placeholder = ast['args'][0]['var']
+        assert placeholder.startswith('_bofs_ref_')
+        assert refs[placeholder] == {
+            'qname': 'demographics',
+            'tag': None,
+            'field': 'age',
+            'source': 'demographics.age',
+        }
+
+    def test_show_if_three_part_reference_with_tag(self):
+        data = [
+            {'name': 'X', 'path': 'x',
+             'show_if': 'survey.before.q1 == 1'},
+        ]
+        PageList(data)
+        ast = data[0]['_show_if_ast']
+        refs = data[0]['_show_if_refs']
+        placeholder = ast['args'][0]['var']
+        assert refs[placeholder] == {
+            'qname': 'survey',
+            'tag': 'before',
+            'field': 'q1',
+            'source': 'survey.before.q1',
+        }
+
+    def test_show_if_explicit_empty_tag(self):
+        data = [
+            {'name': 'X', 'path': 'x', 'show_if': 'survey..q1 > 0'},
+        ]
+        PageList(data)
+        refs = data[0]['_show_if_refs']
+        spec = next(iter(refs.values()))
+        assert spec['qname'] == 'survey'
+        assert spec['tag'] == ''
+        assert spec['field'] == 'q1'
+
+    def test_show_if_multiple_tagged_references(self):
+        data = [
+            {'name': 'X', 'path': 'x',
+             'show_if': 'survey.before.q1 < survey.after.q1'},
+        ]
+        PageList(data)
+        refs = data[0]['_show_if_refs']
+        # Two distinct placeholders, one per dotted reference.
+        assert len(refs) == 2
+        tags = {spec['tag'] for spec in refs.values()}
+        assert tags == {'before', 'after'}
+
+    def test_show_if_does_not_eat_float_literals(self):
+        data = [
+            {'name': 'X', 'path': 'x', 'show_if': 'score > 3.5'},
+        ]
+        PageList(data)
+        # 3.5 must NOT be picked up as a dotted reference.
+        refs = data[0]['_show_if_refs']
+        assert refs == {}
+
+    def test_show_if_unparseable_raises(self):
+        data = [{'name': 'X', 'path': 'x', 'show_if': 'age <'}]
+        with pytest.raises(Exception, match="show_if"):
+            PageList(data)
+
+    def test_show_if_disallowed_construct_raises(self):
+        data = [{'name': 'X', 'path': 'x', 'show_if': '__import__("os")'}]
+        with pytest.raises(Exception, match="show_if"):
+            PageList(data)
+
+    def test_show_if_non_string_raises(self):
+        data = [{'name': 'X', 'path': 'x', 'show_if': 42}]
+        with pytest.raises(Exception, match="show_if"):
+            PageList(data)
+
+
+class TestFlatPageListShowIf:
+    def test_no_participant_id_keeps_all_pages(self):
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b', 'show_if': 'age < 18'},
+            {'name': 'C', 'path': 'c'},
+        ]
+        pl = PageList(data)
+        # No participant context — show_if cannot be evaluated, so the
+        # page is kept by default.
+        result = pl.flat_page_list(condition=1)
+        assert [p['name'] for p in result] == ['A', 'B', 'C']
+
+    def test_show_if_filters_when_predicate_false(self, monkeypatch):
+        # Patch _page_visible directly to simulate predicate evaluation
+        # without standing up a Flask app + DB.
+        from BOFS import PageList as plmod
+
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b', 'show_if': 'age < 18'},
+            {'name': 'C', 'path': 'c'},
+        ]
+        pl = plmod.PageList(data)
+
+        def fake_visible(entry, participant_id):
+            ast = entry.get('_show_if_ast')
+            if ast is None or participant_id is None:
+                return True
+            # Pretend the participant is 30 — so age < 18 is false.
+            return False
+
+        monkeypatch.setattr(plmod.PageList, '_page_visible',
+                            staticmethod(fake_visible))
+        result = pl.flat_page_list(condition=1, participant_id=42)
+        assert [p['name'] for p in result] == ['A', 'C']

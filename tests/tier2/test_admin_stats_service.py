@@ -104,7 +104,8 @@ class TestFetchProgress:
             {'name': 'End1', 'path': 'end'},
             {'name': 'End2', 'path': 'end'},
         ]
-        monkeypatch.setattr(app.page_list, 'flat_page_list', lambda condition=None: list(custom))
+        monkeypatch.setattr(app.page_list, 'flat_page_list',
+                            lambda condition=None, participant_id=None: list(custom))
 
         pages, _ = AdminStatsService.fetch_progress()
         paths = [p['path'] for p in pages]
@@ -132,6 +133,47 @@ class TestFetchProgress:
         assert prog_entity is not None
         assert prog_entity.path == 'questionnaire/survey'
         assert prog_entity.participantID == p.participantID
+
+    def test_fetch_progress_ignores_show_if_predicates(
+        self, bofs_app_with_questionnaires, monkeypatch
+    ):
+        """The progress table must show every page that any participant could
+        have visited, including pages gated by a ``show_if`` predicate that
+        would currently evaluate to False against the admin's own session
+        data. Regression guard for the bug where ``flat_page_list()`` with
+        no args picked up ``participantID`` from the admin's session and
+        filtered hidden pages out of the table.
+        """
+        app = bofs_app_with_questionnaires
+
+        # Compile a fake AST that always evaluates to False — no questionnaires
+        # match, so any predicate evaluation would hide the page.
+        custom = [
+            {'name': 'Consent', 'path': 'consent'},
+            {'name': 'Always Visible', 'path': 'questionnaire/survey'},
+            {'name': 'Branched Out', 'path': 'questionnaire/branched',
+             '_show_if_ast': {'op': '==',
+                              'args': [{'const': 1}, {'const': 0}]},
+             '_show_if_refs': {}},
+            {'name': 'End', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'page_list', custom)
+
+        # Even with a session participant_id set (simulating the admin
+        # having tested as a participant earlier), the progress table
+        # should still show the branched page.
+        with app.test_request_context():
+            from flask import session
+            p = _make_participant(app)
+            session['participantID'] = p.participantID
+
+            pages, _ = AdminStatsService.fetch_progress()
+
+        page_paths = [pg['path'] for pg in pages]
+        assert 'questionnaire/branched' in page_paths, (
+            "Progress table dropped a show_if-gated page; "
+            f"got: {page_paths}"
+        )
 
 
 # ===========================================================================

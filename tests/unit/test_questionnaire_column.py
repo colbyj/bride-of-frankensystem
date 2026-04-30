@@ -433,10 +433,22 @@ def test_get_field_before_fetch_fields(tmp_path):
 
 
 # ===========================================================================
-# JSONQuestionnaire — preprocess_calculation_string
+# JSONQuestionnaire — calculation parsing via the expression engine
+#
+# These cover the same surface as the old `preprocess_calculation_string`
+# tests did: that field IDs are recognized, that partial matches are not,
+# that non-Python-identifier IDs (e.g. ``01_inv``) still resolve, and that
+# absent fields fall through to a parser-level error.
 # ===========================================================================
 
-def test_preprocess_replaces_field_ids(tmp_path):
+from BOFS.expressions import (
+    ExpressionError,
+    parse_with_field_ids,
+    referenced_fields,
+)
+
+
+def test_calc_parser_recognizes_field_ids(tmp_path):
     data = {
         "questions": [
             {
@@ -451,13 +463,12 @@ def test_preprocess_replaces_field_ids(tmp_path):
     }
     q = _write_questionnaire(tmp_path, "calc", data)
     q.fetch_fields()
-    result = q.preprocess_calculation_string("[q1,q2,q3]")
-    assert "float(getattr(self, 'q1'))" in result
-    assert "float(getattr(self, 'q2'))" in result
-    assert "float(getattr(self, 'q3'))" in result
+    field_ids = [f.id for f in q.fetch_fields()]
+    ast = parse_with_field_ids("[q1, q2, q3]", field_ids)
+    assert referenced_fields(ast) == {"q1", "q2", "q3"}
 
 
-def test_preprocess_replaces_with_arithmetic_operators(tmp_path):
+def test_calc_parser_arithmetic(tmp_path):
     data = {
         "questions": [
             {
@@ -472,11 +483,12 @@ def test_preprocess_replaces_with_arithmetic_operators(tmp_path):
     }
     q = _write_questionnaire(tmp_path, "calc2", data)
     q.fetch_fields()
-    result = q.preprocess_calculation_string("q1+q2-q3")
-    assert result == "float(getattr(self, 'q1'))+float(getattr(self, 'q2'))-float(getattr(self, 'q3'))"
+    field_ids = [f.id for f in q.fetch_fields()]
+    ast = parse_with_field_ids("q1 + q2 - q3", field_ids)
+    assert referenced_fields(ast) == {"q1", "q2", "q3"}
 
 
-def test_preprocess_replaces_at_end_of_string(tmp_path):
+def test_calc_parser_lone_field_id(tmp_path):
     data = {
         "questions": [
             {
@@ -486,27 +498,66 @@ def test_preprocess_replaces_at_end_of_string(tmp_path):
         ],
     }
     q = _write_questionnaire(tmp_path, "calc3", data)
-    q.fetch_fields()
-    result = q.preprocess_calculation_string("q1")
-    assert result == "float(getattr(self, 'q1'))"
+    field_ids = [f.id for f in q.fetch_fields()]
+    ast = parse_with_field_ids("q1", field_ids)
+    assert ast == {"var": "q1"}
 
 
-def test_preprocess_no_fields_no_change(tmp_path):
+def test_calc_parser_unknown_identifier_is_caller_problem(tmp_path):
+    # When no field IDs are declared, an identifier in the expression is
+    # still parsed as a `var` reference; the evaluator (not the parser) is
+    # responsible for raising on unknown variables.
     data = {"questions": []}
     q = _write_questionnaire(tmp_path, "calc_empty", data)
     q.fetch_fields()
-    assert q.preprocess_calculation_string("x + y + z") == "x + y + z"
+    ast = parse_with_field_ids("x + y + z", [])
+    assert referenced_fields(ast) == {"x", "y", "z"}
 
 
-def test_preprocess_does_not_replace_partial_match(tmp_path):
+def test_calc_parser_does_not_match_partial(tmp_path):
+    # ``q1`` is a known field, ``q1x`` is not — substitution must not match
+    # the prefix of an unrelated word, otherwise we'd parse-rewrite
+    # ``q1x`` into ``_bofs_pid_0x``.
     data = {
         "questions": [
             {
                 "questiontype": "radiogrid",
-                "questions": [{"id": "q1", "text": "Q1"}],
+                "questions": [{"id": "q1x", "text": "Q1x"}],
             }
         ],
     }
     q = _write_questionnaire(tmp_path, "partial", data)
     q.fetch_fields()
-    assert q.preprocess_calculation_string("q1x") == "q1x"
+    field_ids = [f.id for f in q.fetch_fields()]
+    ast = parse_with_field_ids("q1x", field_ids)
+    assert ast == {"var": "q1x"}
+
+
+def test_calc_parser_handles_non_python_identifier_ids(tmp_path):
+    # Real deployed projects use IDs like ``01_inv`` that aren't valid Python
+    # identifiers. The substitution wrapper must still produce an AST that
+    # references the original field name.
+    data = {
+        "questions": [
+            {
+                "questiontype": "radiogrid",
+                "questions": [
+                    {"id": "01_inv", "text": "Inverted item 1"},
+                    {"id": "02", "text": "Item 2"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "non_py", data)
+    q.fetch_fields()
+    field_ids = [f.id for f in q.fetch_fields()]
+    ast = parse_with_field_ids("(5 - 01_inv) + 02", field_ids)
+    assert referenced_fields(ast) == {"01_inv", "02"}
+
+
+def test_calc_parser_rejects_disallowed_construct(tmp_path):
+    data = {"questions": [{"questiontype": "field", "id": "x"}]}
+    q = _write_questionnaire(tmp_path, "bad", data)
+    q.fetch_fields()
+    with pytest.raises(ExpressionError):
+        parse_with_field_ids("__import__('os')", ["x"])

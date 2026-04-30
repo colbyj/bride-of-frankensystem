@@ -241,3 +241,117 @@ class TestComputedProperties:
 
         result = app.questionnaires["survey"].fetch_all_data()[0]
         assert result.grid_total() == 8.0
+
+
+# ===========================================================================
+# Question-level show_if — branching renders + tolerates hidden answers
+# ===========================================================================
+
+import os
+import toml
+
+SHOW_IF_QUESTIONNAIRE = {
+    "title": "Branched",
+    "instructions": "Answer about yourself.",
+    "questions": [
+        {"questiontype": "num_field", "id": "age",
+         "instructions": "Enter age"},
+        {"questiontype": "field", "id": "guardian_name",
+         "instructions": "Guardian name (only if under 18)",
+         "show_if": "age < 18"},
+    ],
+}
+
+
+@pytest.fixture
+def bofs_app_with_show_if(tmp_path):
+    """A BOFS app whose survey has a show_if-gated question."""
+    q_dir = tmp_path / "questionnaires"
+    q_dir.mkdir()
+    (q_dir / "branched.json").write_text(
+        json.dumps(SHOW_IF_QUESTIONNAIRE), encoding="utf-8"
+    )
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": False,
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"name": "Branched", "path": "questionnaire/branched"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    original_cwd = os.getcwd()
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=False)
+    ctx = app.app_context()
+    ctx.push()
+    yield app
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
+class TestShowIfRendering:
+    def test_data_show_if_is_emitted(self, bofs_app_with_show_if):
+        app = bofs_app_with_show_if
+        client = app.test_client()
+        create_participant_via_consent(client, app)
+
+        resp = client.get("/questionnaire/branched")
+        assert resp.status_code == 200
+        html = resp.data.decode("utf-8")
+        # The conditional question should carry the AST and the marker class.
+        assert "bofs-conditional" in html
+        assert "data-show-if=" in html
+        # The script tags must be loaded so the engine actually runs.
+        assert "bofs_expressions.js" in html
+        assert "questionnaire_branching.js" in html
+
+    def test_unconditional_question_has_no_show_if_attribute(
+        self, bofs_app_with_show_if
+    ):
+        app = bofs_app_with_show_if
+        client = app.test_client()
+        create_participant_via_consent(client, app)
+
+        html = client.get("/questionnaire/branched").data.decode("utf-8")
+        # The age question wrapper should NOT carry data-show-if (only the
+        # guardian_name wrapper does). Find a window around the `name="age"`
+        # input and verify it has no data-show-if in that block.
+        import re
+        # Look for ".question padding" wrappers; each ends at `</div>` of inputs.
+        wrappers = re.findall(
+            r'<div class="question padding[^"]*"(?:[^>]*)>.*?<input[^>]*name="age"',
+            html, re.DOTALL
+        )
+        assert wrappers, "Age question wrapper not found in HTML"
+        assert "data-show-if" not in wrappers[0]
+
+    def test_submit_without_hidden_field_uses_default(
+        self, bofs_app_with_show_if
+    ):
+        """When a participant is over 18, guardian_name is hidden client-side
+        and the form submits no value for it. The server falls back to the
+        column default — the submission must succeed."""
+        app = bofs_app_with_show_if
+        client = app.test_client()
+        create_participant_via_consent(client, app)
+
+        resp = submit_questionnaire_data(client, "branched", data_dict={
+            "age": "30",
+            # guardian_name intentionally omitted (would be hidden in browser).
+        })
+        assert resp.status_code == 200
+
+        result = app.questionnaires["branched"].fetch_all_data()[0]
+        assert result.age == 30
+        # Default for a string field is the empty string per JSONQuestionnaireColumn.
+        assert result.guardian_name == ""

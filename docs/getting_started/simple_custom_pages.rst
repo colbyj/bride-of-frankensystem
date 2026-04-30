@@ -40,7 +40,7 @@ Then add it to your configuration:
 
 **Built-in Variables**
 
-Instruction pages are Jinja2 templates, so you can use variables and logic:
+Instruction pages are `Jinja2 <https://jinja.palletsprojects.com/en/stable/templates/>`__ templates, so you can use variables and logic:
 
 .. code-block:: html
 
@@ -152,7 +152,7 @@ Common file types that work well:
 Dynamic Content with Jinja2
 ---------------------------
 
-Both instruction and simple pages support Jinja2 templating for dynamic content. BOFS automatically provides several useful variables in all templates:
+Both instruction and simple pages support `Jinja2 <https://jinja.palletsprojects.com/en/stable/templates/>`__  templating for dynamic content. BOFS automatically provides several useful variables in all templates:
 
 **Available Template Variables**
 

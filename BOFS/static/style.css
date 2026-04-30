@@ -67,6 +67,10 @@ body {
     /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
 }
 
+.bofs-hidden {
+    display: none;
+}
+
 .question-title {
     font-weight: bold;
     font-size: var(--question-title-font-size);

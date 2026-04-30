@@ -142,6 +142,57 @@ class TestCreateDBClass:
 
 
 # ===========================================================================
+# TestShowIfCompilation — show_if predicates parse at create_db_class time
+# ===========================================================================
+
+SHOW_IF_QUESTIONNAIRE = {
+    "title": "Branched",
+    "instructions": "",
+    "questions": [
+        {"questiontype": "num_field", "id": "age"},
+        {"questiontype": "field", "id": "guardian_name",
+         "show_if": "age < 18"},
+    ],
+}
+
+
+class TestShowIfCompilation:
+    def test_show_if_ast_attached(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "branched", SHOW_IF_QUESTIONNAIRE)
+        guardian = q.json_data["questions"][1]
+        assert "_show_if_ast" in guardian
+        # Sanity-check the AST shape: comparison of `age` against 18.
+        ast = guardian["_show_if_ast"]
+        assert ast["op"] == "<"
+        assert ast["args"][0] == {"var": "age"}
+        assert ast["args"][1] == {"const": 18}
+
+    def test_show_if_unparseable_fails_at_load(self, bofs_app, tmp_path):
+        bad = {
+            "title": "Bad",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "num_field", "id": "age"},
+                {"questiontype": "field", "id": "x", "show_if": "age <"},
+            ],
+        }
+        with pytest.raises(Exception, match="show_if"):
+            write_questionnaire_file(bofs_app, "bad_show_if", bad)
+
+    def test_show_if_disallowed_construct_fails_at_load(self, bofs_app):
+        bad = {
+            "title": "Bad",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "field", "id": "x",
+                 "show_if": "__import__('os')"},
+            ],
+        }
+        with pytest.raises(Exception, match="show_if"):
+            write_questionnaire_file(bofs_app, "evil_show_if", bad)
+
+
+# ===========================================================================
 # TestGenerateDBColumn
 # ===========================================================================
 

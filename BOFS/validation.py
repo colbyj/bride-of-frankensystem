@@ -394,6 +394,63 @@ def validate_picture_select(json_data: dict, filename: str) -> list[ValidationRe
     return results
 
 
+def validate_show_if(json_data: dict, filename: str) -> list[ValidationResult]:
+    """Check that any per-question ``show_if`` predicates parse cleanly and
+    only reference field IDs declared on this questionnaire."""
+    results = []
+    questions = json_data.get("questions", [])
+    if not isinstance(questions, list):
+        return results
+
+    # Local import keeps this module loadable even if the expressions package
+    # has not yet been initialised (e.g. during a partial install).
+    from BOFS.expressions import (
+        ExpressionError,
+        parse_with_field_ids,
+        referenced_fields,
+    )
+
+    known_ids = {fid for fid, _ in _collect_field_ids(json_data)}
+
+    for i, q in enumerate(questions):
+        if not isinstance(q, dict):
+            continue
+        expr = q.get("show_if")
+        if expr is None:
+            continue
+        if not isinstance(expr, str) or not expr.strip():
+            results.append(ValidationResult(
+                "error", filename,
+                f"Question #{i+1} has a non-string show_if "
+                f"({type(expr).__name__}).",
+                "show_if must be an expression string, e.g. \"age >= 18\"."
+            ))
+            continue
+
+        try:
+            ast = parse_with_field_ids(expr, list(known_ids))
+        except ExpressionError as e:
+            results.append(ValidationResult(
+                "error", filename,
+                f"Question #{i+1} has an unparseable show_if: `{expr}`. {e}",
+                "Use a Python-like expression, e.g. \"age < 18 and country in ['US', 'CA']\"."
+            ))
+            continue
+
+        unknown = referenced_fields(ast) - known_ids
+        if unknown:
+            results.append(ValidationResult(
+                "warning", filename,
+                f"Question #{i+1} show_if references unknown fields: "
+                f"{', '.join(sorted(unknown))}.",
+                f"Known field IDs in this questionnaire: "
+                f"{', '.join(sorted(known_ids)) or '(none)'}. "
+                f"Check for typos."
+            ))
+
+    return results
+
+
 def validate_calculations(json_data: dict, filename: str) -> list[ValidationResult]:
     """Check participant_calculations for SQL-safe names and valid field references."""
     results = []
@@ -479,6 +536,7 @@ def validate_questionnaire(json_data: dict, filename: str,
     results.extend(validate_field_ids(json_data, filename))
     results.extend(validate_picture_select(json_data, filename))
     results.extend(validate_calculations(json_data, filename))
+    results.extend(validate_show_if(json_data, filename))
 
     return results
 

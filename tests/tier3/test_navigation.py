@@ -189,3 +189,277 @@ class TestConditionalRouting:
 
             result = app.page_list.next_path("end")
             assert result == "end"
+
+
+# ===========================================================================
+# Page-level show_if — predicates evaluated against stored answers
+# ===========================================================================
+
+class TestPageShowIf:
+    """Verify a PAGE_LIST entry's ``show_if`` is evaluated against the
+    participant's prior questionnaire submissions and skips the page when
+    the predicate is false."""
+
+    @pytest.fixture
+    def app_with_page_show_if(self, tmp_path):
+        import os
+        import json
+        import toml
+
+        DEMOG = {
+            "title": "Demographics",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "num_field", "id": "age",
+                 "instructions": "Enter age"},
+            ],
+        }
+        FOLLOWUP = {
+            "title": "Followup",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "field", "id": "guardian",
+                 "instructions": "Guardian"},
+            ],
+        }
+
+        q_dir = tmp_path / "questionnaires"
+        q_dir.mkdir()
+        (q_dir / "demographics.json").write_text(
+            json.dumps(DEMOG), encoding="utf-8")
+        (q_dir / "followup.json").write_text(
+            json.dumps(FOLLOWUP), encoding="utf-8")
+        (tmp_path / "consent.html").write_text("<p>Consent</p>",
+                                                encoding="utf-8")
+
+        config_data = {
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret-key",
+            "TITLE": "Test",
+            "ADMIN_PASSWORD": "test",
+            "USE_ADMIN": False,
+            "PAGE_LIST": [
+                {"name": "Consent", "path": "consent"},
+                {"name": "Demographics", "path": "questionnaire/demographics"},
+                {"name": "Followup", "path": "questionnaire/followup",
+                 "show_if": "demographics.age < 18"},
+                {"name": "End", "path": "end"},
+            ],
+        }
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+        original_cwd = os.getcwd()
+        from BOFS.create_app import create_app
+        app = create_app(str(tmp_path), str(config_path), debug=False)
+        ctx = app.app_context()
+        ctx.push()
+        yield app
+        app.db.drop_all()
+        ctx.pop()
+        os.chdir(original_cwd)
+
+    def test_followup_skipped_when_predicate_false(
+        self, app_with_page_show_if
+    ):
+        """A participant who reports age 30 should NOT see the followup."""
+        app = app_with_page_show_if
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        # Submit demographics with age 30 (>= 18, so predicate false)
+        submit_questionnaire_data(client, "demographics", data_dict={"age": "30"})
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/followup" not in paths
+        assert "questionnaire/demographics" in paths
+        assert "end" in paths
+
+    def test_followup_included_when_predicate_true(
+        self, app_with_page_show_if
+    ):
+        """A participant who reports age 14 SHOULD see the followup."""
+        app = app_with_page_show_if
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        submit_questionnaire_data(client, "demographics", data_dict={"age": "14"})
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/followup" in paths
+
+    def test_followup_visible_before_demographics_submitted(
+        self, app_with_page_show_if
+    ):
+        """When the prior questionnaire hasn't been submitted yet, the
+        page should remain visible — the predicate cannot be evaluated,
+        so we don't lock the participant out of a path that's still
+        being decided."""
+        app = app_with_page_show_if
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/followup" in paths
+
+    def test_predicate_does_not_filter_when_no_participant_id(
+        self, app_with_page_show_if
+    ):
+        """Calling flat_page_list without a participant context (e.g. from
+        admin or startup) should keep all pages."""
+        app = app_with_page_show_if
+        # No request context: flat_page_list outside any participant flow.
+        flat = app.page_list.flat_page_list(condition=1)
+        paths = [p["path"] for p in flat]
+        assert "questionnaire/followup" in paths
+
+
+class TestPageShowIfTags:
+    """Verify that page-level ``show_if`` can reference a *specific tagged*
+    submission of a questionnaire (``qname.tag.field``) and pick the right
+    row when the same questionnaire appears multiple times in PAGE_LIST."""
+
+    @pytest.fixture
+    def app_with_tagged_pages(self, tmp_path):
+        import os
+        import json
+        import toml
+
+        SURVEY = {
+            "title": "Survey",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "num_field", "id": "rating",
+                 "instructions": "Rate"},
+            ],
+        }
+
+        q_dir = tmp_path / "questionnaires"
+        q_dir.mkdir()
+        (q_dir / "survey.json").write_text(
+            json.dumps(SURVEY), encoding="utf-8")
+        (tmp_path / "consent.html").write_text("<p>Consent</p>",
+                                                encoding="utf-8")
+
+        # The "improvement_followup" page only fires when the rating in the
+        # `before` tagged copy is lower than the rating in the `after` copy.
+        config_data = {
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret-key",
+            "TITLE": "Test",
+            "ADMIN_PASSWORD": "test",
+            "USE_ADMIN": False,
+            "PAGE_LIST": [
+                {"name": "Consent", "path": "consent"},
+                {"name": "Before", "path": "questionnaire/survey/before"},
+                {"name": "After", "path": "questionnaire/survey/after"},
+                {"name": "ImprovementFollowup",
+                 "path": "questionnaire/survey/followup",
+                 "show_if": "survey.before.rating < survey.after.rating"},
+                {"name": "End", "path": "end"},
+            ],
+        }
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+        original_cwd = os.getcwd()
+        from BOFS.create_app import create_app
+        app = create_app(str(tmp_path), str(config_path), debug=False)
+        ctx = app.app_context()
+        ctx.push()
+        yield app
+        app.db.drop_all()
+        ctx.pop()
+        os.chdir(original_cwd)
+
+    def test_tagged_predicate_resolves_to_specific_rows(
+        self, app_with_tagged_pages
+    ):
+        """before=2, after=4 → predicate true → followup included."""
+        app = app_with_tagged_pages
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        submit_questionnaire_data(client, "survey", tag="before",
+                                  data_dict={"rating": "2"})
+        submit_questionnaire_data(client, "survey", tag="after",
+                                  data_dict={"rating": "4"})
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/survey/followup" in paths
+
+    def test_tagged_predicate_skips_when_false(
+        self, app_with_tagged_pages
+    ):
+        """before=4, after=2 → predicate false → followup skipped."""
+        app = app_with_tagged_pages
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        submit_questionnaire_data(client, "survey", tag="before",
+                                  data_dict={"rating": "4"})
+        submit_questionnaire_data(client, "survey", tag="after",
+                                  data_dict={"rating": "2"})
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/survey/followup" not in paths
+
+    def test_tagged_predicate_distinguishes_from_most_recent(
+        self, app_with_tagged_pages
+    ):
+        """If the predicate were just "most recent rating", before=4,
+        after=2 (most recent) would yield rating=2. But our predicate is
+        ``before.rating < after.rating`` (4 < 2 → false). This guards
+        against regressing to the pre-tag behaviour where both refs would
+        resolve to whichever submission landed last."""
+        app = app_with_tagged_pages
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        # Submit `after` first, then `before` — `before` is most recent
+        # by timeEnded. The predicate must still scope each reference to
+        # its tag, not pick "most recent regardless of tag".
+        submit_questionnaire_data(client, "survey", tag="after",
+                                  data_dict={"rating": "5"})
+        submit_questionnaire_data(client, "survey", tag="before",
+                                  data_dict={"rating": "1"})
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        # before=1 < after=5 → predicate true → followup included.
+        assert "questionnaire/survey/followup" in paths

@@ -8,10 +8,10 @@ Source: ``ab_experiment/`` in the `BOFS examples repository <https://github.com/
 What It Demonstrates
 --------------------
 
-* **Two conditions with balanced random assignment** (``CONDITIONS``). BOFS's greedy balancer keeps the split close to 50/50 over the course of a run.
+* **Two conditions with balanced random assignment** (``CONDITIONS``). BOFS's condition assignemnt balancer keeps the split close to 50/50 over the course of a run.
 * **Conditional routing** — a ``conditional_routing`` block inside ``PAGE_LIST`` sends each participant to the instructions and task page that match their assigned condition.
 * **Condition-specific instruction templates** in ``templates/instructions/``, one per condition.
-* **A custom blueprint** (``menu_task/``) with one Flask route per condition, registered in the page list. The shared task template branches on the ``technique`` parameter to load the correct menu component.
+* **A custom blueprint** (``menu_task/``) with one Flask route per condition, registered in the page list. The shared task template switches on the ``technique`` parameter to load the correct menu component.
 * **Per-trial logging via a JSONTable** (``menu_task/tables/menu_trials.json``) including a ``json``-typed ``trajectory`` column for raw mouse samples.
 * **Calculated export fields** so per-participant accuracy and response-time summaries appear directly in the admin export.
 * **Session-validation decorators** (``@verify_correct_page``, ``@verify_session_valid``) protecting the custom routes.

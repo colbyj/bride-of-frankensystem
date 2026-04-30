@@ -227,3 +227,41 @@ class TestExportFilters:
         resp = _get_export(client, includeUnfinished='true')
         assert resp.status_code == 200
         assert _row_count(resp) == 2
+
+    # ------------------------------------------------------------------
+    # NaN handling: missing rows from outer-joined questionnaires must
+    # render as empty cells, not the string "NaN".
+    # ------------------------------------------------------------------
+
+    def test_export_csv_no_literal_nan(self, bofs_app_with_admin):
+        """A participant who has no row in a joined questionnaire (e.g. their
+        flow branched away) produces NaN cells in the underlying DataFrame.
+        The CSV must render those as empty strings, never as the literal
+        string "NaN" or "nan"."""
+        app = bofs_app_with_admin
+
+        # P1 has no questionnaire/survey row at all — so all of survey's
+        # columns will be NaN in the outer-joined export.
+        p = app.db.Participant()
+        p.mTurkID = ""
+        p.ipAddress = "127.0.0.1"
+        p.userAgent = "test"
+        p.condition = 1
+        p.finished = True
+        p.excludeFromCount = False
+        p.timeStarted = datetime(2024, 1, 1, 12, 0, 0)
+        p.timeEnded = datetime(2024, 1, 1, 12, 5, 0)
+        app.db.session.add(p)
+        app.db.session.commit()
+
+        client = _admin_client(app)
+        resp = _get_export(client, includeUnfinished='true')
+        assert resp.status_code == 200
+        text = resp.data.decode('utf-8')
+        # Avoid false positives by splitting into cells and checking values.
+        for line in text.splitlines()[1:]:  # skip header
+            cells = line.split(',')
+            for cell in cells:
+                assert cell.strip() not in ('NaN', 'nan'), (
+                    f"export contains literal NaN cell: {cell!r} in line {line!r}"
+                )

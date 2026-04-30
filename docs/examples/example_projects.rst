@@ -31,6 +31,13 @@ A BOFS project built around a custom JavaScript task written in `p5.js <https://
 
 See :doc:`p5_example` for a description of the project, or :doc:`/getting_started/tutorial_js_task` for a step-by-step walkthrough of how it's built. `Source on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/p5_example>`__.
 
+Branching Example
+-----------------
+
+A short project showing the two ``show_if`` features together: questions on a single page that appear or disappear based on what the participant has answered, and a page-level branch that picks one of two follow-up questionnaires based on a screening answer. The smallest example that uses ``show_if`` at both the question and page level.
+
+See :doc:`branching_example` for a description, or `view the source on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/branching_example>`__.
+
 Unity Example
 -------------
 

@@ -95,7 +95,7 @@ Questionnaire Management
   Plain HTML rendering with no admin chrome — useful for embedding, printing, or sharing.
 
 ``/admin/preview_procedure``
-  Generates a Mermaid flowchart of your ``PAGE_LIST``, including conditional branches.
+  Generates a Mermaid flowchart of your ``PAGE_LIST``, including the per-condition routes from any ``conditional_routing`` blocks.
 
 Database Management
 -------------------

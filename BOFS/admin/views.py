@@ -341,8 +341,16 @@ def route_participant_detail(pid):
                                message=f"No participant exists with ID {pid}."), 404
 
     # Pass 0 (not None) when the participant has no condition assigned —
-    # passing None falls back to the admin's session condition, which is wrong.
-    pages = current_app.page_list.flat_page_list(condition=participant.condition or 0)
+    # passing None falls back to the admin's session condition, which is
+    # wrong. participant_id=None disables show_if filtering so that pages
+    # the participant actually visited still appear here even if their
+    # current data would now route them to a different branch (e.g. they
+    # went back and changed an earlier answer). Pages they never visited
+    # show as not_reached via the Progress join below.
+    pages = current_app.page_list.flat_page_list(
+        condition=participant.condition or 0,
+        participant_id=None,
+    )
     progress_rows = db.session.query(db.Progress) \
         .filter(db.Progress.participantID == pid).all()
     progress_by_path = {row.path: row for row in progress_rows}
@@ -462,7 +470,11 @@ def route_export():
 
 
     if request.base_url.endswith("/download"):
-        return Response(df.to_csv(),
+        # ``na_rep=""`` so missing rows from outer-joined questionnaires
+        # (e.g. a participant whose flow branched away from a particular
+        # questionnaire) render as empty cells rather than the literal
+        # string "NaN".
+        return Response(df.to_csv(na_rep=""),
                         mimetype="text/csv",
                         headers={
                             "Content-disposition": "attachment; filename=%s.csv" %
@@ -470,7 +482,7 @@ def route_export():
                         })
     else:
         return render_template("export.html",
-                               data_table=df.to_html(index=False, classes="table table-striped border", justify="left"),
+                               data_table=df.to_html(index=False, classes="table table-striped border", justify="left", na_rep=""),
                                rowCount=len(results.export_data),
                                unfinishedCount=unfinished_count,
                                excludedCount=excluded_count)

@@ -1,6 +1,8 @@
 {% extends "template.html" %}
 {% from "questionnaire_macro.html" import createQuestionnaire with context %}
 {% block head %}
+    <script src="{{ url_for('BOFS_static', filename='js/bofs_expressions.js') }}"></script>
+    <script src="{{ url_for('BOFS_static', filename='js/questionnaire_branching.js') }}"></script>
 {% endblock %}
 
 {% block content %}

@@ -1,67 +1,29 @@
 Advanced Questionnaires
 =======================
 
-Participant Calculations
-------------------------
+Participant Calculations and Conditional Display
+------------------------------------------------
 
-A questionnaire can compute derived values from a participant's responses — scale scores, reverse-scored items, categorical bins. The result is stored alongside the raw responses and shows up in CSV exports.
-
-Calculations are defined in the ``participant_calculations`` section of your questionnaire:
+A questionnaire can compute derived values from a participant's responses (scale scores, reverse-scored items, categorical bins) and can hide individual questions based on the participant's other answers. Both features share a small expression DSL — the same syntax also drives page-level skipping in ``PAGE_LIST``. The full reference for the DSL, the field-reference forms (including qualified ``qname.tag.field`` references for repeated measures), and validation behaviour lives at :doc:`expressions`.
 
 .. code-block:: json
+    :caption: A questionnaire that computes a scale score and gates a follow-up question
 
     {
-        "title": "Personality Scale",
         "questions": [
-            {
-                "id": "extraversion_1",
-                "questiontype": "slider",
-                "instructions": "I am outgoing, sociable",
-                "left": "Strongly disagree",
-                "right": "Strongly agree",
-                "tick_count": 7
-            },
-            {
-                "id": "extraversion_2", 
-                "questiontype": "slider",
-                "instructions": "I am reserved (reverse scored)",
-                "left": "Strongly disagree",
-                "right": "Strongly agree",
-                "tick_count": 7
-            },
-            {
-                "id": "extraversion_3",
-                "questiontype": "slider",
-                "instructions": "I am full of energy",
-                "left": "Strongly disagree",
-                "right": "Strongly agree",
-                "tick_count": 7
-            }
+            {"id": "ext_1", "questiontype": "slider", "instructions": "I am outgoing",
+             "left": "Strongly disagree", "right": "Strongly agree", "tick_count": 7},
+            {"id": "ext_2", "questiontype": "slider", "instructions": "I am reserved (reverse scored)",
+             "left": "Strongly disagree", "right": "Strongly agree", "tick_count": 7},
+            {"id": "ext_3", "questiontype": "slider", "instructions": "I am full of energy",
+             "left": "Strongly disagree", "right": "Strongly agree", "tick_count": 7},
+            {"id": "elaborate", "questiontype": "field", "show_if": "ext_1 >= 6",
+             "instructions": "What activities do you find yourself most outgoing in?"}
         ],
         "participant_calculations": {
-            "extraversion_score": "mean([extraversion_1, 8-extraversion_2, extraversion_3])",
-            "extraversion_category": "'High' if extraversion_score > 5 else 'Low'"
+            "extraversion": "mean([ext_1, 8 - ext_2, ext_3])"
         }
     }
-
-**Available Functions**
-
-- ``mean(list)``: Calculate average
-- ``variance(list)``: Calculate variance  
-- ``std(list)``: Calculate standard deviation
-- ``median(list)``: Calculate median
-
-**Python Expressions**
-
-Calculations can use any valid Python expression, including:
-
-- Arithmetic operations: ``+``, ``-``, ``*``, ``/``
-- Conditional expressions: ``value if condition else other_value``
-- Comparisons: ``>``, ``<``, ``==``, ``!=``
-- Boolean logic: ``and``, ``or``, ``not``
-
-.. warning::
-    Calculations run in an unsandboxed Python environment. Only use trusted questionnaire files.
 
 
 Creating Custom Question Types
@@ -161,24 +123,6 @@ Then loop through them in your template:
 
 Advanced Features
 -----------------
-
-**Conditional Display**
-
-Use JavaScript in the ``code`` field to show/hide questions based on responses:
-
-.. code-block:: json
-
-    {
-        "code": "
-            $('#age').on('input', function() {
-                if ($(this).val() < 18) {
-                    $('#parental_consent').show();
-                } else {
-                    $('#parental_consent').hide();
-                }
-            });
-        "
-    }
 
 **Radiolist with "Other" Option**
 

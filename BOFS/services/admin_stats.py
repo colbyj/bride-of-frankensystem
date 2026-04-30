@@ -15,8 +15,16 @@ class AdminStatsService:
           - progress: list of result rows from the outer-joined query —
             each row contains the Participant entity plus one Progress entity
             (or None) per page, in the order of `pages`.
+
+        The page list is built with ``condition=0`` and ``participant_id=None``
+        so that every column that any participant could possibly have visited
+        appears in the table — including pages behind a ``conditional_routing``
+        block or a ``show_if`` predicate. Per-participant filtering happens in
+        the join: a participant who never visited a given page simply has a
+        NULL Progress row in that column.
         """
-        pages = [p for p in current_app.page_list.flat_page_list()
+        pages = [p for p in current_app.page_list.flat_page_list(
+                    condition=0, participant_id=None)
                  if p['path'] not in ("end", "consent")]
         progress = db.session.query(db.Participant).filter(db.Participant.isCrawler == False)
 
