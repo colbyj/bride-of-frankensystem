@@ -3,15 +3,115 @@
 
         <input type="hidden" name="timeStarted" value="{{ timeStarted }}">
 
-        {% if config["LOG_GRID_CLICKS"] %}
-        <input type="hidden" id="gridItemClicks" name="gridItemClicks" value="">
+        {% if config["LOG_QUESTIONNAIRE_INTERACTIONS"] %}
+        <input type="hidden" id="questionnaireInteractions" name="questionnaireInteractions" value="">
 
         <script type="text/javascript">
-            var grid_clicks = document.getElementById('gridItemClicks');
+            var interactions_el = document.getElementById('questionnaireInteractions');
+            var editState = new WeakMap();
 
-            function log_click(id, value) {
-                grid_clicks.value += '{"id": "' + id + '", "time": "' + (Date.now() / 1000.0).toString() + '", "value": "' + value + '"};';
+            function is_typing_input(el) {
+                if (el.tagName === 'TEXTAREA') return true;
+                if (el.tagName !== 'INPUT') return false;
+                return /^(text|number|email|tel|search|password|url|)$/i.test(el.type);
             }
+
+            function value_for(el) {
+                if (el.type === 'checkbox') {
+                    return el.value + ':' + (el.checked ? '1' : '0');
+                }
+                return el.value;
+            }
+
+            function fresh_state() {
+                return {
+                    keystrokes: 0, backspaces: 0,
+                    pastes: 0, pastedChars: 0,
+                    focusedAt: null, firstKeyAt: null
+                };
+            }
+
+            function get_state(el) {
+                var s = editState.get(el);
+                if (!s) { s = fresh_state(); editState.set(el, s); }
+                return s;
+            }
+
+            function log_interaction(question_id, event_type, value) {
+                interactions_el.value += JSON.stringify({
+                    questionID: question_id,
+                    eventType: event_type,
+                    timestamp: Date.now() / 1000.0,
+                    value: (value === undefined || value === null) ? '' : String(value)
+                }) + ';';
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var inputs = document.querySelectorAll('#q_s input, #q_s select, #q_s textarea');
+                inputs.forEach(function(el) {
+                    var qid = el.getAttribute('name') || el.getAttribute('id') || '';
+                    var typing = is_typing_input(el);
+
+                    if (typing) {
+                        el.addEventListener('keydown', function(e) {
+                            var s = get_state(el);
+                            s.keystrokes += 1;
+                            if (s.firstKeyAt === null) s.firstKeyAt = Date.now();
+                            if (e.key === 'Backspace' || e.key === 'Delete') s.backspaces += 1;
+                        });
+                        el.addEventListener('paste', function(e) {
+                            var s = get_state(el);
+                            s.pastes += 1;
+                            var chars = 0;
+                            try {
+                                var pasted = (e.clipboardData || window.clipboardData).getData('text');
+                                chars = pasted ? pasted.length : 0;
+                            } catch (err) { /* clipboard read may be blocked */ }
+                            s.pastedChars += chars;
+                            log_interaction(qid, 'paste', 'chars=' + chars);
+                        });
+                    }
+
+                    el.addEventListener('focus', function() {
+                        if (typing) {
+                            var s = fresh_state();
+                            s.focusedAt = Date.now();
+                            editState.set(el, s);
+                        }
+                        log_interaction(qid, 'focus', value_for(el));
+                    });
+
+                    el.addEventListener('change', function() {
+                        log_interaction(qid, 'change', value_for(el));
+                    });
+
+                    el.addEventListener('blur', function() {
+                        log_interaction(qid, 'blur', value_for(el));
+                        if (typing) {
+                            var s = get_state(el);
+                            var now = Date.now();
+                            var duration = s.focusedAt ? (now - s.focusedAt) : 0;
+                            var firstKeyDelay = (s.firstKeyAt && s.focusedAt) ? (s.firstKeyAt - s.focusedAt) : -1;
+                            var len = (el.value || '').length;
+                            var stats = [
+                                'keystrokes=' + s.keystrokes,
+                                'backspaces=' + s.backspaces,
+                                'pastes=' + s.pastes,
+                                'pasted_chars=' + s.pastedChars,
+                                'length=' + len,
+                                'duration_ms=' + duration,
+                                'first_key_ms=' + firstKeyDelay
+                            ].join(',');
+                            log_interaction(qid, 'text_stats', stats);
+                            editState.set(el, fresh_state());
+                        }
+                    });
+                });
+            });
+
+            document.addEventListener('visibilitychange', function() {
+                log_interaction('', document.hidden ? 'visibility_hidden' : 'visibility_visible', '');
+            });
         </script>
         {% endif %}
 

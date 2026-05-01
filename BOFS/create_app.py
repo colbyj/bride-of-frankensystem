@@ -87,8 +87,15 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     if 'USE_LOGO' not in app.config:
         app.config['USE_LOGO'] = True
 
-    if 'LOG_GRID_CLICKS' not in app.config:
-        app.config['LOG_GRID_CLICKS'] = False
+    if 'LOG_GRID_CLICKS' in app.config and 'LOG_QUESTIONNAIRE_INTERACTIONS' not in app.config:
+        app.config['LOG_QUESTIONNAIRE_INTERACTIONS'] = app.config['LOG_GRID_CLICKS']
+        app.logger.warning(
+            "Config key LOG_GRID_CLICKS is deprecated; rename to "
+            "LOG_QUESTIONNAIRE_INTERACTIONS in your config.toml."
+        )
+
+    if 'LOG_QUESTIONNAIRE_INTERACTIONS' not in app.config:
+        app.config['LOG_QUESTIONNAIRE_INTERACTIONS'] = False
 
     if 'ADDITIONAL_ADMIN_PAGES' not in app.config:
         app.config['ADDITIONAL_ADMIN_PAGES'] = []

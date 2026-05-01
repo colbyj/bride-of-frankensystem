@@ -19,12 +19,12 @@
                       <a class="nav-link" href="{{ url_for('admin.route_progress') }}">Progress</a>
                     </li>
 
-                    {% if logGridClicks %}
+                    {% if logInteractions %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Export</a>
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="{{ url_for('admin.route_export') }}">Questionnaire Data</a>
-                            <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Grid Timing Data</a><
+                            <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Interaction Timing Data</a>
                         </div>
                     </li>
                     {% else %}

@@ -305,7 +305,7 @@ class TestHandleQuestionnaire:
                 "name": "Alice",
                 "rating": "4",
                 "age": "30",
-                "gridItemClicks": "",
+                "questionnaireInteractions": "",
             },
         ):
             from flask import session
@@ -333,7 +333,7 @@ class TestHandleQuestionnaire:
                 "name": "Alice",
                 "rating": "4",
                 "age": "30",
-                "gridItemClicks": "",
+                "questionnaireInteractions": "",
             },
         ):
             from flask import session
@@ -349,7 +349,7 @@ class TestHandleQuestionnaire:
                 "name": "Bob",
                 "rating": "5",
                 "age": "25",
-                "gridItemClicks": "",
+                "questionnaireInteractions": "",
             },
         ):
             from flask import session
@@ -373,7 +373,7 @@ class TestHandleQuestionnaire:
                 "name": "Test",
                 "rating": "1",
                 "age": "20",
-                "gridItemClicks": "",
+                "questionnaireInteractions": "",
             },
         ):
             from flask import session
@@ -396,7 +396,7 @@ class TestHandleQuestionnaire:
                 "name": "Tagged",
                 "rating": "3",
                 "age": "40",
-                "gridItemClicks": "",
+                "questionnaireInteractions": "",
             },
         ):
             from flask import session
@@ -419,7 +419,7 @@ class TestHandleQuestionnaire:
                 "timeStarted": "2024-01-01 12:00:00",
                 "rating": "4",
                 "age": "30",
-                "gridItemClicks": "",
+                "questionnaireInteractions": "",
             },
         ):
             from flask import session
@@ -429,14 +429,16 @@ class TestHandleQuestionnaire:
         results = q.fetch_all_data()
         assert results[0].name == ""  # default for text fields
 
-    def test_radio_grid_logging(self, bofs_app):
+    def test_questionnaire_interactions_logged(self, bofs_app):
+        bofs_app.config["LOG_QUESTIONNAIRE_INTERACTIONS"] = True
         q = write_questionnaire_file(bofs_app, "grid_q", RADIOGRID_QUESTIONNAIRE)
         pid = self._create_participant(bofs_app)
 
-        # Semicolon-separated JSON click events
-        click_data = (
-            '{"id":"g_q1","value":"2","time":"1704110400.123"};'
-            '{"id":"g_q2","value":"3","time":"1704110401.456"}'
+        events = (
+            '{"questionID":"g_q1","eventType":"focus","timestamp":1704110400.000,"value":""};'
+            '{"questionID":"g_q1","eventType":"change","timestamp":1704110400.500,"value":"2"};'
+            '{"questionID":"g_q1","eventType":"blur","timestamp":1704110401.000,"value":"2"};'
+            '{"questionID":"g_q2","eventType":"change","timestamp":1704110402.000,"value":"3"}'
         )
 
         with bofs_app.test_request_context(
@@ -446,23 +448,149 @@ class TestHandleQuestionnaire:
                 "timeStarted": "2024-01-01 12:00:00",
                 "g_q1": "2",
                 "g_q2": "3",
-                "gridItemClicks": click_data,
+                "questionnaireInteractions": events,
             },
         ):
             from flask import session
             session["participantID"] = pid
             ParticipantQuestionnaireService(pid).handle_submission(q)
 
-        logs = bofs_app.db.session.query(bofs_app.db.RadioGridLog).filter(
-            bofs_app.db.RadioGridLog.participantID == pid,
-            bofs_app.db.RadioGridLog.questionnaire == "grid_q",
-        ).order_by(bofs_app.db.RadioGridLog.timeClicked).all()
+        rows = bofs_app.db.session.query(
+            bofs_app.db.QuestionnaireInteraction
+        ).filter(
+            bofs_app.db.QuestionnaireInteraction.participantID == pid,
+            bofs_app.db.QuestionnaireInteraction.questionnaire == "grid_q",
+        ).order_by(bofs_app.db.QuestionnaireInteraction.timestamp).all()
 
-        assert len(logs) == 2
-        assert logs[0].questionID == "g_q1"
-        assert logs[0].value == "2"
-        assert logs[1].questionID == "g_q2"
-        assert logs[1].value == "3"
+        assert len(rows) == 4
+        assert [r.eventType for r in rows] == ["focus", "change", "blur", "change"]
+        assert [r.questionID for r in rows] == ["g_q1", "g_q1", "g_q1", "g_q2"]
+        assert [r.value for r in rows] == ["", "2", "2", "3"]
+        assert rows[0].timestamp == datetime.fromtimestamp(1704110400.000)
+
+    def test_interaction_event_malformed_does_not_lose_others(self, bofs_app):
+        bofs_app.config["LOG_QUESTIONNAIRE_INTERACTIONS"] = True
+        q = write_questionnaire_file(bofs_app, "grid_q", RADIOGRID_QUESTIONNAIRE)
+        pid = self._create_participant(bofs_app)
+
+        # Middle event is broken JSON; the surrounding events should still persist.
+        events = (
+            '{"questionID":"g_q1","eventType":"change","timestamp":1704110400.000,"value":"2"};'
+            '{this is not valid json};'
+            '{"questionID":"g_q2","eventType":"change","timestamp":1704110402.000,"value":"3"}'
+        )
+
+        with bofs_app.test_request_context(
+            "/questionnaire/grid_q",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "g_q1": "2",
+                "g_q2": "3",
+                "questionnaireInteractions": events,
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        rows = bofs_app.db.session.query(
+            bofs_app.db.QuestionnaireInteraction
+        ).filter(
+            bofs_app.db.QuestionnaireInteraction.participantID == pid,
+        ).order_by(bofs_app.db.QuestionnaireInteraction.timestamp).all()
+
+        assert len(rows) == 2
+        assert [r.questionID for r in rows] == ["g_q1", "g_q2"]
+
+    def test_interaction_logging_disabled(self, bofs_app):
+        # Default config has LOG_QUESTIONNAIRE_INTERACTIONS = False
+        bofs_app.config["LOG_QUESTIONNAIRE_INTERACTIONS"] = False
+        q = write_questionnaire_file(bofs_app, "grid_q", RADIOGRID_QUESTIONNAIRE)
+        pid = self._create_participant(bofs_app)
+
+        events = (
+            '{"questionID":"g_q1","eventType":"change","timestamp":1704110400.000,"value":"2"}'
+        )
+
+        with bofs_app.test_request_context(
+            "/questionnaire/grid_q",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "g_q1": "2",
+                "g_q2": "3",
+                "questionnaireInteractions": events,
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        count = bofs_app.db.session.query(
+            bofs_app.db.QuestionnaireInteraction
+        ).count()
+        assert count == 0
+
+    def test_text_stats_event_persisted(self, bofs_app):
+        bofs_app.config["LOG_QUESTIONNAIRE_INTERACTIONS"] = True
+        q = write_questionnaire_file(bofs_app, "grid_q", RADIOGRID_QUESTIONNAIRE)
+        pid = self._create_participant(bofs_app)
+
+        stats = "keystrokes=12,backspaces=2,pastes=0,pasted_chars=0,length=14,duration_ms=8000,first_key_ms=600"
+        events = (
+            '{"questionID":"essay","eventType":"text_stats","timestamp":1704110400.000,"value":"'
+            + stats + '"}'
+        )
+
+        with bofs_app.test_request_context(
+            "/questionnaire/grid_q",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "g_q1": "2",
+                "g_q2": "3",
+                "questionnaireInteractions": events,
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        row = bofs_app.db.session.query(
+            bofs_app.db.QuestionnaireInteraction
+        ).filter_by(eventType="text_stats").one()
+        assert row.questionID == "essay"
+        assert row.value == stats
+
+    def test_paste_event_persisted(self, bofs_app):
+        bofs_app.config["LOG_QUESTIONNAIRE_INTERACTIONS"] = True
+        q = write_questionnaire_file(bofs_app, "grid_q", RADIOGRID_QUESTIONNAIRE)
+        pid = self._create_participant(bofs_app)
+
+        events = (
+            '{"questionID":"essay","eventType":"paste","timestamp":1704110400.000,"value":"chars=42"}'
+        )
+
+        with bofs_app.test_request_context(
+            "/questionnaire/grid_q",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "g_q1": "2",
+                "g_q2": "3",
+                "questionnaireInteractions": events,
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        row = bofs_app.db.session.query(
+            bofs_app.db.QuestionnaireInteraction
+        ).filter_by(eventType="paste").one()
+        assert row.questionID == "essay"
+        assert row.value == "chars=42"
 
 
 # ===========================================================================

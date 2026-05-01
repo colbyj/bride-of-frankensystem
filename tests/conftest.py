@@ -436,7 +436,7 @@ def submit_questionnaire_data(client, name, tag=None, data_dict=None,
                               follow_redirects=True):
     """
     POST form data to a questionnaire route.  Merges required hidden fields
-    (timeStarted, gridItemClicks) with the provided *data_dict*.
+    (timeStarted, questionnaireInteractions) with the provided *data_dict*.
     """
     if tag:
         url = f"/questionnaire/{name}/{tag}"
@@ -445,7 +445,7 @@ def submit_questionnaire_data(client, name, tag=None, data_dict=None,
 
     form_data = {
         "timeStarted": "2024-01-01 12:00:00",
-        "gridItemClicks": "",
+        "questionnaireInteractions": "",
     }
     if data_dict:
         form_data.update(data_dict)

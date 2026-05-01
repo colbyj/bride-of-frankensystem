@@ -593,3 +593,33 @@ class TestQuestionnaireLog:
         result = p.questionnaire_log("tag_log", tag="")
         assert "g_q1" in result
         assert result["g_q1"] == pytest.approx(3.0)
+
+    def test_questionnaire_interactions_helper_returns_ordered_events(self, bofs_app):
+        p = _make_participant(bofs_app)
+        # Two questionnaires; helper must filter by name+tag and order by timestamp.
+        rows = [
+            ("survey", 0, "q1", "focus", datetime(2024, 1, 1, 12, 0, 1), ""),
+            ("survey", 0, "q1", "change", datetime(2024, 1, 1, 12, 0, 5), "hello"),
+            ("survey", 0, "q1", "blur", datetime(2024, 1, 1, 12, 0, 8), "hello"),
+            ("other", 0, "q1", "change", datetime(2024, 1, 1, 12, 0, 6), "ignored"),
+            ("survey", "v2", "q1", "change", datetime(2024, 1, 1, 12, 0, 7), "tagged"),
+        ]
+        for name, tag, qid, etype, ts, val in rows:
+            r = bofs_app.db.QuestionnaireInteraction()
+            r.participantID = p.participantID
+            r.questionnaire = name
+            r.tag = tag
+            r.questionID = qid
+            r.eventType = etype
+            r.timestamp = ts
+            r.value = val
+            bofs_app.db.session.add(r)
+        bofs_app.db.session.commit()
+
+        result = p.questionnaire_interactions("survey")
+        assert [r.eventType for r in result] == ["focus", "change", "blur"]
+        assert all(r.questionnaire == "survey" and r.tag == "0" for r in result)
+
+        tagged = p.questionnaire_interactions("survey", tag="v2")
+        assert len(tagged) == 1
+        assert tagged[0].value == "tagged"

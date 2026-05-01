@@ -35,30 +35,27 @@ class ParticipantQuestionnaireService:
 
         fields = questionnaire.fetch_fields()
 
-        try:
-            for click_event in str(request.form['gridItemClicks']).split(";"):
-                if len(click_event) == 0:
-                    continue  # There is no data (is it the last line?), so skip it.
-
-                click_event = click_event.replace('\\', "")
-                click_event_dict = json.loads(click_event)
-
-                parsed_time = datetime.fromtimestamp(float(click_event_dict['time']))
-
-                new_log = db.RadioGridLog()
-                new_log.participantID = self.participant_id
-                new_log.questionnaire = questionnaire.file_name
-                new_log.tag = tag
-                new_log.questionID = click_event_dict['id']
-                new_log.timeClicked = parsed_time
-                new_log.value = click_event_dict['value']
-
-                db.session.add(new_log)
-
+        if current_app.config.get('LOG_QUESTIONNAIRE_INTERACTIONS', False):
+            raw = request.form.get('questionnaireInteractions', '')
+            for event_str in raw.split(';'):
+                if not event_str:
+                    continue
+                try:
+                    event = json.loads(event_str)
+                    interaction = db.QuestionnaireInteraction()
+                    interaction.participantID = self.participant_id
+                    interaction.questionnaire = questionnaire.file_name
+                    interaction.tag = tag
+                    interaction.questionID = event.get('questionID', '')
+                    interaction.eventType = event.get('eventType', '')
+                    interaction.timestamp = datetime.fromtimestamp(float(event['timestamp']))
+                    interaction.value = event.get('value', '') or ''
+                    db.session.add(interaction)
+                except Exception:
+                    current_app.logger.exception(
+                        "Failed to parse questionnaire interaction event: %r", event_str
+                    )
             db.session.commit()
-
-        except:
-            pass
 
         for field in fields:
             try:

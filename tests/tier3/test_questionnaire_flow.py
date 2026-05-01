@@ -178,33 +178,36 @@ class TestQuestionTypes:
         result = app.questionnaires["survey"].fetch_all_data()[0]
         assert result.name == ""  # text field default
 
-    def test_grid_item_clicks_logged(self, bofs_app_with_questionnaires):
-        """POST with gridItemClicks JSON → RadioGridLog records."""
+    def test_questionnaire_interactions_logged(self, bofs_app_with_questionnaires):
+        """POST with questionnaireInteractions JSON → QuestionnaireInteraction rows."""
         app = bofs_app_with_questionnaires
+        app.config["LOG_QUESTIONNAIRE_INTERACTIONS"] = True
         client = app.test_client()
         pid = create_participant_via_consent(client, app)
 
-        click_data = (
-            '{"id":"g1_q1","value":"3","time":"1704110400.123"};'
-            '{"id":"g1_q2","value":"5","time":"1704110401.456"}'
+        events = (
+            '{"questionID":"g1_q1","eventType":"change","timestamp":1704110400.123,"value":"3"};'
+            '{"questionID":"g1_q2","eventType":"change","timestamp":1704110401.456,"value":"5"}'
         )
 
         submit_questionnaire_data(client, "survey", data_dict={
             "name": "A", "rating": "4", "age": "30",
             "g1_q1": "3", "g1_q2": "5",
-            "gridItemClicks": click_data,
+            "questionnaireInteractions": events,
         })
 
-        logs = app.db.session.query(app.db.RadioGridLog).filter(
-            app.db.RadioGridLog.participantID == pid,
-            app.db.RadioGridLog.questionnaire == "survey",
-        ).order_by(app.db.RadioGridLog.timeClicked).all()
+        rows = app.db.session.query(app.db.QuestionnaireInteraction).filter(
+            app.db.QuestionnaireInteraction.participantID == pid,
+            app.db.QuestionnaireInteraction.questionnaire == "survey",
+        ).order_by(app.db.QuestionnaireInteraction.timestamp).all()
 
-        assert len(logs) == 2
-        assert logs[0].questionID == "g1_q1"
-        assert logs[0].value == "3"
-        assert logs[1].questionID == "g1_q2"
-        assert logs[1].value == "5"
+        assert len(rows) == 2
+        assert rows[0].questionID == "g1_q1"
+        assert rows[0].value == "3"
+        assert rows[0].eventType == "change"
+        assert rows[1].questionID == "g1_q2"
+        assert rows[1].value == "5"
+        assert rows[1].eventType == "change"
 
 
 # ===========================================================================

@@ -85,7 +85,7 @@ def inject_template_vars():
         tableNames=tableNames,
         questionnairesLive=questionnairesLive,
         questionnairesSystem=questionnairesSystem,
-        logGridClicks=current_app.config['LOG_GRID_CLICKS'],
+        logInteractions=current_app.config['LOG_QUESTIONNAIRE_INTERACTIONS'],
         isSqliteDb=isSqliteDb,
         condition_num_to_label=condition_num_to_label,
         csrf_token=generate_csrf,
@@ -457,42 +457,37 @@ def route_update_exclude_from_count():
     return Response(status=200, headers={'HX-Trigger': 'excludeChanged'})
 
 @admin.route("/export_item_timing")
+@admin.route("/export_item_timing/download")
 @verify_admin
 def route_export_item_timing():
-    questionnaires = current_app.page_list.get_questionnaire_list(True)
-    header = ["participantID", "mTurkID"]
-    rows = []
+    header = ["participantID", "mTurkID", "questionnaire", "tag",
+              "questionID", "eventType", "timestamp", "value"]
+    rows = [header]
 
-    results = db.session.query(db.Participant).filter(db.Participant.finished == True).all()
-    header_complete = False
+    participants = db.session.query(db.Participant).filter(
+        db.Participant.finished == True
+    ).all()
 
-    for p in results:
-        row = [p.participantID, p.mTurkID.strip() if p.mTurkID else ""]
+    for p in participants:
+        interactions = db.session.query(db.QuestionnaireInteraction).filter(
+            db.QuestionnaireInteraction.participantID == p.participantID
+        ).order_by(db.QuestionnaireInteraction.timestamp).all()
 
-        for qName in questionnaires:
-            tag = ""
+        mturk = p.mTurkID.strip() if p.mTurkID else ""
+        for i in interactions:
+            rows.append([
+                p.participantID, mturk, i.questionnaire, i.tag,
+                i.questionID, i.eventType, i.timestamp.isoformat(), i.value or ""
+            ])
 
-            if '/' in qName:
-                qNameParts = qName.split('/')
-                qName = qNameParts[0]
-                tag = qNameParts[1]
+    data = csv_string(rows)
 
-            p.questionnaire(qName, tag)  # preserve original side-effects, if any
-            logs = p.questionnaire_log(qName, tag)
-
-            qNameFull = qName
-            if len(tag) > 0:
-                qNameFull = "{}_{}".format(qName, tag)
-
-            for key in sorted(logs.keys()):
-                if not header_complete:
-                    header.append("{}_{}".format(qNameFull, key))
-                row.append(logs[key])
-
-        rows.append(row)
-        header_complete = True
-
-    return render_template("export_csv.html", data=csv_string([header] + rows))
+    if request.path.endswith("/download"):
+        return Response(data, mimetype="text/csv", headers={
+            "Content-disposition":
+                f"attachment; filename=interaction_timing_{datetime.utcnow().strftime('%Y-%m-%d')}.csv"
+        })
+    return render_template("export_csv.html", data=data)
 
 
 @admin.route("/export")

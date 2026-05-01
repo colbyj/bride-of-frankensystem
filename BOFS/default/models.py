@@ -330,6 +330,15 @@ def create(db):
 
             return result
 
+        def questionnaire_interactions(self, name, tag="") -> list:
+            if tag == "":
+                tag = 0
+            return db.session.query(db.QuestionnaireInteraction).filter(
+                db.QuestionnaireInteraction.participantID == self.participantID,
+                db.QuestionnaireInteraction.questionnaire == name,
+                db.QuestionnaireInteraction.tag == tag
+            ).order_by(db.QuestionnaireInteraction.timestamp).all()
+
         @staticmethod
         def balancer_counts():
             """
@@ -493,6 +502,19 @@ def create(db):
         value = db.Column(db.String, nullable=False, default="")
 
 
+    class QuestionnaireInteraction(db.Model):
+        __tablename__ = "questionnaire_interaction"
+
+        id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+        participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'))
+        questionnaire = db.Column(db.String, nullable=False, default="")
+        tag = db.Column(db.String, nullable=False, default="")
+        questionID = db.Column(db.String, nullable=False, default="")
+        eventType = db.Column(db.String, nullable=False, default="")
+        timestamp = db.Column(db.DateTime, nullable=False)
+        value = db.Column(db.String, nullable=True, default="")
+
+
     class Display(db.Model):
         __tablename__ = "display"
 
@@ -564,5 +586,5 @@ def create(db):
         lastSeenAt = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
 
 
-    return Participant, Progress, RadioGridLog, Display, SessionStore, AppMeta, BannedIp, LoginAttempt, AdminTrustedIp
+    return Participant, Progress, RadioGridLog, QuestionnaireInteraction, Display, SessionStore, AppMeta, BannedIp, LoginAttempt, AdminTrustedIp
 
