@@ -1,14 +1,10 @@
-"""Tier 2 tests for default models (Participant, Progress, RadioGridLog).
+"""Tier 2 tests for default models (Participant, Progress, QuestionnaireInteraction).
 
 These tests require a Flask app context with an in-memory SQLite database.
 They use the ``bofs_app`` fixture from conftest.py.
 """
 
-from datetime import datetime, timedelta
-
-import pytest
-
-from tests.conftest import write_questionnaire_file
+from datetime import datetime
 
 
 # ===========================================================================
@@ -484,116 +480,10 @@ class TestWarnUndecoratedPages:
 
 
 # ===========================================================================
-# TestQuestionnaireLog
+# TestQuestionnaireInteractions
 # ===========================================================================
 
-GRID_QUESTIONNAIRE = {
-    "title": "Grid",
-    "instructions": "",
-    "questions": [
-        {
-            "questiontype": "radiogrid",
-            "id": "grid",
-            "labels": ["1", "2", "3"],
-            "q_text": [
-                {"id": "g_q1", "text": "Item one"},
-                {"id": "g_q2", "text": "Item two"},
-            ],
-        }
-    ],
-}
-
-
-class TestQuestionnaireLog:
-    def test_returns_time_deltas(self, bofs_app):
-        q = write_questionnaire_file(bofs_app, "log_grid", GRID_QUESTIONNAIRE)
-        p = _make_participant(bofs_app)
-
-        # Create a questionnaire record for this participant
-        record = q.db_class()
-        record.participantID = p.participantID
-        record.tag = ""
-        record.timeStarted = datetime(2024, 1, 1, 12, 0, 0)
-        record.timeEnded = datetime(2024, 1, 1, 12, 1, 0)
-        record.g_q1 = 2
-        record.g_q2 = 3
-        bofs_app.db.session.add(record)
-
-        # Create log entries
-        log1 = bofs_app.db.RadioGridLog()
-        log1.participantID = p.participantID
-        log1.questionnaire = "log_grid"
-        log1.tag = 0  # empty tag stored as 0
-        log1.questionID = "g_q1"
-        log1.timeClicked = datetime(2024, 1, 1, 12, 0, 5)
-        log1.value = "2"
-
-        log2 = bofs_app.db.RadioGridLog()
-        log2.participantID = p.participantID
-        log2.questionnaire = "log_grid"
-        log2.tag = 0
-        log2.questionID = "g_q2"
-        log2.timeClicked = datetime(2024, 1, 1, 12, 0, 8)
-        log2.value = "3"
-
-        bofs_app.db.session.add_all([log1, log2])
-        bofs_app.db.session.commit()
-
-        result = p.questionnaire_log("log_grid")
-
-        # First delta: timeClicked(g_q1) - timeStarted = 5 seconds
-        assert result["g_q1"] == pytest.approx(5.0)
-        # Second delta: timeClicked(g_q2) - timeClicked(g_q1) = 3 seconds
-        assert result["g_q2"] == pytest.approx(3.0)
-
-    def test_empty_logs_returns_empty_dict(self, bofs_app):
-        q = write_questionnaire_file(bofs_app, "empty_log", GRID_QUESTIONNAIRE)
-        p = _make_participant(bofs_app)
-
-        # Create a questionnaire record but no logs
-        record = q.db_class()
-        record.participantID = p.participantID
-        record.tag = ""
-        record.timeStarted = datetime(2024, 1, 1, 12, 0, 0)
-        record.timeEnded = datetime(2024, 1, 1, 12, 1, 0)
-        record.g_q1 = 0
-        record.g_q2 = 0
-        bofs_app.db.session.add(record)
-        bofs_app.db.session.commit()
-
-        result = p.questionnaire_log("empty_log")
-        assert result == {}
-
-    def test_tag_normalization(self, bofs_app):
-        """Empty tag is treated as '0' in the query, matching tag=0 in DB."""
-        q = write_questionnaire_file(bofs_app, "tag_log", GRID_QUESTIONNAIRE)
-        p = _make_participant(bofs_app)
-
-        # Record with tag="0" (how empty tags are stored)
-        record = q.db_class()
-        record.participantID = p.participantID
-        record.tag = "0"
-        record.timeStarted = datetime(2024, 1, 1, 12, 0, 0)
-        record.timeEnded = datetime(2024, 1, 1, 12, 1, 0)
-        record.g_q1 = 1
-        record.g_q2 = 2
-        bofs_app.db.session.add(record)
-
-        log1 = bofs_app.db.RadioGridLog()
-        log1.participantID = p.participantID
-        log1.questionnaire = "tag_log"
-        log1.tag = 0
-        log1.questionID = "g_q1"
-        log1.timeClicked = datetime(2024, 1, 1, 12, 0, 3)
-        log1.value = "1"
-        bofs_app.db.session.add(log1)
-        bofs_app.db.session.commit()
-
-        # Passing tag="" should normalize to 0 and find the log
-        result = p.questionnaire_log("tag_log", tag="")
-        assert "g_q1" in result
-        assert result["g_q1"] == pytest.approx(3.0)
-
+class TestQuestionnaireInteractions:
     def test_questionnaire_interactions_helper_returns_ordered_events(self, bofs_app):
         p = _make_participant(bofs_app)
         # Two questionnaires; helper must filter by name+tag and order by timestamp.

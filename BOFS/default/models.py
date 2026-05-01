@@ -305,31 +305,6 @@ def create(db):
 
             return questionnaires[name].create_blank()
 
-        # Return a dictionary of question ID -> time delta
-        def questionnaire_log(self, name, tag="") -> dict:
-            q = self.questionnaire(name, tag)
-
-            if tag == "":
-                tag = 0
-
-            logs = db.session.query(db.RadioGridLog).filter(
-                db.RadioGridLog.participantID == self.participantID,
-                db.RadioGridLog.questionnaire == name,
-                db.RadioGridLog.tag == tag
-            ).order_by(db.RadioGridLog.timeClicked).all()
-
-            result = {}
-
-            prevTime = q.timeStarted
-
-            for log in logs:
-                deltaTime = (log.timeClicked - prevTime).total_seconds()
-                prevTime = log.timeClicked
-
-                result[log.questionID] = deltaTime
-
-            return result
-
         def questionnaire_interactions(self, name, tag="") -> list:
             if tag == "":
                 tag = 0
@@ -490,18 +465,6 @@ def create(db):
                 return str(int(seconds))
 
 
-    class RadioGridLog(db.Model):
-        __tablename__ = "radio_grid_log"
-
-        radioGridLog = db.Column(db.Integer, primary_key=True, autoincrement=True)
-        participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'))
-        timeClicked = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
-        questionnaire = db.Column(db.String, nullable=False, default="")
-        tag = db.Column(db.String, nullable=False, default="")
-        questionID = db.Column(db.String, nullable=False, default="")
-        value = db.Column(db.String, nullable=False, default="")
-
-
     class QuestionnaireInteraction(db.Model):
         __tablename__ = "questionnaire_interaction"
 
@@ -586,5 +549,5 @@ def create(db):
         lastSeenAt = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
 
 
-    return Participant, Progress, RadioGridLog, QuestionnaireInteraction, Display, SessionStore, AppMeta, BannedIp, LoginAttempt, AdminTrustedIp
+    return Participant, Progress, QuestionnaireInteraction, Display, SessionStore, AppMeta, BannedIp, LoginAttempt, AdminTrustedIp
 
