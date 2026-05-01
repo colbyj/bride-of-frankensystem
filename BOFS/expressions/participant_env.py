@@ -84,6 +84,12 @@ def _resolve_table_ref(participant_id, tname, column, db, tables):
         # Either the export legitimately returned NULL, or the participant
         # has no rows — both are "undecided" for show_if purposes.
         return _UNRESOLVED
+    if isinstance(value, dict):
+        # ``group_by`` exports resolve to a per-level dict on the accessor.
+        # The expression DSL only handles scalars, so a multi-valued ref
+        # is undecided here — researchers wanting per-level access should
+        # read it from the accessor in Python/Jinja.
+        return _UNRESOLVED
     return value
 
 

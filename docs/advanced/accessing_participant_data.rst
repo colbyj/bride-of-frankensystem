@@ -169,7 +169,19 @@ Each aggregate runs the export's SQL aggregation restricted to this participant.
 
 If a participant has no rows yet — or no rows that match the export's filter — the aggregate resolves to ``None``. Guard with ``{% if trials.learning_trials is not none %}`` when the absence matters.
 
-Aggregates that use ``group_by`` produce one value per level (e.g., ``learning_accuracy_phase1``, ``learning_accuracy_phase2`` in the data export), so they don't have a single per-participant value and are not reachable through the accessor. Reference the level-suffixed columns directly in your data export instead.
+Aggregates that use ``group_by`` produce one value per level. The accessor returns these as a dict keyed by the group value:
+
+.. code-block:: html
+
+    {% set trials = participant.table('cognitive_task') %}
+
+    {% for phase, accuracy in trials.phase_accuracy.items() %}
+        <p>{{ phase }}: {{ "%.0f"|format(accuracy * 100) }}%</p>
+    {% endfor %}
+
+When ``group_by`` is a list of columns, the dict is keyed by a tuple of the column values in declaration order (e.g., ``trials.cell_score[('learning', 1)]``). An empty dict means the participant has no rows that satisfied the export's filter and ``having`` clauses.
+
+Page-level ``show_if`` expressions can only consume scalar aggregates; a ``group_by`` reference like ``tables.cognitive_task.phase_accuracy`` is treated as undecided. Reference the level-suffixed columns in the data export when you need a scalar in a ``show_if`` predicate, or read the dict from the accessor in a template or custom blueprint.
 
 Evaluating an Expression
 ~~~~~~~~~~~~~~~~~~~~~~~~

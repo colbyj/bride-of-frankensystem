@@ -61,6 +61,40 @@ GROUP_BY_TABLE = {
 }
 
 
+MULTI_GROUP_BY_TABLE = {
+    "columns": {
+        "phase": {"default": "x"},
+        "block": {"type": "integer", "default": 0},
+        "score": {"type": "integer", "default": 0},
+    },
+    "exports": [
+        {
+            "group_by": ["phase", "block"],
+            "fields": {
+                "cell_score": "sum(score)",
+            },
+        },
+    ],
+}
+
+
+GROUP_BY_HAVING_TABLE = {
+    "columns": {
+        "phase": {"default": "x"},
+        "score": {"type": "integer", "default": 0},
+    },
+    "exports": [
+        {
+            "group_by": "phase",
+            "having": "sum(score) > 5",
+            "fields": {
+                "phase_score": "sum(score)",
+            },
+        },
+    ],
+}
+
+
 def _create_participant(app, condition=1):
     p = app.db.Participant()
     p.mTurkID = ""
@@ -297,12 +331,51 @@ class TestTableAccessor:
         with pytest.raises(AttributeError, match="bogus"):
             accessor.bogus
 
-    def test_group_by_export_raises_attributeerror(self, bofs_app):
+    def test_group_by_export_returns_dict_keyed_by_group_value(self, bofs_app):
+        table = write_table_file(bofs_app, "phases", GROUP_BY_TABLE)
+        p = _create_participant(bofs_app)
+        _seed_trial(bofs_app, table, p.participantID, phase="learning", score=3)
+        _seed_trial(bofs_app, table, p.participantID, phase="learning", score=4)
+        _seed_trial(bofs_app, table, p.participantID, phase="recall", score=5)
+
+        accessor = p.table("phases")
+        assert accessor.phase_score == {"learning": 7, "recall": 5}
+
+    def test_group_by_export_with_no_rows_returns_empty_dict(self, bofs_app):
         write_table_file(bofs_app, "phases", GROUP_BY_TABLE)
         p = _create_participant(bofs_app)
         accessor = p.table("phases")
-        with pytest.raises(AttributeError, match="group_by"):
-            accessor.phase_score
+        assert accessor.phase_score == {}
+
+    def test_group_by_export_keys_by_tuple_for_multi_column(self, bofs_app):
+        table = write_table_file(bofs_app, "cells", MULTI_GROUP_BY_TABLE)
+        p = _create_participant(bofs_app)
+        _seed_trial(bofs_app, table, p.participantID,
+                    phase="learning", block=1, score=2)
+        _seed_trial(bofs_app, table, p.participantID,
+                    phase="learning", block=1, score=3)
+        _seed_trial(bofs_app, table, p.participantID,
+                    phase="learning", block=2, score=4)
+        _seed_trial(bofs_app, table, p.participantID,
+                    phase="recall", block=1, score=5)
+
+        accessor = p.table("cells")
+        assert accessor.cell_score == {
+            ("learning", 1): 5,
+            ("learning", 2): 4,
+            ("recall", 1): 5,
+        }
+
+    def test_group_by_export_applies_having(self, bofs_app):
+        table = write_table_file(bofs_app, "phases", GROUP_BY_HAVING_TABLE)
+        p = _create_participant(bofs_app)
+        _seed_trial(bofs_app, table, p.participantID, phase="learning", score=3)
+        _seed_trial(bofs_app, table, p.participantID, phase="learning", score=4)
+        _seed_trial(bofs_app, table, p.participantID, phase="recall", score=2)
+
+        # learning has sum 7 (passes having > 5), recall has sum 2 (filtered out)
+        accessor = p.table("phases")
+        assert accessor.phase_score == {"learning": 7}
 
     def test_export_value_is_memoized(self, bofs_app):
         table = write_table_file(bofs_app, "trials", TRIALS_TABLE)
@@ -330,17 +403,19 @@ class TestTableAccessor:
         exports = accessor.exports
         assert exports["learning_trials"] == 1
         assert exports["recall_trials"] == 1
-        # group_by exports omitted from .exports — there are none in this
-        # table, but the dict should not include any unexpected keys.
         assert set(exports) == {
             "learning_trials", "learning_correct", "recall_trials"
         }
 
-    def test_exports_dict_excludes_group_by(self, bofs_app):
-        write_table_file(bofs_app, "phases", GROUP_BY_TABLE)
+    def test_exports_dict_includes_group_by_as_nested_dict(self, bofs_app):
+        table = write_table_file(bofs_app, "phases", GROUP_BY_TABLE)
         p = _create_participant(bofs_app)
+        _seed_trial(bofs_app, table, p.participantID, phase="learning", score=3)
+        _seed_trial(bofs_app, table, p.participantID, phase="recall", score=5)
+
         accessor = p.table("phases")
-        assert accessor.exports == {}
+        exports = accessor.exports
+        assert exports == {"phase_score": {"learning": 3, "recall": 5}}
 
     def test_dunder_lookup_does_not_trigger_query(self, bofs_app):
         write_table_file(bofs_app, "trials", TRIALS_TABLE)

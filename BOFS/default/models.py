@@ -27,6 +27,10 @@ class TableAccessor:
     running the export's SQL aggregation restricted to this participant,
     and the result is memoised on the accessor instance.
 
+    Scalar exports return a single value; ``group_by`` exports return a
+    dict keyed by the group value (or by a tuple of values when
+    ``group_by`` is a list of columns).
+
     The accessor proxies ``__iter__``, ``__len__``, ``__getitem__``, and
     ``__bool__`` to ``rows`` so existing template idioms like
     ``{% for row in participant.table('foo') %}`` and
@@ -45,7 +49,11 @@ class TableAccessor:
 
     @property
     def exports(self):
-        """All scalar (non-``group_by``) export aggregates as a dict.
+        """All export aggregates as a dict.
+
+        Scalar exports map to their value; ``group_by`` exports map to a
+        nested dict keyed by group value (or tuple of values for
+        multi-column ``group_by``).
 
         Useful for ``{% for k, v in participant.table('foo').exports.items() %}``.
         Each computed value is also memoised on the accessor instance,
@@ -56,8 +64,6 @@ class TableAccessor:
             return {}
         result = {}
         for export in (table.create_exports_dict() or []):
-            if export.get("group_by"):
-                continue
             for fname in (export.get("fields") or {}):
                 if fname in result:
                     continue
@@ -70,13 +76,51 @@ class TableAccessor:
         return current_app.tables.get(self._name)
 
     def _evaluate_export(self, table, export, field_name):
-        """Run an export's per-participant SQL aggregation. Returns the
-        scalar, or ``None`` if no rows match (the GROUP BY produces no
-        row, so :meth:`Query.first` returns ``None``)."""
+        """Run an export's per-participant SQL aggregation.
+
+        For scalar exports: returns the aggregate value, or ``None`` if
+        no rows match (the GROUP BY produces no row, so
+        :meth:`Query.first` returns ``None``).
+
+        For ``group_by`` exports: returns a dict mapping each group value
+        (or tuple of values for multi-column group_by) to its aggregate.
+        Returns an empty dict if the participant has no matching rows.
+        """
         from BOFS.globals import db as _db
         table_class = table.db_class
         pid_col = getattr(table_class, "participantID")
         field_expr = export["fields"][field_name]
+        group_by = export.get("group_by")
+
+        if group_by:
+            if isinstance(group_by, list):
+                group_cols = [getattr(table_class, gb) for gb in group_by]
+            else:
+                group_cols = [getattr(table_class, group_by)]
+
+            query = (
+                _db.session.query(*group_cols)
+                .select_from(table_class)
+                .filter(pid_col == self._participant.participantID)
+                .group_by(pid_col, *group_cols)
+                .add_columns(_db.literal_column(field_expr).label(field_name))
+            )
+            filter_expr = export.get("filter")
+            if filter_expr:
+                query = query.filter(_db.text(filter_expr))
+            having_expr = export.get("having")
+            if having_expr:
+                query = query.having(_db.text(having_expr))
+
+            result = {}
+            for row in query.all():
+                if len(group_cols) == 1:
+                    key = getattr(row, group_cols[0].key)
+                else:
+                    key = tuple(getattr(row, c.key) for c in group_cols)
+                result[key] = getattr(row, field_name, None)
+            return result
+
         query = (
             _db.session.query(table_class)
             .filter(pid_col == self._participant.participantID)
@@ -107,13 +151,6 @@ class TableAccessor:
             fields = export.get("fields") or {}
             if attr not in fields:
                 continue
-            if export.get("group_by"):
-                raise AttributeError(
-                    f"Export {attr!r} on table {self._name!r} uses "
-                    f"group_by, which produces multiple values per "
-                    f"participant. Reference the level-suffixed columns "
-                    f"in the data export instead."
-                )
             value = self._evaluate_export(table, export, attr)
             object.__setattr__(self, attr, value)
             return value

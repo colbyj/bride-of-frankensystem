@@ -796,7 +796,10 @@ def validate_page_show_if_table_refs(page_list, tables) -> list[ValidationResult
                     f"multiple values per participant.",
                     f"Page-level show_if can only consume scalar "
                     f"aggregates. Reference one of the level-suffixed "
-                    f"columns directly in the data export instead."
+                    f"columns directly in the data export, or read "
+                    f"the per-level dict from "
+                    f"participant.table('{tname}').{column} in a "
+                    f"template or custom blueprint."
                 ))
 
     def visit(entries):
