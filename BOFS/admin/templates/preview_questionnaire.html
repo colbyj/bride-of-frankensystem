@@ -7,6 +7,7 @@
     {% if (config['CONDITIONS'] | length) > 1 %}
     <div class="bg-body-tertiary p-3 rounded">
         <form class="row g-3 pt-3" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="col-auto col-form-label">
                 <label for="condition">Condition</label>
             </div>

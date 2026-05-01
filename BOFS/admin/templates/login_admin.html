@@ -6,6 +6,7 @@
 <body style="padding: 65px 20px 20px 20px" class="d-flex align-items-center">
 <main class="m-auto">
     <form method="post" style="min-width: 400px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <h1>{{ config['TITLE'] }}</h1>
         {% if message %}
             <div class="error-box">

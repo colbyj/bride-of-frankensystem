@@ -23,6 +23,10 @@ def bofs_app_with_admin(tmp_path):
         "TITLE": "Test Experiment",
         "ADMIN_PASSWORD": "test",
         "BRUTE_FORCE_PROTECTION": True,
+        # Tests POST directly to admin endpoints without fetching the form
+        # first; disable CSRF protection so the IP-binding behavior under
+        # test isn't masked by a 403 on missing token.
+        "WTF_CSRF_ENABLED": False,
         "PAGE_LIST": [
             {"name": "Consent", "path": "consent"},
             {"name": "End", "path": "end"},

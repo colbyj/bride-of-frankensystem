@@ -1,9 +1,12 @@
+import hmac
 import os
-from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file
+from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file, abort
+from flask_wtf.csrf import generate_csrf, validate_csrf
+from wtforms.validators import ValidationError
 from .. import BOFSFlask
 from ..globals import db, questionnaires, page_list
 from ..util import fetch_condition_count, display_time, provide_consent, int_or_0, utcnow_naive
-from .util import sqlalchemy_to_json, verify_admin, escape_csv, questionnaire_name_and_tag, condition_num_to_label
+from .util import sqlalchemy_to_json, verify_admin, formula_safe, csv_string, questionnaire_name_and_tag, condition_num_to_label
 from ..services.participant_questionnaire import ParticipantQuestionnaireService
 from ..services.data_export import Results
 import json
@@ -16,6 +19,33 @@ from shutil import copyfile
 
 current_app: "BOFSFlask"
 admin = Blueprint('admin', __name__, template_folder='templates', static_folder='static', url_prefix="/admin")
+
+
+_CSRF_PROTECTED_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
+
+
+@admin.before_request
+def _verify_admin_csrf():
+    """Block cross-site state-changing requests against the admin blueprint.
+
+    Reads the token from the standard Flask-WTF locations (``csrf_token``
+    form field or ``X-CSRFToken`` / ``X-CSRF-Token`` header). Participant
+    blueprints are not affected — the check is scoped to ``/admin/*`` via
+    the blueprint hook. Honors ``WTF_CSRF_ENABLED`` so test suites can
+    disable the check without exercising token plumbing."""
+    if not current_app.config.get('WTF_CSRF_ENABLED', True):
+        return
+    if request.method not in _CSRF_PROTECTED_METHODS:
+        return
+    token = (
+        request.form.get('csrf_token')
+        or request.headers.get('X-CSRFToken')
+        or request.headers.get('X-CSRF-Token')
+    )
+    try:
+        validate_csrf(token)
+    except ValidationError:
+        abort(403, description="CSRF token missing or invalid.")
 
 
 @admin.context_processor
@@ -57,7 +87,8 @@ def inject_template_vars():
         questionnairesSystem=questionnairesSystem,
         logGridClicks=current_app.config['LOG_GRID_CLICKS'],
         isSqliteDb=isSqliteDb,
-        condition_num_to_label=condition_num_to_label
+        condition_num_to_label=condition_num_to_label,
+        csrf_token=generate_csrf,
     )
 
 
@@ -84,7 +115,9 @@ def admin_login():
     if request.method == 'POST':
         from BOFS.services import brute_force
         ip = brute_force.get_client_ip()
-        if request.form['password'] != current_app.config['ADMIN_PASSWORD']:
+        submitted = request.form.get('password', '')
+        expected = current_app.config['ADMIN_PASSWORD']
+        if not hmac.compare_digest(submitted, expected):
             brute_force.record_failure(ip)
             return render_template("login_admin.html", message="The password you entered is incorrect.")
         else:
@@ -410,11 +443,14 @@ def route_participant_detail(pid):
                            display_time=display_time)
 
 @admin.post("/update_exclude_from_count")
+@verify_admin
 def route_update_exclude_from_count():
     if 'participantID' not in request.form or 'excludeFromCount' not in request.form:
         return ""
 
     p = db.session.get(db.Participant, request.form['participantID'])
+    if p is None:
+        return Response(status=404)
     p.excludeFromCount = not (request.form['excludeFromCount'] == 'True')
     db.session.commit()
 
@@ -424,15 +460,14 @@ def route_update_exclude_from_count():
 @verify_admin
 def route_export_item_timing():
     questionnaires = current_app.page_list.get_questionnaire_list(True)
-    header = "participantID,mTurkID"
-    output = ""
-
-    headerComplete = False
+    header = ["participantID", "mTurkID"]
+    rows = []
 
     results = db.session.query(db.Participant).filter(db.Participant.finished == True).all()
+    header_complete = False
 
     for p in results:
-        output += str.format(u"{},\"{}\"", p.participantID, p.mTurkID.strip())
+        row = [p.participantID, p.mTurkID.strip() if p.mTurkID else ""]
 
         for qName in questionnaires:
             tag = ""
@@ -442,7 +477,7 @@ def route_export_item_timing():
                 qName = qNameParts[0]
                 tag = qNameParts[1]
 
-            q = p.questionnaire(qName, tag)
+            p.questionnaire(qName, tag)  # preserve original side-effects, if any
             logs = p.questionnaire_log(qName, tag)
 
             qNameFull = qName
@@ -450,15 +485,14 @@ def route_export_item_timing():
                 qNameFull = "{}_{}".format(qName, tag)
 
             for key in sorted(logs.keys()):
-                if not headerComplete:
-                    header += ",{}_{}".format(qNameFull, key)
+                if not header_complete:
+                    header.append("{}_{}".format(qNameFull, key))
+                row.append(logs[key])
 
-                output += ",{}".format(logs[key])
+        rows.append(row)
+        header_complete = True
 
-        output += "\n"
-        headerComplete = True
-
-    return render_template("export_csv.html", data=str.format(u"{}\n{}", header, output))
+    return render_template("export_csv.html", data=csv_string([header] + rows))
 
 
 @admin.route("/export")
@@ -479,7 +513,16 @@ def route_export():
         # (e.g. a participant whose flow branched away from a particular
         # questionnaire) render as empty cells rather than the literal
         # string "NaN".
-        return Response(df.to_csv(na_rep=""),
+        # Apply formula-injection prefixing to every string-typed cell before
+        # pandas writes the CSV. Pandas' to_csv handles RFC 4180 quoting; the
+        # formula sigils (=+-@\t) are a spreadsheet-app concern that to_csv
+        # doesn't know about.
+        df_safe = df.copy()
+        for col in df_safe.select_dtypes(include='object').columns:
+            df_safe[col] = df_safe[col].map(
+                lambda v: formula_safe(v) if isinstance(v, str) else v
+            )
+        return Response(df_safe.to_csv(na_rep=""),
                         mimetype="text/csv",
                         headers={
                             "Content-disposition": "attachment; filename=%s.csv" %
@@ -625,14 +668,10 @@ def route_table_ajax(tableName):
 def route_table_csv(tableName):
     columns, rows = table_data(tableName)
 
-    csv = ""
     headers = [c['name'] for c in columns]
-    csv += ",".join(headers) + "\n"
+    body_rows = [[row[i] for i in range(len(columns))] for row in rows]
 
-    for row in rows:
-        csv += ",".join([escape_csv(row[i]) for i, c in enumerate(columns)]) + "\n"
-
-    return Response(csv,
+    return Response(csv_string([headers] + body_rows),
                     mimetype="text/csv",
                     headers={
                         "Content-disposition": "attachment; filename=%s.csv" % (
@@ -647,8 +686,16 @@ def route_database_download():
         return "Not using a SQLite database."
 
     db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+    # Resolve relative to the project root and confirm the file lives under it.
+    # SQLALCHEMY_DATABASE_URI comes from the project config, but a hostile or
+    # mistakenly-configured URI like ``sqlite:///../../etc/passwd`` would
+    # otherwise be served verbatim.
+    project_root = os.path.abspath(current_app.root_path)
+    resolved = os.path.abspath(os.path.join(project_root, db_uri))
+    if os.path.commonpath([resolved, project_root]) != project_root:
+        return Response("Database path is outside the project directory.", status=403)
     # TODO: Do I need to do something special if the database is being written to by users?
-    return send_file(db_uri, as_attachment=True)
+    return send_file(resolved, as_attachment=True)
 
 
 @admin.route("/database_delete", methods=['GET', 'POST'])
@@ -658,7 +705,14 @@ def route_database_delete():
         return "Not using a SQLite database."
 
     if request.method == 'POST':
-        if request.form['password'] != current_app.config['ADMIN_PASSWORD']:
+        from BOFS.services import brute_force
+        ip = brute_force.get_client_ip()
+        submitted = request.form.get('password', '')
+        expected = current_app.config['ADMIN_PASSWORD']
+        if not hmac.compare_digest(submitted, expected):
+            # Rate-limit the secondary password challenge so a stolen admin
+            # session can't grind it offline-style.
+            brute_force.record_failure(ip)
             return render_template("database_delete.html", message="The password you entered is incorrect.")
         else:
             db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')

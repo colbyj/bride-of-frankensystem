@@ -4,7 +4,8 @@ import pytest
 import decimal
 import datetime
 from BOFS.admin.util import (
-    escape_csv,
+    csv_string,
+    formula_safe,
     questionnaire_name_and_tag,
     remove_non_ascii,
     alchemy_encoder,
@@ -80,47 +81,90 @@ def test_alchemy_encoder_decimal_negative():
 
 
 # =========================================================================
-# escape_csv
+# formula_safe
 # =========================================================================
 
-def test_escape_csv_string_basic():
-    assert escape_csv("hello") == '"hello"'
+def test_formula_safe_passes_normal_strings_through():
+    assert formula_safe("hello") == "hello"
+    assert formula_safe("") == ""
+    assert formula_safe("123abc") == "123abc"
 
 
-def test_escape_csv_string_with_quotes():
-    assert escape_csv('say "hi"') == '"say \'hi\'"'
+def test_formula_safe_prefixes_equals():
+    assert formula_safe("=SUM(A1:A10)") == "'=SUM(A1:A10)"
 
 
-def test_escape_csv_string_with_newlines():
-    assert escape_csv("hello\nworld") == '"hello world"'
+def test_formula_safe_prefixes_plus():
+    assert formula_safe("+1") == "'+1"
 
 
-def test_escape_csv_string_with_carriage_returns():
-    assert escape_csv("hello\rworld") == '"hello world"'
+def test_formula_safe_prefixes_minus():
+    assert formula_safe("-2+3") == "'-2+3"
 
 
-def test_escape_csv_string_strips_whitespace():
-    assert escape_csv("  hello world  ") == '"hello world"'
+def test_formula_safe_prefixes_at():
+    assert formula_safe("@SUM") == "'@SUM"
 
 
-def test_escape_csv_none():
-    assert escape_csv(None) == ""
+def test_formula_safe_prefixes_tab():
+    assert formula_safe("\tcmd") == "'\tcmd"
 
 
-def test_escape_csv_bool_true():
-    assert escape_csv(True) == "1"
+def test_formula_safe_passes_non_strings_through():
+    # Non-strings keep their type so csv.writer can handle them.
+    assert formula_safe(42) == 42
+    assert formula_safe(None) is None
+    assert formula_safe(True) is True
 
 
-def test_escape_csv_bool_false():
-    assert escape_csv(False) == "0"
+# =========================================================================
+# csv_string
+# =========================================================================
+
+def test_csv_string_basic_row():
+    out = csv_string([["a", "b", "c"]])
+    assert out == "a,b,c\n"
 
 
-def test_escape_csv_integer():
-    assert escape_csv(42) == "42"
+def test_csv_string_quotes_cells_with_commas():
+    out = csv_string([["has,comma", "fine"]])
+    assert out == '"has,comma",fine\n'
 
 
-def test_escape_csv_float():
-    assert escape_csv(3.14) == "3.14"
+def test_csv_string_doubles_internal_quotes():
+    # RFC 4180: a quote inside a quoted cell is doubled.
+    out = csv_string([['say "hi"']])
+    assert out == '"say ""hi"""\n'
+
+
+def test_csv_string_quotes_cells_with_newlines():
+    out = csv_string([["a\nb"]])
+    assert out == '"a\nb"\n'
+
+
+def test_csv_string_none_renders_empty():
+    out = csv_string([[None, "x"]])
+    assert out == ",x\n"
+
+
+def test_csv_string_bool_renders_as_1_or_0():
+    assert csv_string([[True, False]]) == "1,0\n"
+
+
+def test_csv_string_numeric_passes_through():
+    assert csv_string([[42, 3.14]]) == "42,3.14\n"
+
+
+def test_csv_string_applies_formula_safe():
+    out = csv_string([["=cmd|'/c calc'!A1"]])
+    # Leading = is prefixed with ', then the whole cell is quoted by csv.writer
+    # (the prefix introduces no special chars but the original = sigil is gone).
+    assert out == "'=cmd|'/c calc'!A1\n"
+
+
+def test_csv_string_multiple_rows():
+    out = csv_string([["h1", "h2"], ["a", "b"], ["c", "d"]])
+    assert out == "h1,h2\na,b\nc,d\n"
 
 
 # =========================================================================

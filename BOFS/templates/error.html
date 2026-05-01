@@ -130,7 +130,9 @@
 
     {% if help_text %}
     <div class="hint">
-        {{ help_text|safe }}
+        {# help_text is wrapped in markupsafe.Markup at construction; plain
+           strings auto-escape correctly. #}
+        {{ help_text }}
     </div>
     {% endif %}
 </div>

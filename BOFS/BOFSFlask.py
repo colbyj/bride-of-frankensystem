@@ -9,6 +9,7 @@ from typing import Union
 from flask import Flask, send_from_directory, Response, Blueprint, url_for, render_template, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
+from markupsafe import Markup
 from BOFS import util
 from .BOFSSession import BOFSSessionInterface
 from .JSONQuestionnaire import JSONQuestionnaire
@@ -412,10 +413,21 @@ class BOFSFlask(Flask):
             title="Page Not Found",
             heading="File Not Found (404)",
             message="Could not load the requested page.",
-            help_text='If you are just starting out, please click <a href="/restart"><b>here</b></a> '
-                      'to reset your cookies for this page. If that doesn\'t work, please clear your '
-                      'cookies or switch web browsers.'
+            help_text=Markup(
+                'If you are just starting out, please click <a href="/restart"><b>here</b></a> '
+                "to reset your cookies for this page. If that doesn't work, please clear your "
+                "cookies or switch web browsers."
+            )
         ), 404
+
+    @staticmethod
+    def _strip_log_line(value) -> str:
+        """Drop CR/LF so a value written to ``error.log`` can't forge new
+        log lines. Used for fields that may carry user input bubbled up
+        from request handlers (``error.description``, exception messages)."""
+        if value is None:
+            return ""
+        return str(value).replace("\r", " ").replace("\n", " ")
 
     def internal_error(self, error):
         if not self.run_with_debugging:
@@ -425,13 +437,19 @@ class BOFSFlask(Flask):
                 open_mode = 'w'
 
             with open(log_path, open_mode) as f:
-                f.write(f"{datetime.now()} - {error.description} - {error.original_exception}\n")
+                f.write(
+                    f"{datetime.now()} - "
+                    f"{self._strip_log_line(error.description)} - "
+                    f"{self._strip_log_line(error.original_exception)}\n"
+                )
 
         return render_template('error.html',
             title="Internal Server Error",
             heading="Internal Server Error (500)",
             message=str(error.description),
-            help_text=f"<pre>{error.original_exception}</pre>"
+            # Markup.format auto-escapes the substituted exception text while
+            # preserving the <pre> wrapper.
+            help_text=Markup("<pre>{}</pre>").format(error.original_exception)
         ), 500
 
     def _current_participant(self):
@@ -519,14 +537,16 @@ class BOFSFlask(Flask):
                     heading="Questionnaire Configuration Errors",
                     message="BOFS found issues with your questionnaire definitions that must be fixed before the experiment can run.",
                     details=self.validation_errors,
-                    help_text='<h3>How to fix</h3>'
-                              '<ol>'
-                              '<li>Check each error above and follow the suggestion.</li>'
-                              '<li>Save your questionnaire JSON file(s).</li>'
-                              '<li>Restart BOFS to re-validate.</li>'
-                              '</ol>'
-                              '<p>If you need help with questionnaire format, see the '
-                              '<a href="https://bride-of-frankensystem.readthedocs.io/">BOFS documentation</a>.</p>'
+                    help_text=Markup(
+                        "<h3>How to fix</h3>"
+                        "<ol>"
+                        "<li>Check each error above and follow the suggestion.</li>"
+                        "<li>Save your questionnaire JSON file(s).</li>"
+                        "<li>Restart BOFS to re-validate.</li>"
+                        "</ol>"
+                        '<p>If you need help with questionnaire format, see the '
+                        '<a href="https://bride-of-frankensystem.readthedocs.io/">BOFS documentation</a>.</p>'
+                    )
                 )
 
         # Participant progress tracking. Runs for every request when the

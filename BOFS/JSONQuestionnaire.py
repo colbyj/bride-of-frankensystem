@@ -11,6 +11,7 @@ from .expressions import (
     parse_with_field_ids,
     referenced_fields,
 )
+from .sanitizer import sanitize_questionnaire_json
 from .validation import EXPANDED_TYPES
 
 
@@ -114,6 +115,12 @@ class JSONQuestionnaire(object):
         except ValueError as error:
             raise SyntaxError("ERROR! Unable to parse `%s` questionnaire. Please check that the file contains valid JSON syntax. "
                   "Python reports the following error: `%s`" % (file_name, error))
+
+        # Strip disallowed HTML from researcher-authored text fields up front
+        # so every consumer (template render, admin preview, exports) sees the
+        # cleaned content. Intentional code-injection slots (q.code) are left
+        # alone — see BOFS/sanitizer.py.
+        sanitize_questionnaire_json(self.json_data)
 
         self.__fields: list["JSONQuestionnaireColumn"] = []
         self.__calc_fields: list[str] = []

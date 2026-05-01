@@ -6,7 +6,9 @@
 
     <div class="question">
         <div class="padding">
-            <textarea style="width: 99%; height: 500px; white-space: pre;">{{ data | safe }}</textarea>
+            {# Auto-escape: a participant's free-text field could otherwise
+               inject ``</textarea><script>...`` and break out of the box. #}
+            <textarea style="width: 99%; height: 500px; white-space: pre;">{{ data }}</textarea>
         </div>
     </div>
 

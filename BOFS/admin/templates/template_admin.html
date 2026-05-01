@@ -95,6 +95,16 @@
 </main>
 
 <script>
+    // Send the admin CSRF token on every htmx request so state-changing
+    // POSTs (toggle condition, exclude-from-count, etc.) pass the
+    // before_request CSRF check on the admin blueprint.
+    (function () {
+        var csrfToken = "{{ csrf_token() }}";
+        document.body.addEventListener('htmx:configRequest', function (e) {
+            e.detail.headers['X-CSRFToken'] = csrfToken;
+        });
+    })();
+
     function check_logged_in() {
         // make Ajax call here, inside the callback call:
         setTimeout(check_logged_in, 5000);

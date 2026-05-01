@@ -5,6 +5,7 @@
 {% block content %}
 <div class="d-flex align-items-center">
     <form method="post" class="m-auto">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <h1>Delete Database</h1>
         {% if message %}

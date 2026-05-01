@@ -1,3 +1,5 @@
+import csv
+import io
 import json
 from functools import wraps
 from flask import request, session, current_app, render_template, g, redirect, url_for
@@ -79,15 +81,44 @@ def verify_admin(f):
     return decorated_function
 
 
-def escape_csv(input):
-    if isinstance(input, str):
-        return str.format(u"\"{}\"", input.strip().replace("\n", " ").replace("\r", " ").replace("\"", "'"))
-    if input is None:
-        return str()
-    if type(input) is bool:
-        return str(1) if input == True else str(0)
-    else:
-        return str(input)
+_FORMULA_SIGILS = ('=', '+', '-', '@', '\t')
+
+
+def formula_safe(value):
+    """Return *value* with a single-quote prefix when it begins with a CSV
+    formula sigil (``=``, ``+``, ``-``, ``@``, or tab). Spreadsheet apps treat
+    those leading characters as the start of a formula; the prefix neutralises
+    that without altering the visible value (the leading ``'`` is consumed on
+    display). Non-string values pass through unchanged so numeric / boolean
+    cells aren't coerced to strings unnecessarily."""
+    if isinstance(value, str) and value and value[0] in _FORMULA_SIGILS:
+        return "'" + value
+    return value
+
+
+def _csv_cell(value):
+    """Coerce *value* to the form ``csv.writer`` should receive.
+
+    csv.writer stringifies non-string scalars itself, but BOFS exports
+    historically rendered ``True``/``False`` as ``1``/``0`` and ``None`` as the
+    empty string. Preserve those conventions so existing exports stay readable.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    return formula_safe(value)
+
+
+def csv_string(rows) -> str:
+    """Render *rows* as RFC 4180 CSV. Each row is an iterable of cells; each
+    cell is coerced via ``_csv_cell`` (formula-injection safe, ``None`` → "",
+    bool → ``1``/``0``)."""
+    buf = io.StringIO()
+    writer = csv.writer(buf, lineterminator='\n')
+    for row in rows:
+        writer.writerow([_csv_cell(c) for c in row])
+    return buf.getvalue()
 
 
 def condition_num_to_label(condition):

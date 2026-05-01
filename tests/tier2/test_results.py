@@ -258,9 +258,27 @@ class TestCSV:
         r = Results()
         csv = r.build_export_csv()
 
-        # escape_csv wraps strings in quotes, replaces " with '
+        # RFC 4180: cells containing commas are quoted; internal quotes are
+        # doubled.
         assert '"has,comma"' in csv
-        assert "\"has'quote\"" in csv
+        assert '"has""quote"' in csv
+
+    def test_csv_neutralises_formula_injection(self, bofs_app_with_questionnaires):
+        """A free-text cell starting with =/+/-/@ is prefixed with ' so a
+        spreadsheet app won't evaluate it as a formula."""
+        app = bofs_app_with_questionnaires
+        _seed_full_participant(app, survey_data={"name": "=cmd|'/c calc'!A1"})
+
+        r = Results()
+        csv = r.build_export_csv()
+
+        # The prefix replaces the leading sigil; the cell becomes
+        # '=cmd|'/c calc'!A1 (and is quoted only if other CSV-special chars
+        # are present — single quote isn't special).
+        assert "'=cmd|" in csv
+        # The bare formula must not appear unprefixed anywhere.
+        assert ",=cmd|" not in csv
+        assert "\n=cmd|" not in csv
 
 
 # ===========================================================================

@@ -7,7 +7,7 @@ DataFrames, and summary statistics.
 from sqlalchemy.orm import Query
 from BOFS.globals import db, questionnaires, page_list
 import sqlalchemy
-from BOFS.admin.util import escape_csv, questionnaire_name_and_tag, condition_num_to_label
+from BOFS.admin.util import csv_string, questionnaire_name_and_tag, condition_num_to_label
 from flask import current_app
 import pandas as pd
 import os
@@ -291,19 +291,12 @@ class Results(object):
         return self.df
 
     def build_export_csv(self) -> str:
-        csv_string = ",".join(self.column_list) + "\n"  # CSV Header
-
+        rows = [list(self.column_list)]
         for row in self.export_data.values():
-            csv_line = ""
-            for column in self.column_list:
-                if column in row:
-                    csv_line += escape_csv(row[column]) + ","
-                else:
-                    csv_line += ","
-
-            csv_string += csv_line[:-1] + "\n"
-
-        return csv_string[:-1]  # return everything except last line break
+            rows.append([row.get(column, "") for column in self.column_list])
+        # csv_string ends with a trailing newline; existing callers expected
+        # no trailing newline, so strip it.
+        return csv_string(rows).rstrip("\n")
 
     @staticmethod
     def build_filter_from_args(args):
