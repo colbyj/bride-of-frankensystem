@@ -138,6 +138,25 @@ of of three intro levels completed.
       ]
     }
 
+Naming rules
+~~~~~~~~~~~~
+
+Column names and export field names must be valid Python identifiers (start with a letter or underscore, contain only letters, numbers, and underscores) and must not be Python keywords like ``class`` or ``return``. The same name cannot appear as both a column and an export field on the same table — researchers reference exports as attributes on the participant's table accessor (described below), and a colliding name would shadow the raw column.
+
+Reading export values from templates and custom routes
+------------------------------------------------------
+
+Each scalar (non-``group_by``) field declared under ``exports`` is reachable as an attribute on the per-participant table accessor:
+
+.. code-block:: html
+
+    {% set trials = participant.table('cognitive_task') %}
+    <p>Total trials: {{ trials.totalLevelsFinished }}</p>
+
+The aggregate runs the export's SQL aggregation restricted to the current participant. Page-level ``show_if`` and ``participant.evaluate(...)`` reach the same values via the ``tables.<name>.<column>`` reference form. ``group_by`` exports produce one column per level (e.g. ``totalLevelsFinished_<sessionName>``) and aren't reachable through the accessor; reference the level-suffixed columns in the data export instead.
+
+For raw rows, iterate ``participant.table('cognitive_task')`` directly or use ``participant.table('cognitive_task').rows``. Full reference: :doc:`accessing_participant_data`.
+
 
 Showing Table Data in the Participant Detail View
 -------------------------------------------------

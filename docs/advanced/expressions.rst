@@ -3,6 +3,8 @@ Expressions: Calculations and Conditional Display
 
 Three places in BOFS take a small expression written over a participant's responses: the ``participant_calculations`` block on a questionnaire and per-question ``show_if`` predicates (both described in :doc:`advanced_questionnaires`), and per-page ``show_if`` predicates inside ``PAGE_LIST`` (described in :doc:`/getting_started/project_configuration`). They all accept the same syntax, so this page is the canonical reference for the syntax itself.
 
+The same syntax is also available from templates and custom blueprint code via ``participant.evaluate(expression)`` — see :doc:`accessing_participant_data` for that surface.
+
 Where expressions are used
 --------------------------
 

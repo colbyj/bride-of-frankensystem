@@ -45,6 +45,19 @@ Custom Routes and Templates
 * `mTurkID` can now also be passed in via the `external_id` URL argument.
 * Allow `APPLICATION_ROOT` to be missing from the config.
 
+Expression Engine and Show-If
+* Added a small expression engine for `participant_calculations`, replacing the previous use of `eval()`.
+* Added `show_if` predicates on questionnaire questions (live, browser-side, against same-page form values) and on entries in `PAGE_LIST` (server-side, against stored answers). See `docs/advanced/expressions.rst` for the syntax.
+* Page-level `show_if` can reference `condition` (the participant's assigned condition number) and `tables.<name>.<column>` (per-participant aggregates from a JSONTable's `exports` block).
+* Each arm of `conditional_routing` now accepts an optional `show_if` predicate alongside (or instead of) `condition`. The first arm whose `condition` matches and whose `show_if` is true wins.
+* Validation now rejects Python keywords as field IDs, calculated-field names, table column names, and table export field names. It also flags collisions where a table's export field name matches a column on the same table, and warns when a page-level `show_if` references a `group_by` export (which produces multiple values per participant). The names `condition` and `tables` are reserved at the top of an expression and cannot be used as questionnaire/table filenames, field IDs, or calculated-field names.
+
+Participant Data Access in Templates and Custom Routes
+* `participant` is now available as a template variable in every BOFS template; resolves to `None` when no participant is in session (admin previews, error pages).
+* New `participant.evaluate(expression)` runs a BOFS expression against the participant's stored data. The same syntax used in `show_if` and `participant_calculations` is now usable from templates and custom blueprint code.
+* New `participant.has_questionnaire(name, tag='')` distinguishes a real submission from the blank-default row that `participant.questionnaire(name)` returns when nothing has been submitted yet.
+* `participant.table(name)` now returns a `TableAccessor` exposing the participant's raw rows (`accessor.rows`), every scalar export aggregate as an attribute (`accessor.<export_field>`, computed lazily and memoised per accessor instance), and all aggregates as a dict (`accessor.exports`). **Breaking**: the previous return value was the SQLAlchemy backref list directly. The accessor proxies iteration, `len()`, indexing, `bool()`, and `in` to `accessor.rows`, so `{% for row in participant.table('foo') %}`, `participant.table('foo')|length`, and `participant.table('foo')[0]` continue to work without changes. Code that called list-only methods (`.append`, `.sort`) on the return value will break — operate on `accessor.rows` instead.
+
 Internal Refactoring
 * Introduced a service layer to consolidate previously scattered logic: `ParticipantService`, `SessionRecoveryService`, `ParticipantRoutingService`, `ParticipantQuestionnaireService`, and `AdminStatsService`.
 * `Results` class moved to `services/data_export.py`; fixed an issue with export flags discovered during the move.

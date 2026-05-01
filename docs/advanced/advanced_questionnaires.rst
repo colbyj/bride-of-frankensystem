@@ -160,7 +160,7 @@ Add client-side validation to custom question types:
 Database Considerations
 -----------------------
 
-Question IDs become column names in the questionnaire's database table. Use lowercase with underscores (``my_question``, not ``MyQuestion``), start with a letter, and avoid SQL reserved words (``select``, ``from``, ``where``, etc.).
+Question IDs become column names in the questionnaire's database table and are also used as Python attributes when researchers read responses (e.g. ``participant.questionnaire('demographics').age``). Use lowercase with underscores (``my_question``, not ``MyQuestion``), start with a letter, avoid SQL reserved words (``select``, ``from``, ``where``, etc.), and avoid Python keywords (``class``, ``return``, ``for``, etc.) — a keyword as an attribute name is a syntax error in templates and custom code. The names ``condition`` and ``tables`` are also reserved (they have a special meaning inside expressions; see :doc:`expressions`).
 
 BOFS infers column types from the question type — text fields map to ``TEXT``, number fields to ``INTEGER`` or ``FLOAT``, everything else to ``TEXT`` (JSON-encoded). For changing the schema after participants have submitted data, see "Modifying Questionnaires with Existing Data" in :doc:`../getting_started/basic_questionnaires`.
 
