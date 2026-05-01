@@ -1,5 +1,6 @@
 from flask import session, request, current_app
 from BOFS.globals import db
+from BOFS.services.brute_force import get_client_ip
 from BOFS.util import utcnow_naive
 import uuid
 
@@ -13,12 +14,7 @@ class ParticipantService:
         Returns the Participant. Must be called inside a request context.
         """
         p = db.Participant()
-        ip_address = request.headers.get('X-Real-IP')
-
-        if ip_address is None:
-            ip_address = request.environ['REMOTE_ADDR']
-
-        p.ipAddress = ip_address
+        p.ipAddress = get_client_ip()
         p.userAgent = request.user_agent.string
         p.timeStarted = utcnow_naive()
         p.check_useragent_for_crawler()

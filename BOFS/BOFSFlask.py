@@ -472,6 +472,16 @@ class BOFSFlask(Flask):
         )
         return template_vars
 
+    def _too_many_requests_response(self, retry_seconds: int):
+        """Render a 429 page with a ``Retry-After`` header."""
+        body = render_template('error.html',
+            title="Too Many Requests",
+            heading="Too Many Requests (429)",
+            message="This IP address is temporarily blocked. Please try again later.",
+            help_text=""
+        )
+        return body, 429, {'Retry-After': str(retry_seconds)}
+
     def before_request_(self):
         """
         If running the server in debug mode, turn off Jinja caching.
@@ -482,8 +492,25 @@ class BOFSFlask(Flask):
         if self.run_with_debugging:
             self.jinja_env.cache = {}
 
-        # If there are fatal validation errors, redirect all non-static routes to the error page
         from flask import request, session
+
+        # Brute-force protection: ban check + probe-URL + hostile-UA detection.
+        # Runs before the static-asset bypass below so requests like
+        # /BOFS_static/.env still trip the probe-URL ban.
+        if request.method != 'OPTIONS' and self.config.get('BRUTE_FORCE_PROTECTION', True):
+            from BOFS.services import brute_force
+            ip = brute_force.get_client_ip()
+            if brute_force.is_banned(ip):
+                return self._too_many_requests_response(brute_force.seconds_until_unban(ip))
+            if brute_force.is_probe_url(request.path):
+                brute_force.record_probe(ip, "probe_url", notes=request.path)
+                return self._too_many_requests_response(brute_force.seconds_until_unban(ip))
+            ua = request.user_agent.string or ""
+            if brute_force.is_hostile_ua(ua):
+                brute_force.record_probe(ip, "hostile_ua", notes=ua)
+                return self._too_many_requests_response(brute_force.seconds_until_unban(ip))
+
+        # If there are fatal validation errors, redirect all non-static routes to the error page
         if self.validation_errors and not request.path.startswith('/BOFS_static'):
             has_fatal = any(e.severity == "error" for e in self.validation_errors)
             if has_fatal:

@@ -82,10 +82,15 @@ def admin_login():
         return redirect(url_for("admin.route_progress"))
 
     if request.method == 'POST':
+        from BOFS.services import brute_force
+        ip = brute_force.get_client_ip()
         if request.form['password'] != current_app.config['ADMIN_PASSWORD']:
+            brute_force.record_failure(ip)
             return render_template("login_admin.html", message="The password you entered is incorrect.")
         else:
+            brute_force.record_success_admin(ip)
             session['loggedIn'] = True
+            session['adminIp'] = ip
             session.modified = True
 
         redirect_to = url_for("admin.route_progress")

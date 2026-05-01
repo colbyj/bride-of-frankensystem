@@ -105,6 +105,119 @@ Session and Participant Settings
      - ``false``
      - Include abandoned participants when balancing condition assignment.
 
+Security Settings
+-----------------
+
+These settings control IP-based brute-force protection on the admin login,
+binding sessions to the IP they were created on, and how BOFS resolves the
+real client IP behind a reverse proxy.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 15 20 35
+
+   * - Variable
+     - Type
+     - Default
+     - Description
+   * - ``BRUTE_FORCE_PROTECTION``
+     - boolean
+     - ``true``
+     - Master kill-switch. When ``false``, IP banning, login-attempt tracking,
+       and session IP binding are all bypassed. Useful for emergency recovery
+       if an admin locks themselves out.
+   * - ``BRUTE_FORCE_AUTO_TRUST_ADMIN``
+     - boolean
+     - ``true``
+     - When ``true``, a successful admin login adds the IP to a persistent
+       allowlist (the ``admin_trusted_ip`` table) and exempts it from future
+       bans. The main self-service safety valve against admin self-lockout.
+   * - ``BRUTE_FORCE_MAX_ATTEMPTS``
+     - integer
+     - ``5``
+     - Failed admin logins per IP per window before a ban is issued.
+   * - ``BRUTE_FORCE_WINDOW_MINUTES``
+     - integer
+     - ``15``
+     - Sliding window for counting admin login failures.
+   * - ``BRUTE_FORCE_BAN_SCHEDULE``
+     - list of integers
+     - ``[1, 2, 5, 15, 60, 360, 1440, 10080]``
+     - Progressive ban duration in minutes. The IP's prior ban count indexes
+       into the list (1m, 2m, 5m, 15m, 1h, 6h, 1d, 7d). The final entry
+       sticks for any further bans. Historical ban rows are kept so the
+       count is accurate across time.
+   * - ``BRUTE_FORCE_PROBE_URLS``
+     - list of strings
+     - *(curated list, see below)*
+     - Paths that instantly ban any visiting IP — used to catch scanners
+       hitting well-known attack targets like ``/.env`` or ``/wp-admin``.
+       Match is exact-or-prefix. If a custom blueprint legitimately serves
+       any of these paths, remove that entry.
+   * - ``BRUTE_FORCE_HOSTILE_UA_PATTERNS``
+     - list of strings
+     - ``["sqlmap", "nikto", "nmap", "dirbuster", "gobuster", "masscan", "WPScan", "acunetix", "nessus"]``
+     - Case-insensitive substring matches against the request's
+       ``User-Agent``. A match instant-bans the IP. Easy to evade
+       (``sqlmap --random-agent`` masks the UA), so this is defense-in-depth
+       rather than a primary trap.
+   * - ``SESSION_BIND_TO_IP_PARTICIPANT``
+     - boolean
+     - ``true``
+     - When ``true``, a participant session is invalidated if the IP it was
+       created from differs from the current request's IP. Set to ``false``
+       for studies with mobile users who legitimately switch networks
+       (cellular ↔ wifi) mid-session, since each network change produces a
+       new public IP. Admin sessions are always bound — there is no opt-out.
+   * - ``TRUSTED_IPS``
+     - list of strings
+     - ``[]``
+     - Static allowlist that bypasses all IP-based protection. Combines with
+       the runtime ``admin_trusted_ip`` table.
+   * - ``BEHIND_REVERSE_PROXY``
+     - boolean
+     - ``false``
+     - **Set to ``true`` if BOFS runs behind Caddy or nginx** so the real
+       client IP is read from ``X-Forwarded-For`` (via Werkzeug's
+       ``ProxyFix``). When ``false``, ``X-Real-IP`` and ``X-Forwarded-For``
+       are ignored — they are spoofable when nothing trusted is in front of
+       the app.
+
+The default ``BRUTE_FORCE_PROBE_URLS`` list:
+
+.. code-block:: toml
+
+    BRUTE_FORCE_PROBE_URLS = [
+        "/.env",
+        "/.git",
+        "/.aws",
+        "/wp-admin",
+        "/wp-login.php",
+        "/wp-includes",
+        "/wp-content",
+        "/xmlrpc.php",
+        "/phpmyadmin",
+        "/phpMyAdmin",
+        "/administrator",
+        "/admin.php",
+        "/server-status",
+        "/actuator",
+        "/vendor/phpunit",
+        "/cgi-bin",
+        "/.DS_Store",
+        "/.htaccess",
+        "/.svn",
+    ]
+
+Recovery from a self-imposed lockout (the auto-trust list takes care of
+the common case once an admin has logged in successfully even once from
+the IP they're using):
+
+1. Add the IP to ``TRUSTED_IPS`` in ``config.toml`` and restart.
+2. Set ``BRUTE_FORCE_PROTECTION = false`` in ``config.toml`` and restart.
+3. Edit the database directly: ``DELETE FROM banned_ip WHERE ipAddress = '...';``
+   and optionally ``DELETE FROM admin_trusted_ip WHERE ipAddress = '...';``.
+
 External ID Settings (MTurk/Prolific)
 -------------------------------------
 

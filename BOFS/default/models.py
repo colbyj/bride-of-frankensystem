@@ -492,5 +492,40 @@ def create(db):
         key = db.Column(db.String(64), primary_key=True)
         value = db.Column(db.Text, nullable=False)
 
-    return Participant, Progress, RadioGridLog, Display, SessionStore, AppMeta
+
+    class BannedIp(db.Model):
+        __tablename__ = "banned_ip"
+
+        id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+        ipAddress = db.Column(db.String, nullable=False, index=True)
+        bannedAt = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
+        expiresAt = db.Column(db.DateTime, nullable=True)
+        reason = db.Column(db.String, nullable=False, default="admin_login")
+        failCount = db.Column(db.Integer, nullable=False, default=0)
+        notes = db.Column(db.String, nullable=True)
+
+        @property
+        def is_active(self) -> bool:
+            if self.expiresAt is None:
+                return True
+            return self.expiresAt > utcnow_naive()
+
+
+    class LoginAttempt(db.Model):
+        __tablename__ = "login_attempt"
+
+        id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+        ipAddress = db.Column(db.String, nullable=False, index=True)
+        attemptedAt = db.Column(db.DateTime, nullable=False, default=utcnow_naive, index=True)
+
+
+    class AdminTrustedIp(db.Model):
+        __tablename__ = "admin_trusted_ip"
+
+        ipAddress = db.Column(db.String, primary_key=True)
+        firstSeenAt = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
+        lastSeenAt = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
+
+
+    return Participant, Progress, RadioGridLog, Display, SessionStore, AppMeta, BannedIp, LoginAttempt, AdminTrustedIp
 

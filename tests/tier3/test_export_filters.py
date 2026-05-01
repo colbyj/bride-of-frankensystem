@@ -66,6 +66,7 @@ def bofs_app_with_admin(tmp_path):
         "SECRET_KEY": "test-secret-key",
         "TITLE": "Test Experiment",
         "ADMIN_PASSWORD": "test",
+        "BRUTE_FORCE_PROTECTION": False,
         # USE_ADMIN defaults to True when omitted — admin blueprint is registered
         "GENERATE_COMPLETION_CODE": True,
         "CONDITIONS": [

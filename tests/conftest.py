@@ -24,6 +24,7 @@ def bofs_app(tmp_path):
         "TITLE": "Test Experiment",
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": False,
+        "BRUTE_FORCE_PROTECTION": False,
         "PAGE_LIST": [
             {"name": "Consent", "path": "consent"},
             {"name": "End", "path": "end"},
@@ -312,6 +313,7 @@ def bofs_app_with_questionnaires(tmp_path):
         "TITLE": "Test Experiment",
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": False,
+        "BRUTE_FORCE_PROTECTION": False,
         "GENERATE_COMPLETION_CODE": True,
         "CONDITIONS": [
             {"label": "Control", "enabled": True},
@@ -369,6 +371,7 @@ def bofs_app_with_conditions(tmp_path):
         "TITLE": "Test Experiment",
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": False,
+        "BRUTE_FORCE_PROTECTION": False,
         "CONDITIONS": [
             {"label": "Control", "enabled": True},
             {"label": "Treatment", "enabled": True},

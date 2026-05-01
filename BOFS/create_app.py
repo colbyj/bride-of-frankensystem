@@ -146,6 +146,63 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     if 'APPLICATION_ROOT' not in app.config or app.config['APPLICATION_ROOT'] == '/':
         app.config['APPLICATION_ROOT'] = ''
 
+    if 'BRUTE_FORCE_PROTECTION' not in app.config:
+        app.config['BRUTE_FORCE_PROTECTION'] = True
+
+    if 'BRUTE_FORCE_AUTO_TRUST_ADMIN' not in app.config:
+        app.config['BRUTE_FORCE_AUTO_TRUST_ADMIN'] = True
+
+    if 'BRUTE_FORCE_MAX_ATTEMPTS' not in app.config:
+        app.config['BRUTE_FORCE_MAX_ATTEMPTS'] = 5
+
+    if 'BRUTE_FORCE_WINDOW_MINUTES' not in app.config:
+        app.config['BRUTE_FORCE_WINDOW_MINUTES'] = 15
+
+    if 'BRUTE_FORCE_BAN_SCHEDULE' not in app.config:
+        app.config['BRUTE_FORCE_BAN_SCHEDULE'] = [1, 2, 5, 15, 60, 360, 1440, 10080]
+
+    if 'BRUTE_FORCE_PROBE_URLS' not in app.config:
+        app.config['BRUTE_FORCE_PROBE_URLS'] = [
+            "/.env",
+            "/.git",
+            "/.aws",
+            "/wp-admin",
+            "/wp-login.php",
+            "/wp-includes",
+            "/wp-content",
+            "/xmlrpc.php",
+            "/phpmyadmin",
+            "/phpMyAdmin",
+            "/administrator",
+            "/admin.php",
+            "/server-status",
+            "/actuator",
+            "/vendor/phpunit",
+            "/cgi-bin",
+            "/.DS_Store",
+            "/.htaccess",
+            "/.svn",
+        ]
+
+    if 'BRUTE_FORCE_HOSTILE_UA_PATTERNS' not in app.config:
+        app.config['BRUTE_FORCE_HOSTILE_UA_PATTERNS'] = [
+            "sqlmap", "nikto", "nmap", "dirbuster", "gobuster",
+            "masscan", "WPScan", "acunetix", "nessus",
+        ]
+
+    if 'SESSION_BIND_TO_IP_PARTICIPANT' not in app.config:
+        app.config['SESSION_BIND_TO_IP_PARTICIPANT'] = True
+
+    if 'TRUSTED_IPS' not in app.config:
+        app.config['TRUSTED_IPS'] = []
+
+    if 'BEHIND_REVERSE_PROXY' not in app.config:
+        app.config['BEHIND_REVERSE_PROXY'] = False
+
+    if app.config['BEHIND_REVERSE_PROXY']:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
     for current_path in os.listdir(path):
         if current_path in ["static", "templates"]:  # We're inside a blueprint. Unlikely that there is another one here...
             continue

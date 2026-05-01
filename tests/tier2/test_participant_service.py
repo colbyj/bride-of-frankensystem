@@ -110,7 +110,7 @@ class TestParticipantService:
 
         ParticipantService.clear_condition(p)
 
-        refreshed = bofs_app.db.session.query(bofs_app.db.Participant).get(p.participantID)
+        refreshed = bofs_app.db.session.get(bofs_app.db.Participant, p.participantID)
         assert refreshed.condition is None
 
     def test_balancer_counts_delegates(self, bofs_app):

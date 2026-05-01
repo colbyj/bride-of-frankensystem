@@ -267,6 +267,85 @@ Optionally, restrict ``/admin`` to a specific IP at the Nginx layer:
         # ... other proxy settings
     }
 
+Brute-force Protection and Session Security
+-------------------------------------------
+
+BOFS includes built-in IP-based protection on the admin login, IP binding
+for sessions, and probe-URL / hostile-user-agent traps. Everything is on by
+default. Configure via the keys documented in
+:doc:`/reference/config_options` (Security Settings).
+
+What gets protected:
+
+- **Admin login**: failed logins are tracked per IP. After
+  ``BRUTE_FORCE_MAX_ATTEMPTS`` (default 5) within
+  ``BRUTE_FORCE_WINDOW_MINUTES`` (default 15), the IP is banned. Bans use
+  a progressive schedule (``BRUTE_FORCE_BAN_SCHEDULE``: 1m → 7d), so the
+  first ban is forgiving and repeat offenders escalate to multi-day bans.
+- **Admin session**: when an admin logs in, the request's IP is recorded
+  in the session. Subsequent admin requests from a different IP are
+  rejected and the session is cleared. There is no opt-out — admins
+  should not be roaming networks while logged in.
+- **Participant session**: a participant's session is invalidated if the
+  IP of a request differs from the IP the session was created from.
+  Disable with ``SESSION_BIND_TO_IP_PARTICIPANT = false`` for studies
+  with mobile users who switch networks (cellular ↔ wifi) mid-session.
+- **Probe URLs**: any request to a path in ``BRUTE_FORCE_PROBE_URLS``
+  (e.g., ``/.env``, ``/wp-admin``, ``/.git``) instant-bans the source IP.
+  The default list excludes legitimate paths (``/robots.txt``,
+  ``/favicon.ico``, ``/.well-known/*``). If a custom blueprint serves
+  any of the listed paths, edit the list in your TOML config.
+- **Hostile user agents**: any request whose ``User-Agent`` contains a
+  pattern in ``BRUTE_FORCE_HOSTILE_UA_PATTERNS`` (``sqlmap``, ``nikto``,
+  etc.) is instant-banned. Easy to evade — attackers can pass
+  ``--random-agent`` — so this is defense in depth, not a primary trap.
+
+Once an admin has logged in successfully even once from a given IP, that
+IP is added to a persistent allowlist (``admin_trusted_ip`` table) and
+exempted from future bans. To opt out, set
+``BRUTE_FORCE_AUTO_TRUST_ADMIN = false``.
+
+**Reverse-proxy configuration**: if BOFS runs behind Caddy or nginx, set
+``BEHIND_REVERSE_PROXY = true`` in your TOML so BOFS reads the real
+client IP from ``X-Forwarded-For`` (via Werkzeug's ``ProxyFix``) rather
+than seeing ``127.0.0.1`` for every request. Without this, every
+IP-based check treats the proxy itself as the client. The example
+Caddyfile and Nginx configs above already pass the right headers.
+
+**Recovery from self-lockout**: the auto-trust list covers the common
+case. If a fresh admin (no successful login on record from their IP)
+exhausts the attempt budget:
+
+1. Add their IP to ``TRUSTED_IPS`` in ``config.toml`` and restart.
+2. Set ``BRUTE_FORCE_PROTECTION = false`` in ``config.toml`` and restart;
+   log in successfully (which adds the IP to ``admin_trusted_ip``); set
+   ``BRUTE_FORCE_PROTECTION = true`` and restart.
+3. Edit the database: ``DELETE FROM banned_ip WHERE ipAddress = '...';``.
+
+**Limits of IP-based protection**: this is application-layer protection
+calibrated for casual brute-force attackers. It does not stop a
+determined attacker who rotates IPs through Tor or residential-proxy
+networks, and it can lock out legitimate users behind CGNAT (mobile
+carriers, university campuses) when one bad actor on the same network
+trips a ban. For DDoS protection and broader rate limiting, use
+proxy-layer controls — Caddy's `caddy-ratelimit
+<https://github.com/mholt/caddy-ratelimit>`__ plugin or Cloudflare in
+front of the deployment:
+
+.. code-block::
+
+    # Caddyfile snippet — requires the caddy-ratelimit plugin
+    rate_limit {
+        zone consent_burst {
+            match {
+                path /consent /consent_nc /create_participant /create_participant_nc
+            }
+            key {client_ip}
+            events 10
+            window 1m
+        }
+    }
+
 Troubleshooting
 ---------------
 

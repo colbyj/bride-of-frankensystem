@@ -12,3 +12,5 @@ docs/_build/
 CLAUDE.md
 CLAUDE/*
 .claude/*
+nul
+.coverage

@@ -54,11 +54,27 @@ def sqlalchemy_to_json(inst, cls):
 def verify_admin(f):
     """
     A decorator to be used for admin routes, which checks if the user is logged in. If not, the login page is shown.
+
+    When ``BRUTE_FORCE_PROTECTION`` is enabled, also checks that the
+    request's client IP matches ``session['adminIp']`` (set at login).
+    Mismatch clears the session and redirects to the login page so a
+    stolen cookie can't be replayed from a different network.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'loggedIn' not in session or not session['loggedIn']:
             return redirect(url_for("admin.admin_login") + "?r=" + getattr(f, "__name__", str(f)))
+
+        if current_app.config.get('BRUTE_FORCE_PROTECTION', True):
+            from BOFS.services import brute_force
+            current_ip = brute_force.get_client_ip()
+            stored_ip = session.get('adminIp')
+            if stored_ip != current_ip:
+                session.pop('loggedIn', None)
+                session.pop('adminIp', None)
+                session.modified = True
+                return redirect(url_for("admin.admin_login") + "?r=" + getattr(f, "__name__", str(f)))
+
         return f(*args, **kwargs)
     return decorated_function
 

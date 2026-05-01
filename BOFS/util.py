@@ -93,10 +93,17 @@ def verify_session_valid(f):
             if participant is None:
                 session.clear()
                 return redirect('/')
-            # See that the user's IP address matches what's in the database
-            # if participant.ipAddress != request.environ['REMOTE_ADDR']:
-            #    session.clear()
-            #    return redirect('/')
+
+            # Bind the participant session to the IP it was created from.
+            # A stolen session cookie shouldn't work from another network.
+            # Disabled for studies where participants legitimately switch
+            # networks mid-session (mobile wifi <-> cellular).
+            if (current_app.config.get('BRUTE_FORCE_PROTECTION', True)
+                    and current_app.config.get('SESSION_BIND_TO_IP_PARTICIPANT', True)):
+                from BOFS.services.brute_force import get_client_ip
+                if participant.ipAddress and participant.ipAddress != get_client_ip():
+                    session.clear()
+                    return redirect('/')
 
         return f(*args, **kwargs)
 

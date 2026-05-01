@@ -144,7 +144,7 @@ class TestSessionRecovery:
         pid = _advance_to_external_id(client, app)
 
         # Record the current participant's condition before the POST
-        current_p = app.db.session.query(app.db.Participant).get(pid)
+        current_p = app.db.session.get(app.db.Participant, pid)
         original_condition = current_p.condition
 
         mturk_id = "WORKER_DISABLED"
@@ -162,7 +162,7 @@ class TestSessionRecovery:
 
         # Condition must NOT have been replaced from past data
         app.db.session.expire_all()
-        current_p = app.db.session.query(app.db.Participant).get(pid)
+        current_p = app.db.session.get(app.db.Participant, pid)
         assert current_p.condition == original_condition
 
     # ------------------------------------------------------------------
@@ -198,7 +198,7 @@ class TestSessionRecovery:
             assert sess.get("condition") == 2
 
         app.db.session.expire_all()
-        current_p = app.db.session.query(app.db.Participant).get(pid)
+        current_p = app.db.session.get(app.db.Participant, pid)
         # Route sets p.condition = None on recovery
         assert current_p.condition is None
 
@@ -216,7 +216,7 @@ class TestSessionRecovery:
         client = app.test_client()
         pid = _advance_to_external_id(client, app)
 
-        current_p = app.db.session.query(app.db.Participant).get(pid)
+        current_p = app.db.session.get(app.db.Participant, pid)
         original_condition = current_p.condition
 
         mturk_id = "WORKER_RETAKE_FINISHED"
@@ -234,7 +234,7 @@ class TestSessionRecovery:
 
         # Condition must NOT have been replaced
         app.db.session.expire_all()
-        current_p = app.db.session.query(app.db.Participant).get(pid)
+        current_p = app.db.session.get(app.db.Participant, pid)
         assert current_p.condition == original_condition
 
     # ------------------------------------------------------------------
@@ -268,7 +268,7 @@ class TestSessionRecovery:
             assert sess.get("condition") == 2
 
         app.db.session.expire_all()
-        current_p = app.db.session.query(app.db.Participant).get(pid)
+        current_p = app.db.session.get(app.db.Participant, pid)
         assert current_p.condition is None
 
     # ------------------------------------------------------------------
@@ -339,5 +339,5 @@ class TestSessionRecovery:
         client.post("/external_id", data={"mTurkID": "ABC123"}, follow_redirects=False)
 
         app.db.session.expire_all()
-        p = app.db.session.query(app.db.Participant).get(pid)
+        p = app.db.session.get(app.db.Participant, pid)
         assert p.mTurkID == "ABC123"
