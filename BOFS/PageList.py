@@ -33,40 +33,77 @@ class PageList(object):
         """Parse any ``show_if`` predicate strings on page entries and any
         nested ``conditional_routing.page_list`` entries. The parsed AST is
         attached as ``_show_if_ast`` so evaluation at navigation time skips
-        the parser. Failures are raised so they surface at app startup."""
+        the parser. Failures are raised so they surface at app startup.
+
+        ``show_if`` may also appear on an arm of a ``conditional_routing``
+        block (alongside or instead of ``condition``), in which case the
+        AST is attached to the arm dict itself.
+        """
         for entry in page_list:
             if not isinstance(entry, dict):
                 continue
             if "conditional_routing" in entry:
                 for cr in entry["conditional_routing"]:
+                    PageList._compile_arm_show_if(cr)
                     PageList._compile_show_if(cr.get("page_list", []))
                 continue
-            expr = entry.get("show_if")
-            if expr is None:
-                continue
-            if not isinstance(expr, str) or not expr.strip():
-                raise Exception(
-                    f"PAGE_LIST entry {entry.get('name', entry.get('path'))!r} "
-                    f"has a non-string show_if: {expr!r}"
-                )
-            try:
-                ast_node, refs = parse_page_predicate(expr)
-            except ExpressionError as e:
-                raise Exception(
-                    f"Unable to parse show_if on page "
-                    f"{entry.get('name', entry.get('path'))!r}: "
-                    f"`{expr}`. {e}"
-                )
-            entry["_show_if_ast"] = ast_node
-            entry["_show_if_refs"] = refs
+            PageList._compile_one_show_if(entry)
+
+    @staticmethod
+    def _compile_one_show_if(entry):
+        """Parse a single entry's ``show_if`` (page entry or routing arm)."""
+        expr = entry.get("show_if")
+        if expr is None:
+            return
+        if not isinstance(expr, str) or not expr.strip():
+            raise Exception(
+                f"PAGE_LIST entry {entry.get('name', entry.get('path'))!r} "
+                f"has a non-string show_if: {expr!r}"
+            )
+        try:
+            ast_node, refs = parse_page_predicate(expr)
+        except ExpressionError as e:
+            raise Exception(
+                f"Unable to parse show_if on page "
+                f"{entry.get('name', entry.get('path'))!r}: "
+                f"`{expr}`. {e}"
+            )
+        entry["_show_if_ast"] = ast_node
+        entry["_show_if_refs"] = refs
+
+    @staticmethod
+    def _compile_arm_show_if(arm):
+        """Parse the optional ``show_if`` on a ``conditional_routing`` arm.
+
+        An arm without a ``name``/``path`` is identified by its ``condition``
+        in error messages so a researcher can find the offending arm.
+        """
+        expr = arm.get("show_if")
+        if expr is None:
+            return
+        if not isinstance(expr, str) or not expr.strip():
+            raise Exception(
+                f"conditional_routing arm "
+                f"(condition={arm.get('condition')!r}) has a non-string "
+                f"show_if: {expr!r}"
+            )
+        try:
+            ast_node, refs = parse_page_predicate(expr)
+        except ExpressionError as e:
+            raise Exception(
+                f"Unable to parse show_if on conditional_routing arm "
+                f"(condition={arm.get('condition')!r}): `{expr}`. {e}"
+            )
+        arm["_show_if_ast"] = ast_node
+        arm["_show_if_refs"] = refs
 
     @staticmethod
     def _page_visible(entry, participant_id):
         """Evaluate an entry's ``_show_if_ast`` against the given participant.
-        Returns True if the page should be included.
+        Returns True if the page (or routing arm) should be included.
 
         When there is no AST, no participant context, or no Flask app
-        context (e.g. during early startup), the page is included by
+        context (e.g. during early startup), the entry is included by
         default — ``show_if`` only filters when we have everything needed
         to evaluate it.
         """
@@ -86,6 +123,7 @@ class PageList(object):
             refs,
             getattr(app, "questionnaires", {}),
             app.db,
+            tables=getattr(app, "tables", {}),
         )
         try:
             value = evaluate(ast, env, functions=default_functions())
@@ -97,6 +135,25 @@ class PageList(object):
             return True
         return bool(value)
 
+    @staticmethod
+    def _arm_matches(arm, condition, participant_id):
+        """Decide whether a ``conditional_routing`` arm should be selected
+        for the given (condition, participant). An arm matches when:
+
+        * its ``condition`` is unset, or matches the given ``condition``
+          (with the existing ``condition == 0`` "match anything" escape
+          hatch preserved for admin views), AND
+        * its ``show_if`` is unset, or evaluates to true for the
+          participant.
+
+        Both fields are optional; absence of both means the arm always
+        matches.
+        """
+        arm_condition = arm.get("condition")
+        if arm_condition is not None and condition != 0 and arm_condition != condition:
+            return False
+        return PageList._page_visible(arm, participant_id)
+
     def unconditional_pages(self):
         pages = []
         for entry in self.page_list:
@@ -107,15 +164,25 @@ class PageList(object):
         return pages
 
     def conditional_pages(self, condition):
+        """Return the inner pages of the first ``conditional_routing`` arm
+        whose ``condition`` matches (or is unset) for each routing block.
+
+        ``conditional_pages`` is used for enumeration (e.g. building the
+        questionnaire list), not runtime navigation, so an arm's ``show_if``
+        is treated as potentially-true here — the runtime filter happens
+        in :meth:`flat_page_list` where participant context is available.
+        """
         pages = []
 
         for entry in self.page_list:
             if 'conditional_routing' in entry:
-                for conditional_route in entry['conditional_routing']:
-                    if conditional_route['condition'] == condition:
-                        for conditional_entry in conditional_route['page_list']:
-                            pages.append(conditional_entry)
-                        break  # once a match has been found, then we're done
+                for arm in entry['conditional_routing']:
+                    arm_condition = arm.get('condition')
+                    if arm_condition is not None and arm_condition != condition:
+                        continue
+                    for conditional_entry in arm['page_list']:
+                        pages.append(conditional_entry)
+                    break  # once a match has been found, then we're done
 
         return pages
 
@@ -180,12 +247,13 @@ class PageList(object):
 
         for entry in self.page_list:
             if 'conditional_routing' in entry:
-                for conditional_route in entry['conditional_routing']:
-                    if condition == 0 or conditional_route['condition'] == condition:
-                        for conditional_entry in conditional_route['page_list']:
-                            if self._page_visible(conditional_entry, participant_id):
-                                flat_page_list.append(conditional_entry)
-                        break  # once a match has been found, then we're done
+                for arm in entry['conditional_routing']:
+                    if not self._arm_matches(arm, condition, participant_id):
+                        continue
+                    for conditional_entry in arm['page_list']:
+                        if self._page_visible(conditional_entry, participant_id):
+                            flat_page_list.append(conditional_entry)
+                    break  # once a match has been found, then we're done
             else:
                 if self._page_visible(entry, participant_id):
                     flat_page_list.append(entry)

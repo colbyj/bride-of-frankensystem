@@ -9,6 +9,8 @@ specific ``tag``.
 
 Reference syntax in source expressions:
 
+* ``condition`` (bare, reserved) — the participant's assigned condition
+  number from the ``Participant`` row.
 * ``field`` (bare) — looked up across all questionnaires; the most
   recent record wins. Useful when field IDs are unique app-wide.
 * ``qname.field`` — most recent submission of ``qname`` (any tag).
@@ -46,14 +48,55 @@ _DOTTED_RE = re.compile(
 )
 
 
+# Sentinel returned by ``_resolve_table_ref`` when the reference can't be
+# answered from current data — distinguishes "no data yet" from a legitimate
+# ``None`` aggregate result.
+_UNRESOLVED = object()
+
+
+def _resolve_table_ref(participant_id, tname, column, db, tables):
+    """Resolve a single ``tables.<tname>.<column>`` reference for the
+    given participant by delegating to the participant's ``TableAccessor``.
+
+    Returns the aggregate value, or ``_UNRESOLVED`` when the table or
+    column can't be found, when the export uses ``group_by`` (ambiguous
+    per-reference), or when the participant has no matching rows. The
+    caller treats ``_UNRESOLVED`` as "undecided predicate" and keeps the
+    page visible.
+    """
+    if tname not in (tables or {}):
+        return _UNRESOLVED
+
+    participant_model = getattr(db, "Participant", None)
+    if participant_model is None:
+        return _UNRESOLVED
+    participant = db.session.get(participant_model, participant_id)
+    if participant is None:
+        return _UNRESOLVED
+
+    try:
+        accessor = participant.table(tname)
+        value = getattr(accessor, column)
+    except (KeyError, AttributeError):
+        return _UNRESOLVED
+
+    if value is None:
+        # Either the export legitimately returned NULL, or the participant
+        # has no rows — both are "undecided" for show_if purposes.
+        return _UNRESOLVED
+    return value
+
+
 def parse_page_predicate(src):
     """Parse a page-level ``show_if`` expression.
 
     :returns: ``(ast, refs)`` where ``ast`` is the JSON AST and ``refs`` is
-        a ``{placeholder_name: {qname, tag, field, source}}`` mapping. The
-        evaluator will see each dotted reference as a single ``var`` node
-        whose name is the placeholder; :func:`build_env` consults ``refs``
-        to look up the corresponding stored answer.
+        a ``{placeholder_name: spec}`` mapping. The spec ``"kind"`` is one
+        of ``"questionnaire"`` (with ``qname``, ``tag``, ``field``) or
+        ``"table"`` (with ``tname``, ``column``). The evaluator sees each
+        dotted reference as a single ``var`` node whose name is the
+        placeholder; :func:`build_env` consults ``refs`` to look up the
+        corresponding stored value.
     """
     if not isinstance(src, str):
         raise ExpressionError(
@@ -66,6 +109,27 @@ def parse_page_predicate(src):
     def _replace(match):
         ref_text = match.group(0)
         parts = ref_text.split(".")
+
+        if parts[0] == "tables":
+            # ``tables.<name>.<column>`` — per-participant export of a
+            # ``JSONTable``. Tables don't have a tag concept today, so
+            # any other arity is an error rather than a silent mis-resolve.
+            if len(parts) != 3:
+                raise ExpressionError(
+                    f"table reference '{ref_text}' must have the form "
+                    f"'tables.<name>.<column>'."
+                )
+            _, tname, column = parts
+            placeholder = f"_bofs_ref_{counter[0]}"
+            counter[0] += 1
+            refs[placeholder] = {
+                "kind": "table",
+                "tname": tname,
+                "column": column,
+                "source": ref_text,
+            }
+            return placeholder
+
         if len(parts) == 2:
             qname, field = parts
             tag = None  # any tag — most recent wins
@@ -79,6 +143,7 @@ def parse_page_predicate(src):
         placeholder = f"_bofs_ref_{counter[0]}"
         counter[0] += 1
         refs[placeholder] = {
+            "kind": "questionnaire",
             "qname": qname,
             "tag": tag,
             "field": field,
@@ -91,19 +156,23 @@ def parse_page_predicate(src):
     return ast, refs
 
 
-def build_env(participant_id, referenced, refs, questionnaires, db):
+def build_env(participant_id, referenced, refs, questionnaires, db,
+              tables=None):
     """Build an env dict for the expression engine, populated only with
     the names that ``referenced`` actually mentions.
 
     :param participant_id: BOFS participant primary key.
     :param referenced: iterable of names from ``referenced_fields(ast)``.
     :param refs: placeholder map produced by :func:`parse_page_predicate`.
-        Names in ``referenced`` that appear here are resolved as
-        ``(qname, tag, field)`` lookups; the rest are treated as bare
-        field references.
+        Names in ``referenced`` that appear here are resolved according
+        to their ``kind`` (``"questionnaire"`` or ``"table"``); the rest
+        are treated as bare field references.
     :param questionnaires: dict ``{filename: JSONQuestionnaire}``,
         typically ``current_app.questionnaires``.
     :param db: the BOFS db extension (``current_app.db``).
+    :param tables: optional dict ``{filename: JSONTable}``, typically
+        ``current_app.tables``. Required when the predicate references
+        ``tables.<name>.<column>``.
     :returns: ``{name: value}`` populated with the referenced fields. Any
         name that can't be resolved is left absent — the evaluator will
         raise on it, which is the right failure mode for a typo.
@@ -112,15 +181,36 @@ def build_env(participant_id, referenced, refs, questionnaires, db):
         return {}
 
     refs = refs or {}
+    tables = tables or {}
     env = {}
 
     placeholder_names = set(refs.keys())
     referenced_placeholders = set(referenced) & placeholder_names
     referenced_bare = set(referenced) - placeholder_names
 
+    # ``condition`` is a reserved bare name that resolves to the
+    # participant's assigned condition number, not a questionnaire field.
+    if "condition" in referenced_bare:
+        referenced_bare.discard("condition")
+        participant_model = getattr(db, "Participant", None)
+        if participant_model is not None:
+            participant = db.session.get(participant_model, participant_id)
+            if participant is not None:
+                env["condition"] = participant.condition
+
     # Resolve qualified references through the placeholder side table.
     for ph in referenced_placeholders:
         spec = refs[ph]
+        kind = spec.get("kind", "questionnaire")
+
+        if kind == "table":
+            value = _resolve_table_ref(
+                participant_id, spec["tname"], spec["column"], db, tables
+            )
+            if value is not _UNRESOLVED:
+                env[ph] = value
+            continue
+
         qname = spec["qname"]
         tag = spec["tag"]
         field = spec["field"]

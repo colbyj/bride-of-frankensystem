@@ -208,6 +208,8 @@ For more details on ``url_for()``, see the `Flask documentation on url_for() <ht
 
 For more details on how Jinja2 templates work, see the `Flask documentation on templates <https://flask.palletsprojects.com/en/latest/tutorial/templates/>`_.
 
+For accessing the participant's stored questionnaire responses, table data, the assigned condition, and ``participant.evaluate(expression)`` from inside a template, see :doc:`accessing_participant_data`.
+
 
 Activity Polling on Custom Pages
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

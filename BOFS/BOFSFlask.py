@@ -6,7 +6,7 @@ import toml
 import os
 import random
 from typing import Union
-from flask import Flask, send_from_directory, Response, Blueprint, url_for, render_template
+from flask import Flask, send_from_directory, Response, Blueprint, url_for, render_template, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 from BOFS import util
@@ -223,8 +223,37 @@ class BOFSFlask(Flask):
         if filename in self.tables:
             return None
 
+        from .validation import RESERVED_EXPRESSION_NAMES, ValidationResult
+        if filename in RESERVED_EXPRESSION_NAMES:
+            self.validation_errors.append(ValidationResult(
+                "error", filename + ".json",
+                f"Table filename '{filename}' conflicts with a reserved "
+                f"expression name. Tables and questionnaires cannot be named "
+                f"any of: {', '.join(sorted(RESERVED_EXPRESSION_NAMES))}.",
+                f"Rename '{filename}.json' to something else."
+            ))
+            print(self.validation_errors[-1])
+            return None
+
         print(f"Loaded table: {directory}/{filename}.json")
         table = JSONTable(directory, filename)
+
+        if table.json_data:
+            from .validation import validate_table
+            errors = validate_table(table.json_data, filename)
+            fatal = [e for e in errors if e.severity == "error"]
+            warnings = [e for e in errors if e.severity == "warning"]
+            for w in warnings:
+                print(w)
+            self.validation_errors.extend(warnings)
+            if fatal:
+                self.validation_errors.extend(fatal)
+                for err in fatal:
+                    print(err)
+                print(f"  Skipping table '{filename}' due to "
+                      f"{len(fatal)} error(s).")
+                return None
+
         table.create_db_class()
         exports_dict = table.create_exports_dict()
 
@@ -274,12 +303,24 @@ class BOFSFlask(Flask):
 
     def load_questionnaire(self, directory:str , filename: str, add_to_db=False,
                            valid_question_types=None) -> Union[JSONQuestionnaire, None]:
-        from .validation import validate_questionnaire
+        from .validation import validate_questionnaire, RESERVED_EXPRESSION_NAMES, ValidationResult
 
         if "questionnaire_" + filename in self.db.metadata.tables:
             return None
 
         if filename in self.questionnaires:
+            return None
+
+        if filename in RESERVED_EXPRESSION_NAMES:
+            self.validation_errors.append(ValidationResult(
+                "error", filename + ".json",
+                f"Questionnaire filename '{filename}' conflicts with a "
+                f"reserved expression name. Questionnaires and tables cannot "
+                f"be named any of: "
+                f"{', '.join(sorted(RESERVED_EXPRESSION_NAMES))}.",
+                f"Rename '{filename}.json' to something else."
+            ))
+            print(self.validation_errors[-1])
             return None
 
         # Try to load the JSON file
@@ -393,6 +434,22 @@ class BOFSFlask(Flask):
             help_text=f"<pre>{error.original_exception}</pre>"
         ), 500
 
+    def _current_participant(self):
+        """Resolve the current participant from the Flask session, or
+        ``None`` when there is no session, no participant assigned, or
+        the row has been deleted. Used by :meth:`inject_jinja_vars` so
+        templates can reference ``participant`` directly."""
+        try:
+            participant_id = session.get('participantID')
+        except RuntimeError:
+            return None
+        if participant_id is None:
+            return None
+        participant_model = getattr(self.db, "Participant", None)
+        if participant_model is None:
+            return None
+        return self.db.session.get(participant_model, participant_id)
+
     def inject_jinja_vars(self) -> dict:
         """
         Allows all templates to access several variables/methods used within BOFS.
@@ -410,7 +467,8 @@ class BOFSFlask(Flask):
             debug=self.run_with_debugging,
             shuffle=random.shuffle,
             crumbs=util.create_breadcrumbs(),
-            json_dumps=json.dumps
+            json_dumps=json.dumps,
+            participant=self._current_participant(),
         )
         return template_vars
 

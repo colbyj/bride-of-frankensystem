@@ -176,6 +176,15 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         app.load_questionnaires()
         app.load_tables()
 
+        from .validation import validate_page_show_if_table_refs
+        table_ref_warnings = validate_page_show_if_table_refs(
+            app.page_list.page_list, app.tables
+        )
+        if table_ref_warnings:
+            app.validation_errors.extend(table_ref_warnings)
+            for w in table_ref_warnings:
+                print(w)
+
         # Make orphaned DB columns nullable (before db.create_all so the model matches)
         for q_key in app.questionnaires:
             q = app.questionnaires[q_key]

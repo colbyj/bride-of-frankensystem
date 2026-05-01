@@ -5,6 +5,7 @@ import pytest
 from BOFS.validation import (
     ValidationResult,
     is_sql_safe,
+    is_python_attribute_safe,
     validate_structure,
     validate_question_types,
     validate_question_ids,
@@ -14,8 +15,10 @@ from BOFS.validation import (
     validate_questionnaire,
     validate_page_list_references,
     validate_show_if,
+    validate_table,
     BUILTIN_QUESTION_TYPES,
     RESERVED_COLUMNS,
+    RESERVED_EXPRESSION_NAMES,
 )
 
 
@@ -194,6 +197,43 @@ class TestValidateFieldIds:
             assert any("reserved" in e.message.lower() for e in errors), \
                 f"Reserved name '{name}' was not caught"
 
+    def test_reserved_expression_name_condition(self):
+        data = {"questions": [{"questiontype": "field", "id": "condition"}]}
+        errors = validate_field_ids(data, "bad")
+        assert any(e.severity == "error" and "condition" in e.message
+                   and "reserved" in e.message.lower()
+                   for e in errors)
+
+    def test_all_reserved_expression_names_caught(self):
+        for name in RESERVED_EXPRESSION_NAMES:
+            data = {"questions": [{"questiontype": "field", "id": name}]}
+            errors = validate_field_ids(data, "bad")
+            assert any(e.severity == "error" and "reserved" in e.message.lower()
+                       for e in errors), \
+                f"Reserved expression name '{name}' was not caught"
+
+    def test_python_keyword_field_id_rejected(self):
+        for kw in ("class", "for", "if", "return", "lambda"):
+            data = {"questions": [{"questiontype": "field", "id": kw}]}
+            errors = validate_field_ids(data, "bad")
+            assert any(e.severity == "error" and "keyword" in e.message.lower()
+                       for e in errors), \
+                f"Python keyword '{kw}' was not caught as a field ID"
+
+
+class TestIsPythonAttributeSafe:
+    def test_valid_identifier(self):
+        assert is_python_attribute_safe("age")
+        assert is_python_attribute_safe("_private")
+        assert is_python_attribute_safe("q1_score")
+
+    def test_python_keyword_rejected(self):
+        assert not is_python_attribute_safe("class")
+        assert not is_python_attribute_safe("if")
+
+    def test_starts_with_digit_rejected(self):
+        assert not is_python_attribute_safe("1bad")
+
 
 # ===========================================================================
 # validate_calculations
@@ -249,6 +289,118 @@ class TestValidateCalculations:
         }
         errors = validate_calculations(data, "bad")
         assert any("reserved" in e.message.lower() for e in errors)
+
+    def test_reserved_expression_calc_name_condition(self):
+        data = {
+            "questions": [{"questiontype": "slider", "id": "q1"}],
+            "participant_calculations": {
+                "condition": "q1"
+            }
+        }
+        errors = validate_calculations(data, "bad")
+        assert any(e.severity == "error" and "condition" in e.message
+                   and "reserved" in e.message.lower()
+                   for e in errors)
+
+    def test_python_keyword_calc_name_rejected(self):
+        data = {
+            "questions": [{"questiontype": "slider", "id": "q1"}],
+            "participant_calculations": {
+                "class": "q1"
+            }
+        }
+        errors = validate_calculations(data, "bad")
+        assert any(e.severity == "error" and "keyword" in e.message.lower()
+                   for e in errors)
+
+
+class TestValidateTable:
+    def test_valid_table(self):
+        data = {
+            "columns": {"score": {"type": "integer"}},
+            "exports": [
+                {"fields": {"total": "sum(score)"}}
+            ],
+        }
+        errors = validate_table(data, "trials")
+        assert errors == []
+
+    def test_column_collides_with_export_field(self):
+        data = {
+            "columns": {"total": {"type": "integer"}},
+            "exports": [
+                {"fields": {"total": "sum(total)"}}
+            ],
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "collides" in e.message
+            for e in errors
+        )
+
+    def test_python_keyword_column(self):
+        data = {
+            "columns": {"class": {"type": "integer"}},
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "keyword" in e.message.lower()
+            for e in errors
+        )
+
+    def test_python_keyword_export_field(self):
+        data = {
+            "columns": {"score": {"type": "integer"}},
+            "exports": [
+                {"fields": {"return": "sum(score)"}}
+            ],
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "keyword" in e.message.lower()
+            for e in errors
+        )
+
+    def test_unsafe_column_name(self):
+        data = {
+            "columns": {"123bad": {"type": "integer"}},
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "valid identifier" in e.message
+            for e in errors
+        )
+
+    def test_unsafe_export_field_name(self):
+        data = {
+            "columns": {"score": {"type": "integer"}},
+            "exports": [
+                {"fields": {"123bad": "sum(score)"}}
+            ],
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "valid identifier" in e.message
+            for e in errors
+        )
+
+    def test_no_exports_block_is_fine(self):
+        data = {"columns": {"score": {"type": "integer"}}}
+        errors = validate_table(data, "trials")
+        assert errors == []
+
+    def test_columns_must_be_dict(self):
+        data = {"columns": []}
+        errors = validate_table(data, "trials")
+        assert any(e.severity == "error" for e in errors)
+
+    def test_exports_must_be_list(self):
+        data = {
+            "columns": {"score": {"type": "integer"}},
+            "exports": {"fields": {"total": "sum(score)"}},
+        }
+        errors = validate_table(data, "trials")
+        assert any(e.severity == "error" for e in errors)
 
     def test_calculations_not_dict(self):
         data = {

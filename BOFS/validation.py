@@ -6,6 +6,7 @@ field IDs, question types, and calculated fields. Used both at startup
 (to show helpful error pages) and in the test suite.
 """
 
+import keyword
 import re
 import os
 from difflib import get_close_matches
@@ -75,6 +76,16 @@ RESERVED_COLUMNS = frozenset({
     "timeStarted", "timeEnded", "duration",
 })
 
+# Names reserved at the expression layer. These resolve to participant- or
+# app-level state inside ``show_if`` and ``participant_calculations``
+# expressions, so a field ID or calc key with the same name would shadow
+# the reserved meaning. Kept separate from RESERVED_COLUMNS because the
+# error message and rationale differ — these aren't database columns.
+RESERVED_EXPRESSION_NAMES = frozenset({
+    "condition",
+    "tables",
+})
+
 # Regex for SQL-safe identifiers: letter or underscore, then alphanumeric/underscore
 _SQL_SAFE_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
@@ -108,6 +119,14 @@ class ValidationResult:
 def is_sql_safe(name: str) -> bool:
     """Check if a string is a valid SQL column identifier."""
     return bool(_SQL_SAFE_RE.match(name))
+
+
+def is_python_attribute_safe(name: str) -> bool:
+    """Check if ``name`` is usable as a Python attribute (so
+    ``participant.questionnaire('survey').name`` reads the field rather
+    than being a SyntaxError). Requires a valid identifier that isn't a
+    Python keyword."""
+    return bool(_SQL_SAFE_RE.match(name)) and not keyword.iskeyword(name)
 
 
 def _collect_field_ids(json_data: dict) -> list[tuple[str, int]]:
@@ -287,6 +306,15 @@ def validate_field_ids(json_data: dict, filename: str) -> list[ValidationResult]
                 "IDs must start with a letter or underscore, and contain only letters, "
                 "numbers, and underscores. No spaces, dashes, or special characters."
             ))
+        elif keyword.iskeyword(field_id):
+            results.append(ValidationResult(
+                "error", filename,
+                f"Field ID '{field_id}' (question #{q_idx+1}) is a Python keyword.",
+                f"Templates and custom code read field values via attribute "
+                f"access (e.g. participant.questionnaire('{filename}')."
+                f"{field_id}), which is a syntax error for keywords. "
+                f"Choose a different ID."
+            ))
 
     # Check reserved names
     for field_id, q_idx in ids:
@@ -297,6 +325,13 @@ def validate_field_ids(json_data: dict, filename: str) -> list[ValidationResult]
                 "error", filename,
                 f"Field ID '{field_id}' (question #{q_idx+1}) conflicts with a reserved BOFS column name.",
                 f"Reserved names: {', '.join(sorted(RESERVED_COLUMNS))}. Choose a different ID."
+            ))
+        elif field_id in RESERVED_EXPRESSION_NAMES:
+            results.append(ValidationResult(
+                "error", filename,
+                f"Field ID '{field_id}' (question #{q_idx+1}) conflicts with a reserved expression name.",
+                f"'{field_id}' is reserved for use in show_if and "
+                f"participant_calculations expressions. Choose a different ID."
             ))
 
     # Check uniqueness
@@ -478,12 +513,27 @@ def validate_calculations(json_data: dict, filename: str) -> list[ValidationResu
                 "Names must start with a letter or underscore, and contain only letters, "
                 "numbers, and underscores."
             ))
+        elif keyword.iskeyword(calc_name):
+            results.append(ValidationResult(
+                "error", filename,
+                f"Calculated field name '{calc_name}' is a Python keyword.",
+                f"Calculated values are read via attribute access "
+                f"(e.g. participant.questionnaire('{filename}').{calc_name}), "
+                f"which is a syntax error for keywords. Choose a different name."
+            ))
 
         if calc_name in RESERVED_COLUMNS:
             results.append(ValidationResult(
                 "error", filename,
                 f"Calculated field name '{calc_name}' conflicts with a reserved BOFS column.",
                 f"Reserved names: {', '.join(sorted(RESERVED_COLUMNS))}. Choose a different name."
+            ))
+        elif calc_name in RESERVED_EXPRESSION_NAMES:
+            results.append(ValidationResult(
+                "error", filename,
+                f"Calculated field name '{calc_name}' conflicts with a reserved expression name.",
+                f"'{calc_name}' is reserved for use in show_if and "
+                f"participant_calculations expressions. Choose a different name."
             ))
 
         if not isinstance(calc_expr, str):
@@ -577,6 +627,194 @@ def validate_db_schema(questionnaire, filename: str) -> list[ValidationResult]:
             "inconsistent between old and new responses."
         ))
 
+    return results
+
+
+def validate_table(json_data: dict, filename: str) -> list[ValidationResult]:
+    """Validate a JSONTable JSON file.
+
+    Checks:
+
+    * Column names are SQL-safe and aren't Python keywords (researchers
+      read row values via attribute access, e.g. ``row.field``).
+    * Export field names don't collide with column names on the same
+      table — the ``TableAccessor`` resolves bare attribute access to
+      exports, so a colliding name would shadow the row column when
+      researchers write ``participant.table('foo').<name>``.
+    * Export field names are SQL-safe and aren't Python keywords.
+    """
+    results = []
+
+    if not isinstance(json_data, dict):
+        return results
+
+    columns = json_data.get("columns")
+    if columns is None:
+        columns = {}
+    elif not isinstance(columns, dict):
+        results.append(ValidationResult(
+            "error", filename,
+            f"'columns' must be a JSON object, got "
+            f"{type(columns).__name__}.",
+        ))
+        columns = {}
+
+    column_names = set(columns.keys())
+
+    for col_name in columns:
+        if not isinstance(col_name, str):
+            continue
+        if not is_sql_safe(col_name):
+            results.append(ValidationResult(
+                "error", filename,
+                f"Column name '{col_name}' is not a valid identifier.",
+                "Names must start with a letter or underscore, and contain only "
+                "letters, numbers, and underscores."
+            ))
+        elif keyword.iskeyword(col_name):
+            results.append(ValidationResult(
+                "error", filename,
+                f"Column name '{col_name}' is a Python keyword.",
+                f"Templates read row values via attribute access "
+                f"(e.g. row.{col_name}), which is a syntax error for "
+                f"keywords. Choose a different name."
+            ))
+
+    exports = json_data.get("exports")
+    if exports is None:
+        return results
+    if not isinstance(exports, list):
+        results.append(ValidationResult(
+            "error", filename,
+            f"'exports' must be a JSON array, got {type(exports).__name__}.",
+        ))
+        return results
+
+    for i, export in enumerate(exports):
+        if not isinstance(export, dict):
+            continue
+        fields = export.get("fields") or {}
+        if not isinstance(fields, dict):
+            continue
+        for field_name in fields:
+            if not isinstance(field_name, str):
+                continue
+            if not is_sql_safe(field_name):
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Export field name '{field_name}' "
+                    f"(exports[{i}]) is not a valid identifier.",
+                    "Names must start with a letter or underscore, and contain "
+                    "only letters, numbers, and underscores."
+                ))
+                continue
+            if keyword.iskeyword(field_name):
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Export field name '{field_name}' "
+                    f"(exports[{i}]) is a Python keyword.",
+                    f"Templates read aggregate values via attribute access "
+                    f"(e.g. participant.table('{filename}').{field_name}), "
+                    f"which is a syntax error for keywords. Choose a "
+                    f"different name."
+                ))
+                continue
+            if field_name in column_names:
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Export field name '{field_name}' "
+                    f"(exports[{i}]) collides with a column of the same "
+                    f"name on this table.",
+                    f"participant.table('{filename}').{field_name} would "
+                    f"resolve to the export aggregate and shadow the raw "
+                    f"column. Rename either the column or the export."
+                ))
+
+    return results
+
+
+def validate_page_show_if_table_refs(page_list, tables) -> list[ValidationResult]:
+    """Walk a PageList's compiled show_if predicates and warn about any
+    ``tables.<name>.<column>`` reference that doesn't resolve to a known
+    table export.
+
+    Visits page entries, ``conditional_routing`` arms (which can carry an
+    arm-level ``show_if``), and the inner pages within each arm.
+
+    :param page_list: a list of page entries that have already passed
+        through :meth:`PageList._compile_show_if` (so each entry has its
+        ``_show_if_refs`` attached).
+    :param tables: dict ``{filename: JSONTable}``, typically
+        ``current_app.tables``.
+    """
+    results = []
+
+    def label_for(entry):
+        return entry.get("name", entry.get("path", "<unnamed>"))
+
+    def check_refs(entry, source_label):
+        refs = entry.get("_show_if_refs") or {}
+        for spec in refs.values():
+            if spec.get("kind") != "table":
+                continue
+            tname = spec["tname"]
+            column = spec["column"]
+            table = tables.get(tname)
+            if table is None:
+                results.append(ValidationResult(
+                    "warning", "PAGE_LIST",
+                    f"show_if on {source_label} "
+                    f"references unknown table 'tables.{tname}'.",
+                    f"Known tables: "
+                    f"{', '.join(sorted(tables)) or '(none)'}."
+                ))
+                continue
+
+            exports = table.create_exports_dict() or []
+            known_columns = set()
+            group_by_columns = set()
+            for export in exports:
+                fields = export.get("fields") or {}
+                known_columns.update(fields.keys())
+                if export.get("group_by"):
+                    group_by_columns.update(fields.keys())
+            if column not in known_columns:
+                results.append(ValidationResult(
+                    "warning", "PAGE_LIST",
+                    f"show_if on {source_label} "
+                    f"references unknown column "
+                    f"'tables.{tname}.{column}'.",
+                    f"Known export columns on '{tname}': "
+                    f"{', '.join(sorted(known_columns)) or '(none)'}."
+                ))
+            elif column in group_by_columns:
+                results.append(ValidationResult(
+                    "warning", "PAGE_LIST",
+                    f"show_if on {source_label} "
+                    f"references 'tables.{tname}.{column}', which is "
+                    f"defined under a group_by export and produces "
+                    f"multiple values per participant.",
+                    f"Page-level show_if can only consume scalar "
+                    f"aggregates. Reference one of the level-suffixed "
+                    f"columns directly in the data export instead."
+                ))
+
+    def visit(entries):
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            if "conditional_routing" in entry:
+                for cr in entry["conditional_routing"]:
+                    check_refs(
+                        cr,
+                        f"conditional_routing arm "
+                        f"(condition={cr.get('condition')!r})",
+                    )
+                    visit(cr.get("page_list", []))
+                continue
+            check_refs(entry, f"page {label_for(entry)!r}")
+
+    visit(page_list)
     return results
 
 

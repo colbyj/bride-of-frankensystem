@@ -53,6 +53,26 @@ A field name on its own — ``age``, ``q1``, ``01_inv`` (field IDs that start wi
 * Inside a question-level ``show_if``, it is another field on the same page, read live from the browser as the participant types or clicks.
 * Inside a page-level ``show_if``, it is looked up across every questionnaire the participant has already submitted; the most recent matching submission wins.
 
+Inside a page-level ``show_if`` the bare name ``condition`` is reserved and resolves to the participant's assigned condition number. A predicate like ``show_if = "condition == 1"`` keeps the page only for participants in condition 1. Because ``condition`` is reserved, you cannot use it as a questionnaire field ID or as a key in ``participant_calculations``.
+
+Referring to table values
+-------------------------
+
+Page-level ``show_if`` can also reference per-participant aggregates exported by a :doc:`JSONTable <database_tables>`. The form is ``tables.<table_name>.<column>``, where ``<column>`` is the export-column name declared in the table's ``exports`` block:
+
+.. code-block:: toml
+
+    PAGE_LIST = [
+        {name="Consent", path="consent"},
+        {name="Practice", path="task/practice"},
+        {name="Practice debrief", path="debrief/practice", show_if="tables.practice_trials.accuracy < 0.6"},
+        {name="End", path="end"}
+    ]
+
+The aggregate is computed once per evaluation by running the same query the data export uses, restricted to the current participant. If the participant has no rows in the table, the value resolves to ``None`` and the page stays visible (the predicate is treated as undecided).
+
+Only the columns listed under a table's ``exports`` block are reachable this way — raw rows are not. ``tables`` is reserved at the top of an expression: a questionnaire or table file cannot be named ``tables``, and questionnaire field IDs and ``participant_calculations`` keys cannot be named ``tables`` either. Exports that use ``group_by`` produce one column per level (e.g. ``accuracy_phase1``, ``accuracy_phase2``) and a single ``tables.<name>.<column>`` reference would be ambiguous, so those columns are not available through the expression syntax.
+
 Page-level ``show_if`` also accepts more specific reference forms when the same questionnaire appears in ``PAGE_LIST`` multiple times under different tags (for example, a wellbeing questionnaire filled in once before an intervention and once after):
 
 ================================ ===================================================

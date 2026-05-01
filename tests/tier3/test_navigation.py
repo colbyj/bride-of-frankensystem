@@ -463,3 +463,350 @@ class TestPageShowIfTags:
 
         # before=1 < after=5 → predicate true → followup included.
         assert "questionnaire/survey/followup" in paths
+
+
+class TestPageShowIfCondition:
+    """Page-level ``show_if`` can reference the bare reserved name
+    ``condition``, which resolves to the participant's assigned condition."""
+
+    @pytest.fixture
+    def app_with_condition_show_if(self, tmp_path):
+        import os
+        import json
+        import toml
+
+        SIMPLE = {
+            "title": "Simple",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "field", "id": "answer"},
+            ],
+        }
+
+        q_dir = tmp_path / "questionnaires"
+        q_dir.mkdir()
+        (q_dir / "control_only.json").write_text(
+            json.dumps(SIMPLE), encoding="utf-8")
+        (q_dir / "treatment_only.json").write_text(
+            json.dumps(SIMPLE), encoding="utf-8")
+        (tmp_path / "consent.html").write_text("<p>Consent</p>",
+                                                encoding="utf-8")
+
+        config_data = {
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret-key",
+            "TITLE": "Test",
+            "ADMIN_PASSWORD": "test",
+            "USE_ADMIN": False,
+            "CONDITIONS": [
+                {"label": "Control", "enabled": True},
+                {"label": "Treatment", "enabled": True},
+            ],
+            "PAGE_LIST": [
+                {"name": "Consent", "path": "consent"},
+                {"name": "ControlOnly",
+                 "path": "questionnaire/control_only",
+                 "show_if": "condition == 1"},
+                {"name": "TreatmentOnly",
+                 "path": "questionnaire/treatment_only",
+                 "show_if": "condition == 2"},
+                {"name": "End", "path": "end"},
+            ],
+        }
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+        original_cwd = os.getcwd()
+        from BOFS.create_app import create_app
+        app = create_app(str(tmp_path), str(config_path), debug=False)
+        ctx = app.app_context()
+        ctx.push()
+        yield app
+        app.db.drop_all()
+        ctx.pop()
+        os.chdir(original_cwd)
+
+    def test_condition_one_keeps_control_only(self, app_with_condition_show_if):
+        app = app_with_condition_show_if
+
+        with app.app_context():
+            participant = app.db.Participant()
+            participant.condition = 1
+            app.db.session.add(participant)
+            app.db.session.commit()
+            pid = participant.participantID
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/control_only" in paths
+        assert "questionnaire/treatment_only" not in paths
+
+    def test_condition_two_keeps_treatment_only(self, app_with_condition_show_if):
+        app = app_with_condition_show_if
+
+        with app.app_context():
+            participant = app.db.Participant()
+            participant.condition = 2
+            app.db.session.add(participant)
+            app.db.session.commit()
+            pid = participant.participantID
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 2
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/treatment_only" in paths
+        assert "questionnaire/control_only" not in paths
+
+
+class TestPageShowIfTableRef:
+    """Page-level ``show_if`` can reference a JSONTable export column via
+    ``tables.<name>.<column>``; the value is computed per-participant from
+    the table's stored rows."""
+
+    @pytest.fixture
+    def app_with_table_show_if(self, tmp_path):
+        import os
+        import json
+        import toml
+
+        SIMPLE = {
+            "title": "Simple",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "field", "id": "answer"},
+            ],
+        }
+
+        TRIALS = {
+            "columns": {
+                "phase": {"default": "practice"},
+                "trial_index": {"type": "integer", "default": 0},
+                "correct": {"type": "boolean", "default": False},
+            },
+            "exports": [
+                {
+                    "filter": "phase = 'practice'",
+                    "fields": {
+                        "practice_correct": "sum(correct)",
+                    },
+                },
+            ],
+        }
+
+        q_dir = tmp_path / "questionnaires"
+        q_dir.mkdir()
+        (q_dir / "debrief.json").write_text(
+            json.dumps(SIMPLE), encoding="utf-8")
+        tables_dir = tmp_path / "tables"
+        tables_dir.mkdir()
+        (tables_dir / "trials.json").write_text(
+            json.dumps(TRIALS), encoding="utf-8")
+        (tmp_path / "consent.html").write_text("<p>Consent</p>",
+                                                encoding="utf-8")
+
+        config_data = {
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret-key",
+            "TITLE": "Test",
+            "ADMIN_PASSWORD": "test",
+            "USE_ADMIN": False,
+            "PAGE_LIST": [
+                {"name": "Consent", "path": "consent"},
+                {"name": "Debrief", "path": "questionnaire/debrief",
+                 "show_if": "tables.trials.practice_correct < 2"},
+                {"name": "End", "path": "end"},
+            ],
+        }
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+        original_cwd = os.getcwd()
+        from BOFS.create_app import create_app
+        app = create_app(str(tmp_path), str(config_path), debug=False)
+        ctx = app.app_context()
+        ctx.push()
+        yield app
+        app.db.drop_all()
+        ctx.pop()
+        os.chdir(original_cwd)
+
+    def _make_participant(self, app):
+        p = app.db.Participant()
+        p.condition = 1
+        app.db.session.add(p)
+        app.db.session.commit()
+        return p.participantID
+
+    def _seed_trial(self, app, pid, **fields):
+        table_class = app.tables["trials"].db_class
+        row = table_class()
+        row.participantID = pid
+        for k, v in fields.items():
+            setattr(row, k, v)
+        app.db.session.add(row)
+        app.db.session.commit()
+
+    def test_debrief_skipped_when_practice_correct_high(self, app_with_table_show_if):
+        app = app_with_table_show_if
+        pid = self._make_participant(app)
+        # 3 correct trials → practice_correct = 3 → predicate (< 2) false
+        self._seed_trial(app, pid, phase="practice", trial_index=1, correct=True)
+        self._seed_trial(app, pid, phase="practice", trial_index=2, correct=True)
+        self._seed_trial(app, pid, phase="practice", trial_index=3, correct=True)
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/debrief" not in paths
+
+    def test_debrief_kept_when_practice_correct_low(self, app_with_table_show_if):
+        app = app_with_table_show_if
+        pid = self._make_participant(app)
+        # 1 correct trial → practice_correct = 1 → predicate (< 2) true
+        self._seed_trial(app, pid, phase="practice", trial_index=1, correct=True)
+        self._seed_trial(app, pid, phase="practice", trial_index=2, correct=False)
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/debrief" in paths
+
+    def test_debrief_kept_when_no_data_yet(self, app_with_table_show_if):
+        app = app_with_table_show_if
+        pid = self._make_participant(app)
+        # No rows seeded — the predicate is undecided, so the page stays.
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/debrief" in paths
+
+
+class TestConditionalRoutingArmShowIf:
+    """End-to-end: a participant whose questionnaire answer routes them
+    through a ``show_if``-keyed conditional_routing arm."""
+
+    @pytest.fixture
+    def app_with_arm_show_if(self, tmp_path):
+        import os
+        import json
+        import toml
+
+        DEMOG = {
+            "title": "Demographics",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "num_field", "id": "age",
+                 "instructions": "Enter age"},
+            ],
+        }
+        SIMPLE = {
+            "title": "Simple",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "field", "id": "answer"},
+            ],
+        }
+
+        q_dir = tmp_path / "questionnaires"
+        q_dir.mkdir()
+        (q_dir / "demographics.json").write_text(
+            json.dumps(DEMOG), encoding="utf-8")
+        (q_dir / "minor_track.json").write_text(
+            json.dumps(SIMPLE), encoding="utf-8")
+        (q_dir / "adult_track.json").write_text(
+            json.dumps(SIMPLE), encoding="utf-8")
+        (tmp_path / "consent.html").write_text("<p>Consent</p>",
+                                                encoding="utf-8")
+
+        config_data = {
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret-key",
+            "TITLE": "Test",
+            "ADMIN_PASSWORD": "test",
+            "USE_ADMIN": False,
+            "PAGE_LIST": [
+                {"name": "Consent", "path": "consent"},
+                {"name": "Demographics", "path": "questionnaire/demographics"},
+                {"conditional_routing": [
+                    {"show_if": "demographics.age < 18",
+                     "page_list": [
+                         {"name": "Minor", "path": "questionnaire/minor_track"},
+                     ]},
+                    {"show_if": "demographics.age >= 18",
+                     "page_list": [
+                         {"name": "Adult", "path": "questionnaire/adult_track"},
+                     ]},
+                ]},
+                {"name": "End", "path": "end"},
+            ],
+        }
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+        original_cwd = os.getcwd()
+        from BOFS.create_app import create_app
+        app = create_app(str(tmp_path), str(config_path), debug=False)
+        ctx = app.app_context()
+        ctx.push()
+        yield app
+        app.db.drop_all()
+        ctx.pop()
+        os.chdir(original_cwd)
+
+    def test_minor_routes_into_minor_arm(self, app_with_arm_show_if):
+        app = app_with_arm_show_if
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        submit_questionnaire_data(client, "demographics",
+                                  data_dict={"age": "14"})
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/minor_track" in paths
+        assert "questionnaire/adult_track" not in paths
+
+    def test_adult_routes_into_adult_arm(self, app_with_arm_show_if):
+        app = app_with_arm_show_if
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        submit_questionnaire_data(client, "demographics",
+                                  data_dict={"age": "25"})
+
+        with app.test_request_context():
+            from flask import session
+            session["participantID"] = pid
+            session["condition"] = 1
+            flat = app.page_list.flat_page_list()
+            paths = [p["path"] for p in flat]
+
+        assert "questionnaire/adult_track" in paths
+        assert "questionnaire/minor_track" not in paths

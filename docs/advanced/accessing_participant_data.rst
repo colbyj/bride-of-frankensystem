@@ -10,26 +10,20 @@ BOFS provides these variables to every template it renders:
 
 .. list-table::
    :header-rows: 1
-   :widths: 20 35 45
+   :widths: 20 80
 
    * - Variable
-     - Available In
      - Description
    * - ``participant``
-     - Instructions, Simple pages, Questions
-     - Current participant object with all data access methods
+     - Current participant object with data-access methods. ``None`` when no participant is in session (admin previews, the consent page itself, error pages) — guard with ``{% if participant %}`` if your template might render in those cases.
    * - ``session``
-     - All templates
-     - Flask session with participant ID, condition, etc.
+     - Flask session: ``session.participantID``, ``session.condition``, ``session.currentUrl``, etc.
    * - ``debug``
-     - All templates
-     - Boolean indicating if running in debug mode
+     - ``True`` when BOFS is running with ``-d``.
    * - ``config``
-     - All templates
-     - Access to TOML configuration settings
+     - TOML configuration values.
    * - ``flat_page_list``
-     - All templates
-     - List of all pages in the experiment
+     - The participant's filtered page list (after ``show_if`` and condition routing).
 
 The Participant Object
 ----------------------
@@ -105,13 +99,12 @@ Questionnaires can include calculated fields defined in their JSON ``participant
 
 **Handling Missing Data**
 
-BOFS returns a blank object if a questionnaire hasn't been completed yet:
+When a participant hasn't submitted a questionnaire yet, ``participant.questionnaire(name)`` returns a blank-default row — accessing any field gives the column's default value (empty string, ``0``, ``False``). To distinguish a defaulted row from a real submission, use ``participant.has_questionnaire(name, tag='')``:
 
 .. code-block:: html
 
-    {% set survey = participant.questionnaire('follow_up') %}
-    
-    {% if survey.completed %}
+    {% if participant.has_questionnaire('follow_up') %}
+        {% set survey = participant.questionnaire('follow_up') %}
         <p>Follow-up completed: {{ survey.satisfaction }}</p>
     {% else %}
         <p>Follow-up survey not yet completed</p>
@@ -120,13 +113,14 @@ BOFS returns a blank object if a questionnaire hasn't been completed yet:
 Accessing Custom Table Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For data stored in custom database tables (defined by JSONTable files), use ``participant.table(name)``:
+For data stored in custom database tables (see :doc:`database_tables`), ``participant.table(name)`` returns a ``TableAccessor``. Iterate it to walk the participant's raw rows, and read attributes named after the table's ``exports`` block to get per-participant aggregates without writing the SQL yourself.
+
+**Iterating raw rows**
 
 .. code-block:: html
 
-    <!-- Access custom table data -->
     {% set task_data = participant.table('cognitive_task') %}
-    
+
     <h3>Task Performance</h3>
     <table>
         <tr><th>Trial</th><th>Response Time</th><th>Accuracy</th></tr>
@@ -138,11 +132,61 @@ For data stored in custom database tables (defined by JSONTable files), use ``pa
             </tr>
         {% endfor %}
     </table>
-    
-    <!-- Calculate summary statistics -->
-    {% set total_trials = task_data|length %}
-    {% set avg_accuracy = (task_data|sum(attribute='accuracy')) / total_trials %}
-    <p>Average accuracy: {{ "%.1f"|format(avg_accuracy) }}%</p>
+
+The accessor proxies ``__iter__``, ``len()``, and indexing to ``task_data.rows``, so existing patterns like ``{% for row in task_data %}``, ``task_data|length``, and ``task_data[0]`` continue to work. ``task_data.rows`` is also available explicitly when you want the underlying list.
+
+**Reading per-participant aggregates**
+
+When a JSONTable defines an ``exports`` block, every field declared there is reachable as an attribute on the accessor:
+
+.. code-block:: json
+
+    {
+        "columns": {
+            "phase": {"default": "learning"},
+            "trial_index": {"type": "integer"},
+            "correct": {"type": "boolean"}
+        },
+        "exports": [
+            {
+                "filter": "phase = 'learning'",
+                "fields": {
+                    "learning_trials": "count(trial_index)",
+                    "learning_accuracy": "avg(correct)"
+                }
+            }
+        ]
+    }
+
+.. code-block:: html
+
+    {% set trials = participant.table('cognitive_task') %}
+
+    <p>Learning trials completed: {{ trials.learning_trials }}</p>
+    <p>Learning accuracy: {{ "%.0f"|format(trials.learning_accuracy * 100) }}%</p>
+
+Each aggregate runs the export's SQL aggregation restricted to this participant. The result is computed once per accessor instance and cached, so reading ``trials.learning_trials`` twice in the same template only runs the query once. Use ``trials.exports`` to read all scalar aggregates as a dict (``{% for k, v in trials.exports.items() %}``).
+
+If a participant has no rows yet — or no rows that match the export's filter — the aggregate resolves to ``None``. Guard with ``{% if trials.learning_trials is not none %}`` when the absence matters.
+
+Aggregates that use ``group_by`` produce one value per level (e.g., ``learning_accuracy_phase1``, ``learning_accuracy_phase2`` in the data export), so they don't have a single per-participant value and are not reachable through the accessor. Reference the level-suffixed columns directly in your data export instead.
+
+Evaluating an Expression
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+When you want the same expression syntax used in ``show_if`` and ``participant_calculations`` from inside a template or a custom route, call ``participant.evaluate(expression)``:
+
+.. code-block:: html
+
+    {% if participant.evaluate("condition == 1 and survey.consent == 'Yes'") %}
+        <p>Special instructions for the control condition.</p>
+    {% endif %}
+
+    <p>Practice score: {{ participant.evaluate("tables.cognitive_task.learning_accuracy") }}</p>
+
+The expression syntax is documented in :doc:`expressions`. ``participant.evaluate`` returns ``None`` when the expression can't be parsed or when a referenced questionnaire has not been submitted yet, so ``{% if participant.evaluate(...) %}`` is safe to use even on pages that may render before the prior data exists.
+
+For most direct field access, plain Jinja attribute access (``participant.questionnaire('survey').consent``) is shorter and more idiomatic — reach for ``participant.evaluate`` when you want to share an expression string with a config-file ``show_if`` or build the expression dynamically.
 
 Session Variables
 -----------------

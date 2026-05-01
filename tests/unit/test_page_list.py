@@ -718,6 +718,7 @@ class TestShowIfCompilation:
         placeholder = ast['args'][0]['var']
         assert placeholder.startswith('_bofs_ref_')
         assert refs[placeholder] == {
+            'kind': 'questionnaire',
             'qname': 'demographics',
             'tag': None,
             'field': 'age',
@@ -734,6 +735,7 @@ class TestShowIfCompilation:
         refs = data[0]['_show_if_refs']
         placeholder = ast['args'][0]['var']
         assert refs[placeholder] == {
+            'kind': 'questionnaire',
             'qname': 'survey',
             'tag': 'before',
             'field': 'q1',
@@ -786,6 +788,174 @@ class TestShowIfCompilation:
         data = [{'name': 'X', 'path': 'x', 'show_if': 42}]
         with pytest.raises(Exception, match="show_if"):
             PageList(data)
+
+
+class TestConditionalRoutingArmShowIf:
+    """Each ``conditional_routing`` arm can also carry an optional
+    ``show_if`` predicate. The arm matches when condition matches (when
+    set) AND show_if is true (when set); both fields are optional."""
+
+    def test_arm_show_if_compiles(self):
+        data = [
+            {'conditional_routing': [
+                {'condition': 1, 'show_if': 'age < 18',
+                 'page_list': [{'name': 'A', 'path': 'a'}]},
+            ]},
+        ]
+        PageList(data)
+        arm = data[0]['conditional_routing'][0]
+        assert '_show_if_ast' in arm
+        assert arm['_show_if_ast'] == {
+            'op': '<', 'args': [{'var': 'age'}, {'const': 18}],
+        }
+
+    def test_arm_show_if_unparseable_raises(self):
+        data = [
+            {'conditional_routing': [
+                {'condition': 1, 'show_if': 'age <',
+                 'page_list': [{'name': 'A', 'path': 'a'}]},
+            ]},
+        ]
+        with pytest.raises(Exception, match="show_if"):
+            PageList(data)
+
+    def test_arm_show_if_only_no_condition(self):
+        """An arm with only show_if (no condition) is allowed."""
+        data = [
+            {'conditional_routing': [
+                {'show_if': 'age < 18',
+                 'page_list': [{'name': 'A', 'path': 'a'}]},
+            ]},
+        ]
+        pl = PageList(data)
+        arm = pl.page_list[0]['conditional_routing'][0]
+        assert '_show_if_ast' in arm
+
+    def test_condition_only_arm_matches_via_condition(self):
+        data = [
+            {'conditional_routing': [
+                {'condition': 1, 'page_list': [{'name': 'A', 'path': 'a'}]},
+                {'condition': 2, 'page_list': [{'name': 'B', 'path': 'b'}]},
+            ]},
+        ]
+        pl = PageList(data)
+        result = pl.flat_page_list(condition=1)
+        assert [p['name'] for p in result] == ['A']
+
+    def test_show_if_only_arm_matches_when_predicate_true(self, monkeypatch):
+        """No condition on the arm — match driven by show_if alone."""
+        from BOFS import PageList as plmod
+
+        data = [
+            {'conditional_routing': [
+                {'show_if': 'age < 18',
+                 'page_list': [{'name': 'Minor', 'path': 'minor'}]},
+                {'show_if': 'age >= 18',
+                 'page_list': [{'name': 'Adult', 'path': 'adult'}]},
+            ]},
+        ]
+        pl = plmod.PageList(data)
+
+        def fake_visible(entry, participant_id):
+            ast = entry.get('_show_if_ast')
+            if ast is None or participant_id is None:
+                return True
+            # Pretend age=14: "age < 18" → True, "age >= 18" → False.
+            op = ast['op']
+            return op == '<'
+
+        monkeypatch.setattr(plmod.PageList, '_page_visible',
+                            staticmethod(fake_visible))
+        result = pl.flat_page_list(condition=1, participant_id=42)
+        assert [p['name'] for p in result] == ['Minor']
+
+    def test_show_if_only_arm_first_match_wins(self, monkeypatch):
+        """When two show_if-only arms both match, only the first fires."""
+        from BOFS import PageList as plmod
+
+        data = [
+            {'conditional_routing': [
+                {'show_if': 'always_true',
+                 'page_list': [{'name': 'First', 'path': 'first'}]},
+                {'show_if': 'always_true',
+                 'page_list': [{'name': 'Second', 'path': 'second'}]},
+            ]},
+        ]
+        pl = plmod.PageList(data)
+
+        monkeypatch.setattr(
+            plmod.PageList, '_page_visible',
+            staticmethod(lambda entry, pid: True),
+        )
+        result = pl.flat_page_list(condition=1, participant_id=42)
+        assert [p['name'] for p in result] == ['First']
+
+    def test_combined_condition_and_show_if(self, monkeypatch):
+        """Both gates must pass for the arm to match."""
+        from BOFS import PageList as plmod
+
+        data = [
+            {'conditional_routing': [
+                {'condition': 1, 'show_if': 'flag',
+                 'page_list': [{'name': 'A', 'path': 'a'}]},
+                {'condition': 1,
+                 'page_list': [{'name': 'Fallback', 'path': 'fb'}]},
+            ]},
+        ]
+        pl = plmod.PageList(data)
+
+        # Fake show_if eval: predicate is false → first arm skipped,
+        # second (condition-only) arm fires.
+        monkeypatch.setattr(
+            plmod.PageList, '_page_visible',
+            staticmethod(lambda entry, pid: entry.get('_show_if_ast') is None),
+        )
+        result = pl.flat_page_list(condition=1, participant_id=42)
+        assert [p['name'] for p in result] == ['Fallback']
+
+    def test_arm_with_neither_field_always_matches(self, monkeypatch):
+        """An arm with neither condition nor show_if is unconditional."""
+        from BOFS import PageList as plmod
+
+        data = [
+            {'conditional_routing': [
+                {'page_list': [{'name': 'Always', 'path': 'always'}]},
+            ]},
+        ]
+        pl = plmod.PageList(data)
+
+        # Even with a non-matching condition arg, the no-gate arm fires.
+        result = pl.flat_page_list(condition=99, participant_id=42)
+        assert [p['name'] for p in result] == ['Always']
+
+    def test_no_participant_keeps_show_if_arm(self):
+        """Without participant context, show_if-only arms are kept (the
+        same fail-soft behaviour as page-level show_if)."""
+        data = [
+            {'conditional_routing': [
+                {'show_if': 'age < 18',
+                 'page_list': [{'name': 'Minor', 'path': 'minor'}]},
+            ]},
+        ]
+        pl = PageList(data)
+        result = pl.flat_page_list(condition=1)  # no participant_id
+        assert [p['name'] for p in result] == ['Minor']
+
+    def test_conditional_pages_includes_arm_with_no_condition(self):
+        """``conditional_pages`` is for enumeration; an arm without a
+        ``condition`` matches any condition lookup."""
+        data = [
+            {'conditional_routing': [
+                {'show_if': 'age < 18',
+                 'page_list': [{'name': 'Minor', 'path': 'minor'}]},
+                {'condition': 1,
+                 'page_list': [{'name': 'A', 'path': 'a'}]},
+            ]},
+        ]
+        pl = PageList(data)
+        # The first arm has no condition → matches first → takes priority.
+        result = pl.conditional_pages(1)
+        assert [p['name'] for p in result] == ['Minor']
 
 
 class TestFlatPageListShowIf:

@@ -278,6 +278,26 @@ Show different pages based on participant condition:
         {name="End", path="end"}
     ]
 
+Each arm of ``conditional_routing`` can also carry an optional ``show_if`` predicate alongside (or instead of) ``condition``. An arm matches when its ``condition`` matches (when set) and its ``show_if`` is true (when set); both fields are optional, and the first matching arm wins. This makes it possible to gate a group of pages on a prior questionnaire answer:
+
+.. code-block:: toml
+
+    PAGE_LIST = [
+        {name="Consent", path="consent"},
+        {name="Demographics", path="questionnaire/demographics"},
+        {conditional_routing=[
+            {show_if="demographics.age < 18", page_list=[
+                {name="Minor track", path="task/minor"}
+            ]},
+            {show_if="demographics.age >= 18", page_list=[
+                {name="Adult track", path="task/adult"}
+            ]}
+        ]},
+        {name="End", path="end"}
+    ]
+
+The expression syntax used in ``show_if`` is described in :doc:`../advanced/expressions`.
+
 **Accessing Conditions in Templates**
 
 In custom pages and templates, access the participant's condition:
