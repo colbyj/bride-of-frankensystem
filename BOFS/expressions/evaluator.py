@@ -74,6 +74,38 @@ def _eval(node, env, functions):
         args = [_eval(a, env, functions) for a in node.get("args", [])]
         return functions[fname](*args)
 
+    if "subscript" in node:
+        container = _eval(node["subscript"], env, functions)
+        key = _eval(node["key"], env, functions)
+        if isinstance(container, dict):
+            if key in container:
+                return container[key]
+            # SQLite round-trips integer group_by levels as strings in
+            # some paths; allow ``dict[1]`` to find a string-"1" key and
+            # vice-versa so authors don't have to think about the storage
+            # type.
+            if isinstance(key, str) and key.lstrip("-").isdigit():
+                int_key = int(key)
+                if int_key in container:
+                    return container[int_key]
+            elif isinstance(key, int) and not isinstance(key, bool):
+                str_key = str(key)
+                if str_key in container:
+                    return container[str_key]
+            raise ExpressionError(f"key {key!r} not in dict")
+        if isinstance(container, list):
+            if not isinstance(key, int) or isinstance(key, bool):
+                raise ExpressionError(
+                    f"list index must be int, got {type(key).__name__}"
+                )
+            try:
+                return container[key]
+            except IndexError as e:
+                raise ExpressionError(str(e)) from e
+        raise ExpressionError(
+            f"subscript on {type(container).__name__} is not supported"
+        )
+
     if "op" not in node:
         raise ExpressionError(f"malformed AST node: {node!r}")
 

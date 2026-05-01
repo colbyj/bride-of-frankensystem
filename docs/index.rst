@@ -38,6 +38,7 @@ Bride of Frankensystem
    examples/example_projects
    examples/ab_experiment
    examples/p5_example
+   examples/tables_and_expressions_example
    examples/advanced_example
    examples/branching_example
    examples/unity_example

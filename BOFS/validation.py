@@ -733,6 +733,32 @@ def validate_table(json_data: dict, filename: str) -> list[ValidationResult]:
     return results
 
 
+def _collect_subscripted_var_names(ast_node) -> set:
+    """Walk a parsed expression AST and return the set of ``var`` names
+    that appear as the container of a ``subscript`` node.
+
+    Used by :func:`validate_page_show_if_table_refs` to suppress the
+    group_by warning when the author has subscripted the placeholder
+    via bracket form (``tables.X.Y[<key>]``) rather than dotted form
+    (``tables.X.Y.<key>``).
+    """
+    found = set()
+
+    def walk(node):
+        if isinstance(node, dict):
+            sub = node.get("subscript")
+            if isinstance(sub, dict) and "var" in sub:
+                found.add(sub["var"])
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(ast_node)
+    return found
+
+
 def validate_page_show_if_table_refs(page_list, tables) -> list[ValidationResult]:
     """Walk a PageList's compiled show_if predicates and warn about any
     ``tables.<name>.<column>`` reference that doesn't resolve to a known
@@ -754,7 +780,9 @@ def validate_page_show_if_table_refs(page_list, tables) -> list[ValidationResult
 
     def check_refs(entry, source_label):
         refs = entry.get("_show_if_refs") or {}
-        for spec in refs.values():
+        ast_node = entry.get("_show_if_ast")
+        subscripted_placeholders = _collect_subscripted_var_names(ast_node)
+        for placeholder, spec in refs.items():
             if spec.get("kind") != "table":
                 continue
             tname = spec["tname"]
@@ -788,6 +816,15 @@ def validate_page_show_if_table_refs(page_list, tables) -> list[ValidationResult
                     f"{', '.join(sorted(known_columns)) or '(none)'}."
                 ))
             elif column in group_by_columns:
+                # The ref is unambiguous (and thus warning-free) when the
+                # author has either supplied a literal dotted key
+                # (``tables.X.Y.<key>``) or applied a bracket subscript
+                # (``tables.X.Y[<expr>]``). Either path resolves to a
+                # single scalar at evaluation time.
+                if spec.get("key") is not None:
+                    continue
+                if placeholder in subscripted_placeholders:
+                    continue
                 results.append(ValidationResult(
                     "warning", "PAGE_LIST",
                     f"show_if on {source_label} "
@@ -795,9 +832,11 @@ def validate_page_show_if_table_refs(page_list, tables) -> list[ValidationResult
                     f"defined under a group_by export and produces "
                     f"multiple values per participant.",
                     f"Page-level show_if can only consume scalar "
-                    f"aggregates. Reference one of the level-suffixed "
-                    f"columns directly in the data export, or read "
-                    f"the per-level dict from "
+                    f"aggregates. Subscript into the dict "
+                    f"(``tables.{tname}.{column}[<key>]`` or "
+                    f"``tables.{tname}.{column}.<key>``), reference one "
+                    f"of the level-suffixed columns directly in the data "
+                    f"export, or read the per-level dict from "
                     f"participant.table('{tname}').{column} in a "
                     f"template or custom blueprint."
                 ))

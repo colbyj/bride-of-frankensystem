@@ -15,6 +15,7 @@ AST node shapes::
     {"var": "<name>"}                          # field reference
     {"op": "<op>", "args": [<node>, ...]}      # operations and list literals
     {"call": "<func>", "args": [<node>, ...]}  # whitelisted function call
+    {"subscript": <node>, "key": <node>}       # container[key]
 
 Supported ``op`` values: ``+ - * / // %``, ``< <= > >= == !=``, ``and``,
 ``or``, ``not``, ``in``, ``not_in``, ``neg``, ``pos``, ``list``, ``if``.
@@ -195,6 +196,17 @@ def _convert(node):
                 _convert(node.body),
                 _convert(node.orelse),
             ],
+        }
+
+    if isinstance(node, ast.Subscript):
+        # ``container[key]`` — used for indexing into ``group_by`` table
+        # exports (which resolve to a per-level dict). Slices are rejected
+        # because the DSL has no list-slicing semantics.
+        if isinstance(node.slice, ast.Slice):
+            raise ExpressionError("slice subscripts are not supported")
+        return {
+            "subscript": _convert(node.value),
+            "key": _convert(node.slice),
         }
 
     raise ExpressionError(f"unsupported syntax: {type(node).__name__}")

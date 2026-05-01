@@ -26,6 +26,38 @@ A questionnaire can compute derived values from a participant's responses (scale
     }
 
 
+Embedding values with ``{{ }}``
+-------------------------------
+
+Any user-facing string in a questionnaire JSON can include ``{{ expression }}`` placeholders. At render time the placeholder is replaced with the result of evaluating the inner text as an expression in the same DSL described in :doc:`expressions`. This works in the questionnaire's top-level ``title`` and ``instructions``, in each question's ``title``, ``instructions``, ``placeholder``, ``left``, ``right``, ``required_selection``, and ``other_text_prompt``, and in list-of-strings fields like ``labels``, ``items``, and ``q_text[].text``.
+
+.. code-block:: json
+    :caption: A debrief questionnaire that pulls per-round scores from a JSONTable
+
+    {
+        "title": "Your results",
+        "instructions": "<p>You scored {{ tables.scores.total_score }} clicks across all three rounds (best round: {{ tables.scores.high_score }}).</p>",
+        "questions": [
+            {
+                "id": "thoughts",
+                "questiontype": "multi_field",
+                "title": "Reflection",
+                "instructions": "Round 1: {{ tables.scores.round_score[1] }}. Round 2: {{ tables.scores.round_score[2] }}. Round 3: {{ tables.scores.round_score[3] }}. What strategy did you use?"
+            }
+        ]
+    }
+
+Substitution rules:
+
+- Each ``{{ ... }}`` is evaluated once against the current participant. The substituted value is HTML-escaped, so dynamic values (free-text answers, table column values that may contain markup) cannot inject tags into the rendered page.
+- An expression that returns ``None``, fails to parse, or references data the participant hasn't produced yet (no questionnaire submission, no matching table key) substitutes as an empty string. The rest of the surrounding text still renders.
+- Substitution is single-pass — a substituted value that itself looks like ``{{ x }}`` is not re-scanned.
+- The following keys are skipped so their string values pass through verbatim: ``id``, ``questiontype``, ``show_if``, ``participant_calculations``, ``code``, ``src``. ``show_if`` and ``participant_calculations`` already use the expression DSL directly; ``code`` is the custom-JS slot, where literal ``{{ }}`` is common in third-party templating; ``src`` is an asset URL.
+- The ``/admin/preview_questionnaire/...`` route renders the raw JSON without substitution so reviewers can see the source.
+
+Because ``{{ }}`` is now reserved inside questionnaire JSON, an existing questionnaire that contains literal ``{{`` in user-facing copy will see different rendering. The pattern is rare in survey copy; if you do need a literal pair, write it as ``{{ '{{' }}``.
+
+
 Creating Custom Question Types
 ------------------------------
 

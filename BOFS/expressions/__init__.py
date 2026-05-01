@@ -16,6 +16,7 @@ from .parser import parse, referenced_fields, ExpressionError, ALLOWED_FUNCTIONS
 from .evaluator import evaluate, default_functions
 from .fields import parse_with_field_ids
 from .participant_env import parse_page_predicate, build_env as build_participant_env
+from .substitute import substitute_string, substitute_in_questionnaire
 
 __all__ = [
     "parse",
@@ -27,4 +28,6 @@ __all__ = [
     "ExpressionError",
     "ALLOWED_FUNCTIONS",
     "default_functions",
+    "substitute_string",
+    "substitute_in_questionnaire",
 ]

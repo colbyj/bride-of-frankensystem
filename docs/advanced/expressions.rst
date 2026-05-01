@@ -73,7 +73,25 @@ Page-level ``show_if`` can also reference per-participant aggregates exported by
 
 The aggregate is computed once per evaluation by running the same query the data export uses, restricted to the current participant. If the participant has no rows in the table, the value resolves to ``None`` and the page stays visible (the predicate is treated as undecided).
 
-Only the columns listed under a table's ``exports`` block are reachable this way — raw rows are not. ``tables`` is reserved at the top of an expression: a questionnaire or table file cannot be named ``tables``, and questionnaire field IDs and ``participant_calculations`` keys cannot be named ``tables`` either. Exports that use ``group_by`` produce one column per level (e.g. ``accuracy_phase1``, ``accuracy_phase2``) and a single ``tables.<name>.<column>`` reference would be ambiguous, so those columns are not available through the expression syntax.
+Only the columns listed under a table's ``exports`` block are reachable this way — raw rows are not. ``tables`` is reserved at the top of an expression: a questionnaire or table file cannot be named ``tables``, and questionnaire field IDs and ``participant_calculations`` keys cannot be named ``tables`` either.
+
+Subscripting a ``group_by`` export
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An export that uses ``group_by`` produces one value per level. The expression engine resolves the bare reference to a per-level dict, which can be indexed in either dotted or bracket form:
+
+================================================ ===================================================
+Form                                              Resolves to
+================================================ ===================================================
+``tables.<name>.<col>.<key>``                     Dotted literal key. Digit-only segments are coerced to ``int`` so ``round_score.1`` matches an integer key.
+``tables.<name>.<col>[<literal>]``                Bracket literal key (int or quoted string).
+``tables.<name>.<col>[<expr>]``                   Bracket expression key — the inner expression is evaluated against the same env, so ``tables.scores.round_score[condition]`` selects the row keyed by the participant's condition number.
+``tables.<name>.<col>``                           Bare reference resolves to the whole dict, useful for ``len(tables.foo.bar)`` or ``mean([tables.foo.bar[1], tables.foo.bar[2]])``.
+================================================ ===================================================
+
+A missed key (no matching level) makes the expression undecided — page-level ``show_if`` keeps the page visible, and inline ``{{ }}`` substitution renders empty.
+
+Multi-column ``group_by`` (a list of grouping columns, e.g. ``"group_by": ["phase", "block"]``) produces a dict keyed by Python tuples. Tuple literals are not part of the expression syntax, so multi-column group_by exports cannot be subscripted from an expression. Either declare separate scalar exports per cell or read the dict from ``participant.table('foo').col`` in a Jinja template or custom blueprint.
 
 Page-level ``show_if`` also accepts more specific reference forms when the same questionnaire appears in ``PAGE_LIST`` multiple times under different tags (for example, a wellbeing questionnaire filled in once before an intervention and once after):
 

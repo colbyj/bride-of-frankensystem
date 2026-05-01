@@ -103,9 +103,18 @@ class ParticipantQuestionnaireService:
         return {f.id: getattr(previous, f.id) for f in fields}
 
     def render_questionnaire(self, questionnaire, template_name: str = 'questionnaire.html', tag: str = "") -> str:
+        from ..expressions import substitute_in_questionnaire
         prior_values = self.fetch_prior_values(questionnaire, tag)
+        participant = (
+            db.session.get(db.Participant, self.participant_id)
+            if self.participant_id is not None else None
+        )
+        json_data = (
+            substitute_in_questionnaire(questionnaire.json_data, participant)
+            if participant is not None else questionnaire.json_data
+        )
         return ParticipantQuestionnaireService.render_unloaded_questionnaire(
-            questionnaire.json_data, template_name, tag, prior_values=prior_values)
+            json_data, template_name, tag, prior_values=prior_values)
 
     @staticmethod
     def _inject_prior_values(question_data: dict, prior_values: dict) -> dict:

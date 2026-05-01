@@ -122,7 +122,6 @@ class TestParseAccepts:
 class TestParseRejects:
     @pytest.mark.parametrize("src", [
         "self.foo",            # attribute access
-        "obj['x']",            # subscript
         "lambda x: x",         # lambda
         "[x for x in xs]",     # list comprehension
         "{1, 2}",              # set literal
@@ -132,6 +131,7 @@ class TestParseRejects:
         "exec('x')",           # disallowed func
         "__import__('os')",    # disallowed func
         "open('f')",           # disallowed func
+        "obj[1:2]",            # slice subscript
     ])
     def test_disallowed_construct(self, src):
         with pytest.raises(ExpressionError):
@@ -175,6 +175,42 @@ class TestReferencedFields:
 
     def test_constant_only(self):
         assert referenced_fields(parse("42")) == set()
+
+    def test_subscript_collects_both_sides(self):
+        # ``a[b]`` references both the container and the key.
+        assert referenced_fields(parse("a[b]")) == {"a", "b"}
+
+    def test_subscript_with_literal_key(self):
+        assert referenced_fields(parse('a["k"]')) == {"a"}
+
+
+# ---------------------------------------------------------------------------
+# parse — subscript
+# ---------------------------------------------------------------------------
+
+class TestParseSubscript:
+    def test_int_key(self):
+        ast = parse("a[1]")
+        assert ast == {"subscript": {"var": "a"}, "key": {"const": 1}}
+
+    def test_string_key(self):
+        ast = parse('a["k"]')
+        assert ast == {"subscript": {"var": "a"}, "key": {"const": "k"}}
+
+    def test_variable_key(self):
+        ast = parse("a[b]")
+        assert ast == {"subscript": {"var": "a"}, "key": {"var": "b"}}
+
+    def test_chained_with_comparison(self):
+        # ``a[1] > 5`` must compose: subscript inside the comparison's args.
+        ast = parse("a[1] > 5")
+        assert ast["op"] == ">"
+        assert ast["args"][0] == {"subscript": {"var": "a"}, "key": {"const": 1}}
+        assert ast["args"][1] == {"const": 5}
+
+    def test_slice_rejected(self):
+        with pytest.raises(ExpressionError):
+            parse("a[1:2]")
 
 
 # ---------------------------------------------------------------------------
@@ -256,6 +292,41 @@ class TestPythonEvaluator:
         bad_ast = {"call": "exec", "args": []}
         with pytest.raises(ExpressionError):
             evaluate(bad_ast, {}, functions=_TEST_FUNCS)
+
+    def test_subscript_dict_hit(self):
+        assert py_eval("d[1]", {"d": {1: "a", 2: "b"}}) == "a"
+
+    def test_subscript_dict_miss_raises(self):
+        with pytest.raises(ExpressionError):
+            py_eval("d[99]", {"d": {1: "a"}})
+
+    def test_subscript_dict_int_str_fallback(self):
+        # SQLite group_by levels can round-trip as strings; allow dict[1]
+        # to find a "1" key and vice-versa.
+        assert py_eval("d[1]", {"d": {"1": "a"}}) == "a"
+        assert py_eval('d["1"]', {"d": {1: "a"}}) == "a"
+
+    def test_subscript_dict_with_variable_key(self):
+        env = {"d": {1: "x", 2: "y"}, "k": 2}
+        assert py_eval("d[k]", env) == "y"
+
+    def test_subscript_list_in_range(self):
+        assert py_eval("xs[0]", {"xs": [10, 20, 30]}) == 10
+        assert py_eval("xs[2]", {"xs": [10, 20, 30]}) == 30
+
+    def test_subscript_list_out_of_range_raises(self):
+        with pytest.raises(ExpressionError):
+            py_eval("xs[5]", {"xs": [10, 20]})
+
+    def test_subscript_list_non_int_key_raises(self):
+        with pytest.raises(ExpressionError):
+            py_eval('xs["a"]', {"xs": [10, 20]})
+
+    def test_subscript_on_scalar_raises(self):
+        with pytest.raises(ExpressionError):
+            py_eval("n[0]", {"n": 5})
+        with pytest.raises(ExpressionError):
+            py_eval("s[0]", {"s": "hello"})
 
 
 # ---------------------------------------------------------------------------

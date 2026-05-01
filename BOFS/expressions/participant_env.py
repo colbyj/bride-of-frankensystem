@@ -54,15 +54,21 @@ _DOTTED_RE = re.compile(
 _UNRESOLVED = object()
 
 
-def _resolve_table_ref(participant_id, tname, column, db, tables):
+def _resolve_table_ref(participant_id, tname, column, db, tables, key=None):
     """Resolve a single ``tables.<tname>.<column>`` reference for the
     given participant by delegating to the participant's ``TableAccessor``.
 
-    Returns the aggregate value, or ``_UNRESOLVED`` when the table or
-    column can't be found, when the export uses ``group_by`` (ambiguous
-    per-reference), or when the participant has no matching rows. The
-    caller treats ``_UNRESOLVED`` as "undecided predicate" and keeps the
-    page visible.
+    When ``key`` is given, applies it as a dict lookup against a
+    ``group_by`` export's per-level dict (with an int/str digit-string
+    fallback to absorb SQLite type round-trips). When ``key`` is omitted
+    and the column is a ``group_by`` export, returns the entire dict so
+    the caller (e.g. an ``ast.Subscript`` evaluator branch) can index it.
+
+    Returns ``_UNRESOLVED`` when the table or column can't be found,
+    when the participant has no matching rows, when ``key`` is supplied
+    against a non-dict scalar, or when the lookup misses. The caller
+    treats ``_UNRESOLVED`` as "undecided predicate" and keeps the page
+    visible.
     """
     if tname not in (tables or {}):
         return _UNRESOLVED
@@ -84,12 +90,26 @@ def _resolve_table_ref(participant_id, tname, column, db, tables):
         # Either the export legitimately returned NULL, or the participant
         # has no rows — both are "undecided" for show_if purposes.
         return _UNRESOLVED
+
     if isinstance(value, dict):
-        # ``group_by`` exports resolve to a per-level dict on the accessor.
-        # The expression DSL only handles scalars, so a multi-valued ref
-        # is undecided here — researchers wanting per-level access should
-        # read it from the accessor in Python/Jinja.
+        if key is None:
+            # group_by export, no dotted key — hand back the whole dict so
+            # bracket-form subscripts can index it via the evaluator.
+            return value
+        if key in value:
+            return value[key]
+        # SQLite round-trips integer group_by levels as strings in some
+        # paths; try the int coercion before giving up.
+        if isinstance(key, str) and key.lstrip("-").isdigit():
+            int_key = int(key)
+            if int_key in value:
+                return value[int_key]
         return _UNRESOLVED
+
+    if key is not None:
+        # Caller asked for a subscript on a scalar — undecided.
+        return _UNRESOLVED
+
     return value
 
 
@@ -99,10 +119,11 @@ def parse_page_predicate(src):
     :returns: ``(ast, refs)`` where ``ast`` is the JSON AST and ``refs`` is
         a ``{placeholder_name: spec}`` mapping. The spec ``"kind"`` is one
         of ``"questionnaire"`` (with ``qname``, ``tag``, ``field``) or
-        ``"table"`` (with ``tname``, ``column``). The evaluator sees each
-        dotted reference as a single ``var`` node whose name is the
-        placeholder; :func:`build_env` consults ``refs`` to look up the
-        corresponding stored value.
+        ``"table"`` (with ``tname``, ``column``, and optional literal
+        ``key`` from a 4-part ``tables.<name>.<col>.<key>`` ref). The
+        evaluator sees each dotted reference as a single ``var`` node
+        whose name is the placeholder; :func:`build_env` consults
+        ``refs`` to look up the corresponding stored value.
     """
     if not isinstance(src, str):
         raise ExpressionError(
@@ -118,20 +139,28 @@ def parse_page_predicate(src):
 
         if parts[0] == "tables":
             # ``tables.<name>.<column>`` — per-participant export of a
-            # ``JSONTable``. Tables don't have a tag concept today, so
-            # any other arity is an error rather than a silent mis-resolve.
-            if len(parts) != 3:
+            # ``JSONTable``. A 4th segment is a literal key into a
+            # ``group_by`` export's per-level dict (digit-only segment
+            # is coerced to int so ``round_score.1`` matches an int key).
+            if len(parts) == 3:
+                _, tname, column = parts
+                key = None
+            elif len(parts) == 4:
+                _, tname, column, raw_key = parts
+                key = int(raw_key) if raw_key.lstrip("-").isdigit() else raw_key
+            else:
                 raise ExpressionError(
                     f"table reference '{ref_text}' must have the form "
-                    f"'tables.<name>.<column>'."
+                    f"'tables.<name>.<column>' or "
+                    f"'tables.<name>.<column>.<key>'."
                 )
-            _, tname, column = parts
             placeholder = f"_bofs_ref_{counter[0]}"
             counter[0] += 1
             refs[placeholder] = {
                 "kind": "table",
                 "tname": tname,
                 "column": column,
+                "key": key,
                 "source": ref_text,
             }
             return placeholder
@@ -211,7 +240,8 @@ def build_env(participant_id, referenced, refs, questionnaires, db,
 
         if kind == "table":
             value = _resolve_table_ref(
-                participant_id, spec["tname"], spec["column"], db, tables
+                participant_id, spec["tname"], spec["column"], db, tables,
+                key=spec.get("key"),
             )
             if value is not _UNRESOLVED:
                 env[ph] = value

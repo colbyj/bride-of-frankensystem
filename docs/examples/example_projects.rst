@@ -31,6 +31,13 @@ A BOFS project built around a custom JavaScript task written in `p5.js <https://
 
 See :doc:`p5_example` for a description of the project, or :doc:`/getting_started/tutorial_js_task` for a step-by-step walkthrough of how it's built. `Source on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/p5_example>`__.
 
+Tables and Expressions Example
+------------------------------
+
+A three-round clicker that captures every individual click into one detail table (``clicks``: round, click index, time-since-round-start, x, y), bulk-POSTs each round's clicks in a single request, and writes a one-row summary per round to a separate table (``scores``: round, score). The end-of-task results page is a single questionnaire whose JSON uses ``{{ tables.scores.high_score }}``, ``{{ tables.scores.round_score[1] }}``, etc. — no custom blueprint is needed to render personalized feedback. The shortest path to seeing the inline-expression substitution and the ``group_by`` subscript syntax in action.
+
+See :doc:`tables_and_expressions_example` for a description, or `view the source on GitHub <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/tables_and_expressions_example>`__.
+
 Branching Example
 -----------------
 
