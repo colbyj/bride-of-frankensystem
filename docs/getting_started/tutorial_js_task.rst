@@ -177,7 +177,7 @@ This file replaces the ``config.toml`` produced by ``BOFS init`` — same role, 
     PORT = 5002
     RETRIEVE_SESSIONS = true
     ALLOW_RETAKES = true
-    LOG_GRID_CLICKS = false
+    LOG_QUESTIONNAIRE_INTERACTIONS = false
     CONDITIONS = []
 
     # External ID page (used here to demonstrate the MTurk wording)

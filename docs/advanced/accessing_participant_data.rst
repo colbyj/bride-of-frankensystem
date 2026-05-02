@@ -110,6 +110,31 @@ When a participant hasn't submitted a questionnaire yet, ``participant.questionn
         <p>Follow-up survey not yet completed</p>
     {% endif %}
 
+Accessing Questionnaire Interaction Events
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``LOG_QUESTIONNAIRE_INTERACTIONS`` is set to ``true`` in your config, BOFS records focus, blur, change, paste, and visibility events for every input on every questionnaire. Text inputs additionally capture per-field authenticity signals (keystrokes, backspaces, pastes, pasted character count, final length, total focus duration, time-to-first-keystroke).
+
+``participant.questionnaire_interactions(name, tag="")`` returns a list of interaction rows ordered by timestamp:
+
+.. code-block:: html
+
+    {% set events = participant.questionnaire_interactions('demographics') %}
+
+    <table>
+        <tr><th>Question</th><th>Event</th><th>Time</th><th>Value</th></tr>
+        {% for e in events %}
+            <tr>
+                <td>{{ e.questionID }}</td>
+                <td>{{ e.eventType }}</td>
+                <td>{{ e.timestamp }}</td>
+                <td>{{ e.value or "" }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+Each row has the attributes ``questionnaire``, ``tag``, ``questionID``, ``eventType``, ``timestamp``, and ``value``. The list is empty when ``LOG_QUESTIONNAIRE_INTERACTIONS`` is ``false`` or when the participant has not yet reached the questionnaire.
+
 Accessing Custom Table Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -72,10 +72,10 @@ Admin Panel Settings
      - list
      - ``[]``
      - Custom admin pages from blueprints. See :doc:`/getting_started/admin`.
-   * - ``LOG_GRID_CLICKS``
+   * - ``LOG_QUESTIONNAIRE_INTERACTIONS``
      - boolean
      - ``false``
-     - Log timestamps for each radio button click in grids. Enables detailed timing export.
+     - Log focus, blur, change, paste, and visibility events for every input on every questionnaire. Text inputs additionally record per-field authenticity signals (keystrokes, backspaces, pastes, pasted character count, final length, total focus duration, time-to-first-keystroke). The deprecated ``LOG_GRID_CLICKS`` name still works.
 
 Session and Participant Settings
 --------------------------------

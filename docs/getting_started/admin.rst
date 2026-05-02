@@ -74,7 +74,7 @@ Data Export
 
 ``/admin/export`` downloads questionnaire responses as CSV. Options include excluding unfinished or excluded participants, previewing the table in HTML before downloading, and automatic timestamping of the filename.
 
-For radiogrid timing data (only collected when ``LOG_GRID_CLICKS`` is enabled), use ``/admin/export_item_timing``. This exports per-item response times and a click-by-click log.
+For questionnaire interaction data (only collected when ``LOG_QUESTIONNAIRE_INTERACTIONS`` is enabled), use ``/admin/export_item_timing``. This exports a flat event log — one row per event — with participantID, mTurkID, questionnaire, tag, questionID, eventType (focus, blur, change, paste, visibility), timestamp, and value.
 
 Any database table — built-in (``Participant``, ``Progress``, ``Response``) or defined by a custom blueprint — can be exported individually via ``/admin/table_csv/<table_name>``.
 
@@ -116,14 +116,14 @@ Configuration
 .. table:: Admin Configuration
     :widths: 30,15,55
 
-    ============================ ======= ==================
-    Variable                     Type    Description
-    ============================ ======= ==================
-    ADMIN_PASSWORD               string  **Required.** Password for admin panel access.
-    USE_ADMIN                    boolean Enable or disable the admin panel entirely (default: ``true``).
-    LOG_GRID_CLICKS              boolean Log radiogrid click timing for export (default: ``false``).
-    ADDITIONAL_ADMIN_PAGES       list    Custom admin pages from blueprints (see below).
-    ============================ ======= ==================
+    ================================ ======= ==================
+    Variable                         Type    Description
+    ================================ ======= ==================
+    ADMIN_PASSWORD                   string  **Required.** Password for admin panel access.
+    USE_ADMIN                        boolean Enable or disable the admin panel entirely (default: ``true``).
+    LOG_QUESTIONNAIRE_INTERACTIONS   boolean Log questionnaire interaction events for export (default: ``false``).
+    ADDITIONAL_ADMIN_PAGES           list    Custom admin pages from blueprints (see below).
+    ================================ ======= ==================
 
 Adding Custom Admin Pages
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -168,7 +168,7 @@ Troubleshooting
   Confirm ``ADMIN_PASSWORD`` is set correctly. Try an incognito window to rule out a stale session, and check that cookies are enabled.
 
 **Export problems**
-  For large studies, check available disk space and that the application directory is writable. For timing exports specifically, ``LOG_GRID_CLICKS`` must be enabled.
+  For large studies, check available disk space and that the application directory is writable. For interaction timing exports specifically, ``LOG_QUESTIONNAIRE_INTERACTIONS`` must be enabled.
 
 **Slow results page**
   Results are cached for two minutes — wait for the cache to refresh before assuming new data isn't loading. For very large datasets, add database indexes on frequently queried columns.
