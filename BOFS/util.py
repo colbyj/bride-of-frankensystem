@@ -210,21 +210,24 @@ def create_breadcrumbs():
      whether or not that page is the active page, meaning it should be made bold.
     """
 
-    page_list = current_app.page_list.flat_page_list()
-    currentIndex = current_app.page_list.get_index(request.path)
+    page_list = current_app.page_list.flat_page_list(hide_unresolved=True)
+    current_path = request.path
+    if current_path.startswith("/"):
+        current_path = current_path[1:]
     crumbs = []
 
-    # Create breadcrumbs (duplicates handled no differently than anything else)
-    for i, page in enumerate(page_list):
+    # Create breadcrumbs. Match the active page by path rather than by
+    # index, because ``hide_unresolved=True`` may have dropped earlier
+    # entries that are still present in the unfiltered list ``get_index``
+    # would consult.
+    for page in page_list:
         if page['name'] == '':
             continue
 
-        crumb = {'name': page['name'], 'active': False}
-
-        if page_list.index(page) == currentIndex:
-            crumb['active'] = True
-
-        crumbs.append(crumb)
+        crumbs.append({
+            'name': page['name'],
+            'active': page['path'] == current_path,
+        })
 
     # Check for and handle any groupings of pages with the same name.
     for i, crumb in enumerate(crumbs):

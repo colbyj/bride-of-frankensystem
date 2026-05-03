@@ -240,6 +240,16 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         app.load_questionnaires()
         app.load_tables()
 
+        if app.config.get('USE_BREADCRUMBS', True) and app.page_list.has_branching():
+            print(
+                "WARNING: USE_BREADCRUMBS is enabled and PAGE_LIST contains "
+                "conditional_routing or show_if predicates. The breadcrumb "
+                "only shows pages BOFS knows the participant will visit, so "
+                "it will grow as participants answer gating questions. If "
+                "this is undesirable, set USE_BREADCRUMBS = false in your "
+                "config."
+            )
+
         from .validation import validate_page_show_if_table_refs
         table_ref_warnings = validate_page_show_if_table_refs(
             app.page_list.page_list, app.tables

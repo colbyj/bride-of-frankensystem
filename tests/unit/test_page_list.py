@@ -994,3 +994,201 @@ class TestFlatPageListShowIf:
                             staticmethod(fake_visible))
         result = pl.flat_page_list(condition=1, participant_id=42)
         assert [p['name'] for p in result] == ['A', 'C']
+
+
+class TestHideUnresolved:
+    """``flat_page_list(hide_unresolved=True)`` powers the breadcrumb. It
+    drops pages and routing-arm choices that BOFS can't yet promise the
+    participant will visit, while runtime navigation (``hide_unresolved=False``
+    — the default) keeps the cautious behavior that treats unresolved
+    predicates as visible."""
+
+    def test_top_level_unresolved_page_hidden(self, monkeypatch):
+        from BOFS import PageList as plmod
+
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b', 'show_if': 'qx.field == 1'},
+            {'name': 'C', 'path': 'c'},
+        ]
+        pl = plmod.PageList(data)
+
+        # Simulate B's predicate being unresolved (e.g. qx not yet submitted).
+        def fake_visibility(entry, participant_id):
+            ast = entry.get('_show_if_ast')
+            if ast is None:
+                return plmod.Visibility.VISIBLE
+            return plmod.Visibility.UNRESOLVED
+
+        monkeypatch.setattr(plmod.PageList, '_page_visibility',
+                            staticmethod(fake_visibility))
+
+        # Default mode keeps B (cautious).
+        default_result = pl.flat_page_list(condition=1, participant_id=42)
+        assert [p['name'] for p in default_result] == ['A', 'B', 'C']
+
+        # hide_unresolved drops B.
+        hidden_result = pl.flat_page_list(condition=1, participant_id=42,
+                                          hide_unresolved=True)
+        assert [p['name'] for p in hidden_result] == ['A', 'C']
+
+    def test_top_level_resolved_false_hidden_in_both_modes(self, monkeypatch):
+        from BOFS import PageList as plmod
+
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b', 'show_if': 'flag'},
+        ]
+        pl = plmod.PageList(data)
+
+        monkeypatch.setattr(plmod.PageList, '_page_visibility',
+                            staticmethod(lambda entry, pid:
+                                plmod.Visibility.VISIBLE if entry.get('_show_if_ast') is None
+                                else plmod.Visibility.HIDDEN))
+
+        default_result = pl.flat_page_list(condition=1, participant_id=42)
+        hidden_result = pl.flat_page_list(condition=1, participant_id=42,
+                                          hide_unresolved=True)
+        assert [p['name'] for p in default_result] == ['A']
+        assert [p['name'] for p in hidden_result] == ['A']
+
+    def test_top_level_resolved_true_visible_in_both_modes(self, monkeypatch):
+        from BOFS import PageList as plmod
+
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b', 'show_if': 'flag'},
+        ]
+        pl = plmod.PageList(data)
+
+        monkeypatch.setattr(plmod.PageList, '_page_visibility',
+                            staticmethod(lambda entry, pid: plmod.Visibility.VISIBLE))
+
+        default_result = pl.flat_page_list(condition=1, participant_id=42)
+        hidden_result = pl.flat_page_list(condition=1, participant_id=42,
+                                          hide_unresolved=True)
+        assert [p['name'] for p in default_result] == ['A', 'B']
+        assert [p['name'] for p in hidden_result] == ['A', 'B']
+
+    def test_unresolved_routing_block_dropped_entirely(self, monkeypatch):
+        """When any candidate arm is still unresolved, the whole
+        conditional_routing block is left out of the breadcrumb — even
+        the inner pages of an arm that happens to resolve true don't
+        appear, because runtime might still pick the unresolved arm
+        first."""
+        from BOFS import PageList as plmod
+
+        data = [
+            {'conditional_routing': [
+                {'show_if': 'screening.x == "Yes"',
+                 'page_list': [{'name': 'YesPage', 'path': 'yes'}]},
+                {'show_if': 'screening.x == "No"',
+                 'page_list': [{'name': 'NoPage', 'path': 'no'}]},
+            ]},
+        ]
+        pl = plmod.PageList(data)
+
+        # Both arms unresolved.
+        monkeypatch.setattr(plmod.PageList, '_page_visibility',
+                            staticmethod(lambda entry, pid: plmod.Visibility.UNRESOLVED))
+
+        # Default (cautious): first arm wins.
+        default_result = pl.flat_page_list(condition=1, participant_id=42)
+        assert [p['name'] for p in default_result] == ['YesPage']
+
+        # hide_unresolved: nothing.
+        hidden_result = pl.flat_page_list(condition=1, participant_id=42,
+                                          hide_unresolved=True)
+        assert hidden_result == []
+
+    def test_resolved_routing_block_picks_matching_arm_in_both_modes(self, monkeypatch):
+        from BOFS import PageList as plmod
+
+        data = [
+            {'conditional_routing': [
+                {'show_if': 'screening.x == "Yes"',
+                 'page_list': [{'name': 'YesPage', 'path': 'yes'}]},
+                {'show_if': 'screening.x == "No"',
+                 'page_list': [{'name': 'NoPage', 'path': 'no'}]},
+            ]},
+        ]
+        pl = plmod.PageList(data)
+        yes_arm = pl.page_list[0]['conditional_routing'][0]
+        no_arm = pl.page_list[0]['conditional_routing'][1]
+
+        # First arm hidden, second arm visible — like screening.x == 'No'.
+        # Inner pages without show_if must come back VISIBLE.
+        def fake_visibility(entry, participant_id):
+            if entry is yes_arm:
+                return plmod.Visibility.HIDDEN
+            if entry is no_arm:
+                return plmod.Visibility.VISIBLE
+            return plmod.Visibility.VISIBLE  # inner pages, no show_if
+
+        monkeypatch.setattr(plmod.PageList, '_page_visibility',
+                            staticmethod(fake_visibility))
+
+        default_result = pl.flat_page_list(condition=1, participant_id=42)
+        hidden_result = pl.flat_page_list(condition=1, participant_id=42,
+                                          hide_unresolved=True)
+        assert [p['name'] for p in default_result] == ['NoPage']
+        assert [p['name'] for p in hidden_result] == ['NoPage']
+
+    def test_routing_block_with_condition_eliminated_arm_unresolved_other(self, monkeypatch):
+        """An arm eliminated by condition is HIDDEN, not UNRESOLVED, and
+        does not block the breadcrumb. So if all *condition-matching* arms
+        are unresolved, the block is dropped under hide_unresolved; if a
+        condition-matching arm resolves true, it's used."""
+        from BOFS import PageList as plmod
+
+        data = [
+            {'conditional_routing': [
+                {'condition': 2, 'show_if': 'flag',
+                 'page_list': [{'name': 'OtherCondition', 'path': 'oc'}]},
+                {'condition': 1, 'show_if': 'flag',
+                 'page_list': [{'name': 'MyArm', 'path': 'ma'}]},
+            ]},
+        ]
+        pl = plmod.PageList(data)
+
+        # Both arms' show_if unresolved.
+        monkeypatch.setattr(plmod.PageList, '_page_visibility',
+                            staticmethod(lambda entry, pid: plmod.Visibility.UNRESOLVED))
+
+        # Participant condition is 1 → first arm eliminated by condition.
+        # The second arm is unresolved → with hide_unresolved, drop the block.
+        hidden_result = pl.flat_page_list(condition=1, participant_id=42,
+                                          hide_unresolved=True)
+        assert hidden_result == []
+
+
+class TestHasBranching:
+    def test_flat_page_list_no_branching(self):
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b'},
+        ]
+        pl = PageList(data)
+        assert pl.has_branching() is False
+
+    def test_top_level_show_if_is_branching(self):
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'name': 'B', 'path': 'b', 'show_if': 'flag'},
+        ]
+        pl = PageList(data)
+        assert pl.has_branching() is True
+
+    def test_conditional_routing_is_branching(self):
+        data = [
+            {'name': 'A', 'path': 'a'},
+            {'conditional_routing': [
+                {'condition': 1, 'page_list': [{'name': 'X', 'path': 'x'}]},
+            ]},
+        ]
+        pl = PageList(data)
+        assert pl.has_branching() is True
+
+    def test_empty_page_list(self):
+        pl = PageList([])
+        assert pl.has_branching() is False

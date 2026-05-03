@@ -19,6 +19,21 @@ from urllib.parse import urlsplit
 _RESOLVE_FROM_SESSION = object()
 
 
+class Visibility:
+    """Tri-state result of evaluating a page entry's or routing arm's
+    ``show_if``. ``UNRESOLVED`` means the predicate referenced data that
+    has not been collected yet (typically a prior questionnaire that
+    hasn't been submitted), and the caller should decide whether to treat
+    that as visible (the conservative default for routing, so participants
+    aren't locked out) or hidden (the right choice for the breadcrumb,
+    where we don't want to display pages we can't yet promise the
+    participant will visit).
+    """
+    VISIBLE = "visible"
+    HIDDEN = "hidden"
+    UNRESOLVED = "unresolved"
+
+
 class PageList(object):
     page_list = []
     procedure = []
@@ -98,25 +113,30 @@ class PageList(object):
         arm["_show_if_refs"] = refs
 
     @staticmethod
-    def _page_visible(entry, participant_id):
-        """Evaluate an entry's ``_show_if_ast`` against the given participant.
-        Returns True if the page (or routing arm) should be included.
+    def _page_visibility(entry, participant_id):
+        """Evaluate an entry's ``_show_if_ast`` against the given participant
+        and return a :class:`Visibility`.
 
-        When there is no AST, no participant context, or no Flask app
-        context (e.g. during early startup), the entry is included by
-        default — ``show_if`` only filters when we have everything needed
-        to evaluate it.
+        Entries without a ``_show_if_ast`` are unconditionally ``VISIBLE``.
+        When the predicate exists but BOFS lacks the context to evaluate
+        it — no participant identity, no Flask app context, or the
+        predicate references a questionnaire that hasn't been submitted
+        yet — the result is ``UNRESOLVED``. The boolean wrapper
+        :meth:`_page_visible` collapses ``UNRESOLVED`` back to "visible"
+        so runtime navigation isn't restricted, while callers that opt
+        into stricter filtering (e.g. the breadcrumb via
+        ``flat_page_list(hide_unresolved=True)``) can drop the entry.
         """
         ast = entry.get("_show_if_ast")
         refs = entry.get("_show_if_refs", {})
         if ast is None:
-            return True
+            return Visibility.VISIBLE
         if participant_id is None:
-            return True
+            return Visibility.UNRESOLVED
         try:
             app = current_app._get_current_object()
         except RuntimeError:
-            return True
+            return Visibility.UNRESOLVED
         env = build_participant_env(
             participant_id,
             referenced_fields(ast),
@@ -128,26 +148,42 @@ class PageList(object):
         try:
             value = evaluate(ast, env, functions=default_functions())
         except ExpressionError:
-            # Unresolved references typically mean the prior questionnaire
-            # has not been submitted yet — keep the page visible so the
-            # participant doesn't get locked out of a path that's still
-            # being decided.
-            return True
-        return bool(value)
+            return Visibility.UNRESOLVED
+        return Visibility.VISIBLE if bool(value) else Visibility.HIDDEN
+
+    @staticmethod
+    def _page_visible(entry, participant_id):
+        """Boolean wrapper around :meth:`_page_visibility`. Treats
+        ``UNRESOLVED`` as visible so participants aren't locked out of a
+        path whose gating data is still upstream — this preserves the
+        runtime navigation behavior callers have always relied on.
+        """
+        return PageList._page_visibility(entry, participant_id) != Visibility.HIDDEN
+
+    @staticmethod
+    def _arm_status(arm, condition, participant_id):
+        """Tri-state classifier for a ``conditional_routing`` arm,
+        combining the ``condition`` check with the ``show_if`` check.
+
+        Returns ``HIDDEN`` if the arm's ``condition`` is set and doesn't
+        match (with ``condition == 0`` preserved as a "match anything"
+        escape hatch for admin views). Otherwise delegates to
+        :meth:`_page_visibility` on the arm itself.
+        """
+        arm_condition = arm.get("condition")
+        if arm_condition is not None and condition != 0 and arm_condition != condition:
+            return Visibility.HIDDEN
+        return PageList._page_visibility(arm, participant_id)
 
     @staticmethod
     def _arm_matches(arm, condition, participant_id):
-        """Decide whether a ``conditional_routing`` arm should be selected
-        for the given (condition, participant). An arm matches when:
-
-        * its ``condition`` is unset, or matches the given ``condition``
-          (with the existing ``condition == 0`` "match anything" escape
-          hatch preserved for admin views), AND
-        * its ``show_if`` is unset, or evaluates to true for the
-          participant.
-
-        Both fields are optional; absence of both means the arm always
-        matches.
+        """Boolean: ``True`` if the arm should be selected. An arm matches
+        when its ``condition`` is unset or matches (with ``condition == 0``
+        as the admin-view "match anything" escape hatch) AND its
+        ``show_if`` is unset or evaluates to true. Calls :meth:`_page_visible`
+        rather than :meth:`_page_visibility` so ``UNRESOLVED`` is treated
+        as a match — the cautious default that keeps participants from
+        being locked out of a path whose gating data is still upstream.
         """
         arm_condition = arm.get("condition")
         if arm_condition is not None and condition != 0 and arm_condition != condition:
@@ -219,7 +255,8 @@ class PageList(object):
         return questionnaire
 
     def flat_page_list(self, condition=None,
-                       participant_id=_RESOLVE_FROM_SESSION) -> list[str]:
+                       participant_id=_RESOLVE_FROM_SESSION,
+                       hide_unresolved=False) -> list[str]:
         """
         This is the typical access point for the page_list variable.
         By default, it tries to get the current condition from the session variable.
@@ -237,6 +274,15 @@ class PageList(object):
               Use this from admin views, where filtering by the admin's
               session participant ID would hide pages other participants
               actually visited.
+        :param hide_unresolved: If ``False`` (the default and the right
+            thing for runtime navigation), pages and routing arms whose
+            ``show_if`` cannot yet be evaluated are treated as visible —
+            otherwise participants could be locked out of a path whose
+            gating data is still upstream. If ``True``, those entries are
+            skipped instead, and a ``conditional_routing`` block whose
+            relevant arms are still unresolved contributes nothing. This
+            mode is intended for the breadcrumb, where displaying pages
+            we don't yet know the participant will visit is misleading.
         """
         if condition is None:
             condition = util.fetch_current_condition()
@@ -247,18 +293,55 @@ class PageList(object):
 
         for entry in self.page_list:
             if 'conditional_routing' in entry:
-                for arm in entry['conditional_routing']:
-                    if not self._arm_matches(arm, condition, participant_id):
+                arms = entry['conditional_routing']
+                if hide_unresolved:
+                    arm_statuses = [
+                        self._arm_status(arm, condition, participant_id)
+                        for arm in arms
+                    ]
+                    # If any not-condition-eliminated arm is still
+                    # unresolved, we don't yet know which arm the
+                    # participant will follow — leave the whole block
+                    # out of the breadcrumb rather than guess.
+                    if any(s == Visibility.UNRESOLVED for s in arm_statuses):
                         continue
-                    for conditional_entry in arm['page_list']:
-                        if self._page_visible(conditional_entry, participant_id):
-                            flat_page_list.append(conditional_entry)
-                    break  # once a match has been found, then we're done
+                    for arm, status in zip(arms, arm_statuses):
+                        if status != Visibility.VISIBLE:
+                            continue
+                        for conditional_entry in arm['page_list']:
+                            if self._page_visibility(conditional_entry, participant_id) == Visibility.VISIBLE:
+                                flat_page_list.append(conditional_entry)
+                        break  # once a match has been found, then we're done
+                else:
+                    for arm in arms:
+                        if not self._arm_matches(arm, condition, participant_id):
+                            continue
+                        for conditional_entry in arm['page_list']:
+                            if self._page_visible(conditional_entry, participant_id):
+                                flat_page_list.append(conditional_entry)
+                        break  # once a match has been found, then we're done
             else:
-                if self._page_visible(entry, participant_id):
-                    flat_page_list.append(entry)
+                if hide_unresolved:
+                    if self._page_visibility(entry, participant_id) == Visibility.VISIBLE:
+                        flat_page_list.append(entry)
+                else:
+                    if self._page_visible(entry, participant_id):
+                        flat_page_list.append(entry)
 
         return flat_page_list
+
+    def has_branching(self) -> bool:
+        """True if PAGE_LIST contains any ``conditional_routing`` block,
+        or any top-level page has a ``show_if`` predicate. Used at startup
+        to decide whether to warn the researcher that the breadcrumb may
+        grow as participants answer gating questions.
+        """
+        for entry in self.page_list:
+            if not isinstance(entry, dict):
+                continue
+            if "_show_if_ast" in entry or "conditional_routing" in entry:
+                return True
+        return False
 
     def get_questionnaire_list(self, include_tags=False) -> list[str]:
         """
