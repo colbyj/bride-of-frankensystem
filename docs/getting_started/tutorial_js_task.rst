@@ -1,7 +1,7 @@
 Tutorial: Integrating a JavaScript Task
 =======================================
 
-This tutorial walks through embedding a custom JavaScript task inside a BOFS project. It introduces two features that the quickstart didn't touch: :doc:`blueprints </advanced/advanced_custom_pages>`, which let you add your own pages to a project, and :doc:`custom database tables </advanced/database_tables>`, which give your task a place to store its data.
+This tutorial walks through embedding a custom JavaScript task inside a BOFS project. It introduces two features that the quickstart didn't touch: :doc:`simple pages <simple_custom_pages>`, which let you serve a task's HTML without writing any Python, and :doc:`custom database tables </advanced/database_tables>`, which give your task a place to store its data.
 
 The finished version of this project is the :doc:`p5_example </examples/p5_example>` in the BOFS examples repository — feel free to read along with the source there if you'd rather not type everything out.
 
@@ -20,39 +20,25 @@ If you'd rather skip ahead and bootstrap a fresh project, here's the bare minimu
 3. Leave **all** optional features unchecked — this tutorial replaces them with its own consent text, instructions, task page, and (custom) database table.
 4. Decline the "start the project now" prompt at the end.
 
-That gives you a ``p5_example/`` directory containing a ``config.toml``, a placeholder ``consent.html``, and an empty ``templates/`` tree. The rest of this tutorial layers a custom blueprint on top, replaces ``consent.html`` with a placeholder of its own, and swaps ``config.toml`` for a tutorial-specific ``p5_example.toml`` (you can either rename the wizard's ``config.toml`` or use whichever filename you prefer when you run the project — ``BOFS run`` takes the path as an argument).
+That gives you a ``p5_example/`` directory containing a ``config.toml``, a placeholder ``consent.html``, and an empty ``templates/`` tree. The rest of this tutorial layers task files on top of that tree, replaces ``consent.html`` with a placeholder of its own, and swaps ``config.toml`` for a tutorial-specific ``p5_example.toml`` (you can either rename the wizard's ``config.toml`` or use whichever filename you prefer when you run the project — ``BOFS run`` takes the path as an argument).
 
 Project Layout
 --------------
 
-The bootstrap above gives you the project root. The tutorial adds a custom blueprint called ``my_task/`` with the following subdirectories:
+The bootstrap above gives you the project root. The tutorial adds files in the following project-level directories:
 
-* ``my_task/`` — root directory for the blueprint.
-* ``my_task/static/`` — static files served by the blueprint, such as ``.js`` files.
-* ``my_task/tables/`` — custom database table definition (a ``.json`` file).
-* ``my_task/templates/`` — template files (``.html``).
-* ``my_task/templates/instructions/`` — instruction page(s).
-* ``my_task/templates/simple/`` — HTML for the task itself.
-
-By the end you'll have these files:
-
-.. figure:: /examples/p5_example/p5_example_files.png
-  :alt: The files you'll have in those directories at the end of the tutorial.
-
-  Final file layout.
-
-Python Code (``views.py``)
---------------------------
-
-For more involved blueprints you'd add a ``views.py`` (see :doc:`/advanced/advanced_custom_pages`). This example doesn't need one — BOFS's built-in routes cover everything we need.
+* ``static/`` — static files served at ``/static/...``, such as ``.js`` files.
+* ``tables/`` — custom database table definition (a ``.json`` file).
+* ``templates/instructions/`` — instruction page(s).
+* ``templates/simple/`` — HTML for the task itself.
 
 The Task (``my_task.js``)
 -------------------------
 
-The JavaScript task uses the `p5.js <https://p5js.org/>`_ library. Place a copy of ``p5.min.js`` in ``/p5_example/my_task/static/`` (download it from the p5.js site) alongside this file:
+The JavaScript task uses the `p5.js <https://p5js.org/>`_ library. Place a copy of ``p5.min.js`` in ``/p5_example/static/`` (download it from the p5.js site) alongside this file:
 
 .. code-block:: javascript
-    :caption: /p5_example/my_task/static/my_task.js
+    :caption: /p5_example/static/my_task.js
 
     let score = 0;
 
@@ -91,7 +77,7 @@ The Table (``my_task.json``)
 The custom table is described by a JSON file matching the schema in :doc:`/advanced/database_tables`:
 
 .. code-block:: json
-    :caption: /p5_example/my_task/tables/my_task.json
+    :caption: /p5_example/tables/my_task.json
 
     {
       "columns": {
@@ -125,10 +111,10 @@ The View (``my_task.html``)
 A small HTML file pulls the p5 library and our task script into the page:
 
 .. code-block:: html
-    :caption: /p5_example/my_task/templates/simple/my_task.html
+    :caption: /p5_example/templates/simple/my_task.html
 
-    <script src="/my_task/p5.min.js"></script>
-    <script src="/my_task/my_task.js"></script>
+    <script src="/static/p5.min.js"></script>
+    <script src="/static/my_task.js"></script>
     <main></main>
 
 The ``<main>`` tag is where p5 attaches the canvas. Templates placed in ``templates/simple/`` are served at ``/simple/<filename>`` (without the ``.html``), so this one is reachable at ``/simple/my_task``. The page is wrapped in the usual BOFS chrome — header, breadcrumbs, and styling — without any extra effort.
@@ -139,7 +125,7 @@ Instructions Page (``task_instructions.html``)
 A short instruction page:
 
 .. code-block:: html
-    :caption: /p5_example/my_task/templates/instructions/task_instructions.html
+    :caption: /p5_example/templates/instructions/task_instructions.html
 
     <b>Click</b> as many times as you can before time runs out!
 

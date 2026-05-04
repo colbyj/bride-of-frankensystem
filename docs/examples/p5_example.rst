@@ -5,7 +5,7 @@ The ``p5_example`` project is a small BOFS study built around a custom JavaScrip
 
 The example is the canonical demonstration of three integration points that go beyond what the :doc:`minimal example </getting_started/quickstart_existing>` covers:
 
-* A **custom blueprint** (``my_task/``) that bundles task-specific HTML, JavaScript, and a database table inside the project.
+* A :doc:`simple page </getting_started/simple_custom_pages>` (``templates/simple/my_task.html``) that hosts the task's HTML and JavaScript without requiring any Python.
 * A **custom database table** (``my_task``) defined by a JSON schema, so the task's data lives in its own table alongside BOFS's built-in ones.
 * The built-in ``/table/<name>`` and ``/redirect_next_page`` routes, which let JavaScript push data into the database and advance the page flow without any extra Python.
 

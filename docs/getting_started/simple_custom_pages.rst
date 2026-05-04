@@ -1,7 +1,7 @@
 Simple Custom Pages
 ===================
 
-BOFS supports two kinds of custom pages that don't require any Python — *instruction pages*, which display static HTML with an automatic "Continue" button, and *simple pages*, which give you full control over the page (no automatic continue button) but still inherit the project's styling. Both are written as HTML templates inside your project directory.
+BOFS supports three kinds of custom pages that don't require any Python — *instruction pages*, which display static HTML with an automatic "Continue" button; *simple pages*, which give you control over the page content while still inheriting the project's styling and chrome; and *custom pages*, which render the entire HTML document with no BOFS wrapping at all. All three are written as HTML templates inside your project directory.
 
 Instruction Pages
 -----------------
@@ -94,6 +94,38 @@ For simple pages, you can redirect participants using:
 - ``/redirect_next_page`` - Go to the next page in PAGE_LIST
 - ``/redirect_to/page_name`` - Go to a specific page
 - JavaScript: ``location.href = '/redirect_next_page'``
+
+Custom HTML Pages
+-----------------
+
+Custom pages are like simple pages but with no BOFS template wrapping at all — no header, no breadcrumbs, no project styling. The template you provide is rendered as the entire HTML document. Use these when a task needs full control over the page (for example, a jsPsych or lab.js experiment that takes over the viewport, or any task where the BOFS chrome would interfere). Drop an HTML file into ``templates/custom/`` and reference it in ``PAGE_LIST`` as ``custom/<filename>``.
+
+For example, ``templates/custom/my_task.html``:
+
+.. code-block:: html
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>My Task</title>
+    </head>
+    <body>
+        <main></main>
+        <script src="/static/my_task.js"></script>
+    </body>
+    </html>
+
+Add to configuration:
+
+.. code-block:: toml
+
+    PAGE_LIST = [
+        {name='Task', path='custom/my_task'},
+        {name='End', path='end'}
+    ]
+
+Custom pages are still Jinja2 templates and have access to the same template variables (``session``, ``participant``, ``config``, ``debug``) as instruction and simple pages. The same redirect routes apply: ``/redirect_next_page``, ``/redirect_to/<page_name>``, or POST to the page route.
 
 Serving Static Files
 --------------------
@@ -261,11 +293,12 @@ Show different content in development vs. production:
         <p>Round {{ round_num }}: {{ config.ROUND_DESCRIPTIONS[round_num-1] }}</p>
     {% endfor %}
 
-Choosing Between the Three
---------------------------
+Choosing Between Them
+---------------------
 
 * **Instruction page** — static content with the standard Continue button. The default for any informational page.
-* **Simple page** — full control over the page. Use when you need custom navigation, a timer, or an interactive element to gate progress.
+* **Simple page** — content rendered inside the BOFS template (header, breadcrumbs, project styling). Use when you need custom navigation, a timer, or an interactive element to gate progress, but want the page to look like the rest of the experiment.
+* **Custom page** — the template is the entire HTML document, with no BOFS chrome. Use when a task needs full viewport control or its own ``<head>``/``<body>`` (e.g., jsPsych or lab.js).
 * **Static file** — for media (images, videos, audio) and downloadable files. Reference it from any of the page types above using ``/static/<path>``.
 
 Next Steps

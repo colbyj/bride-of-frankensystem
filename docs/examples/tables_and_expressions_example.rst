@@ -1,7 +1,7 @@
 Tables and Expressions Example
 ==============================
 
-The ``tables_and_expressions_example`` project pairs a clicker task with a results screen that is rendered entirely from inline expressions in a questionnaire JSON file. There is no per-participant blueprint code that touches the results page — everything that the participant sees on it is derived from JSONTable exports referenced through ``{{ ... }}`` placeholders.
+The ``tables_and_expressions_example`` project pairs a clicker task with a results screen that is rendered entirely from inline expressions in a questionnaire JSON file. There is no Python code in the project — everything that the participant sees on the results page is derived from JSONTable exports referenced through ``{{ ... }}`` placeholders.
 
 The example is the canonical demonstration of four features that compose:
 
@@ -26,11 +26,11 @@ The project listens on port 5006 by default; open http://localhost:5006 to step 
 How the Pieces Fit Together
 ---------------------------
 
-* ``my_task/tables/scores.json`` declares scalar exports (``high_score``, ``mean_score``, ``total_score``) plus a ``group_by`` export (``round_score``) keyed by ``round``.
-* ``my_task/tables/clicks.json`` declares a scalar count export (``total_clicks``) and a per-round count (``round_clicks``).
-* ``my_task/static/my_task.js`` runs the three rounds, captures each click into a JS array, and at end of round dispatches two HTTP requests in parallel: a list payload to ``/table/clicks`` and a single-row POST to ``/table/scores``.
-* ``my_task/templates/instructions/results.html`` renders the per-round score table by iterating ``participant.table('scores').round_score.items()`` directly in Jinja.
-* ``my_task/questionnaires/results.json`` writes the reflection questionnaire using ``{{ }}`` placeholders. The substitution layer handles the per-participant evaluation and HTML escapes the substituted values.
+* ``tables/scores.json`` declares scalar exports (``high_score``, ``mean_score``, ``total_score``) plus a ``group_by`` export (``round_score``) keyed by ``round``.
+* ``tables/clicks.json`` declares a scalar count export (``total_clicks``) and a per-round count (``round_clicks``).
+* ``static/my_task.js`` runs the three rounds, captures each click into a JS array, and at end of round dispatches two HTTP requests in parallel: a list payload to ``/table/clicks`` and a single-row POST to ``/table/scores``.
+* ``templates/instructions/results.html`` renders the per-round score table by iterating ``participant.table('scores').round_score.items()`` directly in Jinja.
+* ``questionnaires/results.json`` writes the reflection questionnaire using ``{{ }}`` placeholders. The substitution layer handles the per-participant evaluation and HTML escapes the substituted values.
 
 For the underlying reference material:
 
