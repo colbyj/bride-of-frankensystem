@@ -10,8 +10,7 @@ What It Demonstrates
 
 * **Two conditions with balanced random assignment** (``CONDITIONS``). BOFS's condition assignemnt balancer keeps the split close to 50/50 over the course of a run.
 * **Conditional routing** — a ``conditional_routing`` block inside ``PAGE_LIST`` sends each participant to the instructions and task page that match their assigned condition.
-* **Condition-specific instruction templates** in ``templates/instructions/``, one per condition.
-* **A custom blueprint** (``menu_task/``) with one Flask route per condition, registered in the page list. The shared task template switches on the ``technique`` parameter to load the correct menu component.
+* **A self-contained custom blueprint** (``menu_task/``) bundling one Flask route per condition, the shared task template, the per-condition instruction templates (``menu_task/templates/instructions/``), the trial-log schema, and the JS/CSS assets. BOFS searches every blueprint's template folder when resolving ``instructions/<name>``, so the blueprint is reusable as a unit — the longitudinal example in the same repo drops the same ``menu_task/`` folder into a different project.
 * **Per-trial logging via a JSONTable** (``menu_task/tables/menu_trials.json``) including a ``json``-typed ``trajectory`` column for raw mouse samples.
 * **Calculated export fields** so per-participant accuracy and response-time summaries appear directly in the admin export.
 * **Session-validation decorators** (``@verify_correct_page``, ``@verify_session_valid``) protecting the custom routes.
