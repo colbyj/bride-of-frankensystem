@@ -16,7 +16,7 @@ author = 'Colby Johanson'
 extensions = ['sphinx.ext.autodoc', 'sphinx_tabs.tabs']
 
 templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_old']
 
 
 

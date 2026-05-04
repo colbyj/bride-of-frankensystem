@@ -1,7 +1,7 @@
 Configuration Reference
 =======================
 
-Every option BOFS reads from a project's ``.toml`` file. For a guided introduction, see :doc:`/getting_started/project_configuration`.
+Every option BOFS reads from a project's ``.toml`` file. For a guided introduction, see :doc:`/building/page_flow`.
 
 Required Settings
 -----------------
@@ -15,7 +15,7 @@ Required Settings
      - Description
    * - ``SQLALCHEMY_DATABASE_URI``
      - string
-     - Database connection string. Use ``sqlite:///filename.db`` for development or ``postgresql://user:pass@host/db`` for production.
+     - Database connection string. Use ``sqlite:///filename.db`` for SQLite or ``postgresql://user:pass@host/db`` for PostgreSQL.
    * - ``TITLE``
      - string
      - Study title shown in browser tab and page headers.
@@ -43,15 +43,27 @@ Application Settings
    * - ``APPLICATION_ROOT``
      - string
      - ``""``
-     - URL prefix if hosting at a subpath (e.g., ``/study1``). Rarely needed.
+     - URL prefix if hosting at a subpath (e.g., ``/study1``). Leave unset when hosting at the root.
    * - ``USE_BREADCRUMBS``
      - boolean
-     - ``false``
-     - Show breadcrumbs-style progress bar to participants.
+     - ``true``
+     - Show a breadcrumbs-style progress indicator to participants.
+   * - ``USE_LOGO``
+     - boolean
+     - ``true``
+     - Display the BOFS logo in the page header.
    * - ``HEADER_COLOR``
      - string
      - *(unset)*
      - Background color of the title bar. Accepts a CSS hex color (e.g., ``"#8CB737"``), a named color (e.g., ``"navy"``), or ``rgb()``/``rgba()``/``hsl()``/``hsla()`` notation. When unset, the default green from the stylesheet is used.
+   * - ``WAITRESS_THREADS``
+     - integer
+     - ``16``
+     - Number of Waitress worker threads used in production (non-debug) mode. See :doc:`/deploying/server`.
+   * - ``SECRET_KEY``
+     - string
+     - *(auto-generated)*
+     - Flask session signing key. BOFS generates a random key on first run and stores it in the ``app_meta`` database table; the generated key persists across restarts. A value in the config is migrated into the database on first run and then ignored. Documented here for completeness — do not set this manually.
 
 Admin Panel Settings
 --------------------
@@ -71,11 +83,19 @@ Admin Panel Settings
    * - ``ADDITIONAL_ADMIN_PAGES``
      - list
      - ``[]``
-     - Custom admin pages from blueprints. See :doc:`/getting_started/admin`.
+     - Custom admin pages contributed by blueprints. See :doc:`/building/monitoring_data`.
    * - ``LOG_QUESTIONNAIRE_INTERACTIONS``
      - boolean
      - ``false``
-     - Log focus, blur, change, paste, and visibility events for every input on every questionnaire. Text inputs additionally record per-field authenticity signals (keystrokes, backspaces, pastes, pasted character count, final length, total focus duration, time-to-first-keystroke). The deprecated ``LOG_GRID_CLICKS`` name still works.
+     - Log focus, blur, change, paste, and visibility events for every input on every questionnaire. Text inputs additionally record per-field authenticity signals (keystrokes, backspaces, pastes, pasted character count, final length, total focus duration, time-to-first-keystroke). See :doc:`/building/monitoring_data`.
+   * - ``LOG_GRID_CLICKS``
+     - boolean
+     - *(deprecated)*
+     - Deprecated alias for ``LOG_QUESTIONNAIRE_INTERACTIONS``. If both keys are absent, ``LOG_QUESTIONNAIRE_INTERACTIONS`` is used. If only ``LOG_GRID_CLICKS`` is present, its value is copied to ``LOG_QUESTIONNAIRE_INTERACTIONS`` and a warning is printed. Rename to ``LOG_QUESTIONNAIRE_INTERACTIONS`` to silence the warning.
+   * - ``EXPORT``
+     - list
+     - ``[]``
+     - Custom export definitions for blueprint-defined tables. Each entry is a dict describing a table, fields, and optional grouping. Populated automatically from loaded blueprints; can also be set in the project config.
 
 Session and Participant Settings
 --------------------------------
@@ -90,27 +110,28 @@ Session and Participant Settings
      - Description
    * - ``RETRIEVE_SESSIONS``
      - boolean
-     - ``false``
+     - ``true``
      - If the external ID was used before, attempt to restore the participant's session and redirect to where they left off.
    * - ``ALLOW_RETAKES``
      - boolean
-     - ``true``
+     - ``false``
      - When ``false``, prevents the same external ID from being used twice.
    * - ``ABANDONED_MINUTES``
      - integer
-     - ``30``
+     - ``5``
      - Minutes of inactivity before a participant is considered abandoned.
    * - ``COUNTS_INCLUDE_ABANDONED``
      - boolean
      - ``false``
-     - Include abandoned participants when balancing condition assignment.
+     - Include abandoned participants when balancing condition assignment. Abandoned participants are not counted when balancing conditions by default.
 
 Security Settings
 -----------------
 
 These settings control IP-based brute-force protection on the admin login,
 binding sessions to the IP they were created on, and how BOFS resolves the
-real client IP behind a reverse proxy.
+real client IP behind a reverse proxy. See :doc:`/deploying/server` for
+deployment context.
 
 .. list-table::
    :header-rows: 1
@@ -131,7 +152,7 @@ real client IP behind a reverse proxy.
      - ``true``
      - When ``true``, a successful admin login adds the IP to a persistent
        allowlist (the ``admin_trusted_ip`` table) and exempts it from future
-       bans. The main self-service safety valve against admin self-lockout.
+       bans. Acts as the primary self-service safeguard against admin self-lockout.
    * - ``BRUTE_FORCE_MAX_ATTEMPTS``
      - integer
      - ``5``
@@ -158,16 +179,15 @@ real client IP behind a reverse proxy.
      - list of strings
      - ``["sqlmap", "nikto", "nmap", "dirbuster", "gobuster", "masscan", "WPScan", "acunetix", "nessus"]``
      - Case-insensitive substring matches against the request's
-       ``User-Agent``. A match instant-bans the IP. Easy to evade
-       (``sqlmap --random-agent`` masks the UA), so this is defense-in-depth
-       rather than a primary trap.
+       ``User-Agent``. A match instant-bans the IP. This is defense-in-depth
+       rather than a primary control, since scanners can mask their user-agent.
    * - ``SESSION_BIND_TO_IP_PARTICIPANT``
      - boolean
      - ``true``
      - When ``true``, a participant session is invalidated if the IP it was
        created from differs from the current request's IP. Set to ``false``
        for studies with mobile users who legitimately switch networks
-       (cellular ↔ wifi) mid-session, since each network change produces a
+       (cellular to wifi) mid-session, since each network change produces a
        new public IP. Admin sessions are always bound — there is no opt-out.
    * - ``TRUSTED_IPS``
      - list of strings
@@ -177,7 +197,7 @@ real client IP behind a reverse proxy.
    * - ``BEHIND_REVERSE_PROXY``
      - boolean
      - ``false``
-     - **Set to ``true`` if BOFS runs behind Caddy or nginx** so the real
+     - Set to ``true`` if BOFS runs behind Caddy or nginx so the real
        client IP is read from ``X-Forwarded-For`` (via Werkzeug's
        ``ProxyFix``). When ``false``, ``X-Real-IP`` and ``X-Forwarded-For``
        are ignored — they are spoofable when nothing trusted is in front of
@@ -221,7 +241,7 @@ the IP they're using):
 External ID Settings (MTurk/Prolific)
 -------------------------------------
 
-These settings control the ``/external_id`` page for collecting participant IDs from recruitment platforms.
+These settings control the ``/external_id`` page for collecting participant IDs from recruitment platforms. See :doc:`/deploying/recruiting`.
 
 .. list-table::
    :header-rows: 1
@@ -233,17 +253,17 @@ These settings control the ``/external_id`` page for collecting participant IDs 
      - Description
    * - ``EXTERNAL_ID_LABEL``
      - string
-     - ``"ID"``
-     - Label for the external ID field (e.g., ``"MTurk Worker ID"``).
+     - ``"Mechanical Turk Worker ID"``
+     - Label for the external ID field.
    * - ``EXTERNAL_ID_PROMPT``
      - string
-     - ``""``
+     - ``"Please enter your MTurk Worker ID. You can find this on your MTurk dashboard."``
      - Instructions shown above the ID input field.
 
 Completion Settings
 -------------------
 
-These settings control the ``/end`` page behavior.
+These settings control the ``/end`` page behavior. See :doc:`/deploying/recruiting`.
 
 .. list-table::
    :header-rows: 1
@@ -255,25 +275,25 @@ These settings control the ``/end`` page behavior.
      - Description
    * - ``GENERATE_COMPLETION_CODE``
      - boolean
-     - ``false``
+     - ``true``
      - Generate a random completion code for each participant.
    * - ``STATIC_COMPLETION_CODE``
      - string
-     - ``""``
+     - *(unset)*
      - Use the same completion code for all participants.
    * - ``COMPLETION_CODE_MESSAGE``
      - string
-     - ``"Your code is:"``
-     - Message displayed with the completion code.
+     - ``"Please copy and paste this code into the MTurk form:"``
+     - Message displayed alongside the completion code.
    * - ``OUTGOING_URL``
      - string
-     - ``""``
-     - Redirect participants to this URL instead of showing a completion code. Useful for Prolific redirects.
+     - *(unset)*
+     - Redirect participants to this URL at study end instead of showing a completion code. Useful for Prolific redirects.
 
 Experimental Conditions
 -----------------------
 
-Define experimental conditions for random assignment:
+Define experimental conditions for random assignment. See :doc:`/building/conditions_branching`.
 
 .. code-block:: toml
 
@@ -292,14 +312,36 @@ Define experimental conditions for random assignment:
    * - ``label``
      - Human-readable name for the condition (shown in admin panel).
    * - ``enabled``
-     - Whether to assign participants to this condition. Set to ``false`` to disable without removing.
+     - Whether to assign new participants to this condition. Set to ``false`` to stop assignment without removing the condition.
 
 Participants are assigned to the condition with the fewest participants. Condition numbers start at 1. Participants without an assigned condition have condition 0.
+
+Longitudinal Condition Lookup
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For longitudinal studies where condition assignment must match a prior session, BOFS can look up conditions from an external source. See :doc:`/building/longitudinal`.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 15 15 45
+
+   * - Variable
+     - Type
+     - Default
+     - Description
+   * - ``CONDITIONS_FROM_CSV``
+     - string
+     - *(unset)*
+     - Path to a CSV file (relative to the project working directory) mapping participant IDs to condition numbers. The file must have at least two columns: the participant ID and the condition. Mutually exclusive with ``CONDITIONS_FROM_DB``.
+   * - ``CONDITIONS_FROM_DB``
+     - string
+     - *(unset)*
+     - SQLAlchemy connection URI for an external database from which condition assignments are looked up by participant ID. Mutually exclusive with ``CONDITIONS_FROM_CSV``.
 
 PAGE_LIST Configuration
 -----------------------
 
-The ``PAGE_LIST`` defines the sequence of pages participants encounter.
+The ``PAGE_LIST`` defines the sequence of pages participants encounter. See :doc:`/building/page_flow`.
 
 **Basic Structure**
 
@@ -338,9 +380,9 @@ The ``PAGE_LIST`` defines the sequence of pages participants encounter.
    * - Path Format
      - Description
    * - ``consent``
-     - Built-in consent form with condition assignment.
+     - Built-in consent form with condition assignment. See :doc:`/building/consent`.
    * - ``consent_nc``
-     - Consent form without condition assignment.
+     - Consent form without condition assignment. See :doc:`/building/consent`.
    * - ``create_participant``
      - Create participant with condition assignment (no consent form).
    * - ``create_participant_nc``
@@ -350,7 +392,7 @@ The ``PAGE_LIST`` defines the sequence of pages participants encounter.
    * - ``questionnaire/name``
      - Display questionnaire from ``questionnaires/name.json``.
    * - ``instructions/name``
-     - Show page from ``templates/instructions/name.html`` with Continue button.
+     - Show page from ``templates/instructions/name.html`` with a Continue button.
    * - ``simple/name``
      - Show page from ``templates/simple/name.html`` with manual navigation.
    * - ``end``
@@ -358,7 +400,7 @@ The ``PAGE_LIST`` defines the sequence of pages participants encounter.
 
 **Conditional Routing**
 
-Show different pages based on participant condition:
+Show different pages based on participant condition. See :doc:`/building/conditions_branching`.
 
 .. code-block:: toml
 
@@ -378,13 +420,13 @@ Show different pages based on participant condition:
 Database Configuration
 ----------------------
 
-**SQLite (Development)**
+**SQLite**
 
 .. code-block:: toml
 
     SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
 
-**PostgreSQL (Production)**
+**PostgreSQL**
 
 .. code-block:: toml
 

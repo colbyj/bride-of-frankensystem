@@ -1,9 +1,9 @@
 Expressions: Calculations and Conditional Display
 ==================================================
 
-Three places in BOFS take a small expression written over a participant's responses: the ``participant_calculations`` block on a questionnaire and per-question ``show_if`` predicates (both described in :doc:`advanced_questionnaires`), and per-page ``show_if`` predicates inside ``PAGE_LIST`` (described in :doc:`/getting_started/project_configuration`). They all accept the same syntax, so this page is the canonical reference for the syntax itself.
+Three places in BOFS take a small expression written over a participant's responses: the ``participant_calculations`` block on a questionnaire and per-question ``show_if`` predicates (both described in :doc:`/reference/questionnaire_properties`), and per-page ``show_if`` predicates inside ``PAGE_LIST`` (described in :doc:`/building/conditions_branching`). They all accept the same syntax, so this page is the canonical reference for the syntax itself.
 
-The same syntax is also available from templates and custom blueprint code via ``participant.evaluate(expression)`` — see :doc:`accessing_participant_data` for that surface.
+The same syntax is also available from templates and custom blueprint code via ``participant.evaluate(expression)`` — see :doc:`/framework/participant_data` for that surface.
 
 Where expressions are used
 --------------------------
@@ -60,7 +60,7 @@ Inside a page-level ``show_if`` the bare name ``condition`` is reserved and reso
 Referring to table values
 -------------------------
 
-Page-level ``show_if`` can also reference per-participant aggregates exported by a :doc:`JSONTable <database_tables>`. The form is ``tables.<table_name>.<column>``, where ``<column>`` is the export-column name declared in the table's ``exports`` block:
+Page-level ``show_if`` can also reference per-participant aggregates exported by a :doc:`JSONTable </reference/custom_tables>`. The form is ``tables.<table_name>.<column>``, where ``<column>`` is the export-column name declared in the table's ``exports`` block:
 
 .. code-block:: toml
 
@@ -108,7 +108,7 @@ The ``tag`` segment matches the second part of paths like ``questionnaire/qname/
 Calculations on a questionnaire
 -------------------------------
 
-A ``participant_calculations`` block computes derived values from a participant's responses — scale scores, reverse-scored items, categorical bins. The result is stored alongside the raw responses and shows up as its own column in the CSV export. The block lives inside a questionnaire's JSON file (see :doc:`advanced_questionnaires`).
+A ``participant_calculations`` block computes derived values from a participant's responses — scale scores, reverse-scored items, categorical bins. The result is stored alongside the raw responses and shows up as its own column in the CSV export. The block lives inside a questionnaire's JSON file (see :doc:`/reference/questionnaire_properties`).
 
 .. code-block:: json
 
@@ -132,7 +132,7 @@ Each key under ``participant_calculations`` becomes an export column with the co
 Hiding a question
 -----------------
 
-A question inside a questionnaire (see :doc:`advanced_questionnaires`) can declare a ``show_if`` predicate that branches on the participant's other answers on the same page. The expression is checked live in the browser as the participant fills out the page; when it is false, the question is hidden and the form treats its inputs as if they weren't there — including any required fields, which won't block submission.
+A question inside a questionnaire (see :doc:`/reference/questionnaire_properties`) can declare a ``show_if`` predicate that branches on the participant's other answers on the same page. The expression is checked live in the browser as the participant fills out the page; when it is false, the question is hidden and the form treats its inputs as if they weren't there — including any required fields, which won't block submission.
 
 .. code-block:: json
 
@@ -154,7 +154,7 @@ When a question is hidden at submission time, no value is sent and the database 
 Skipping a page
 ---------------
 
-Any entry in ``PAGE_LIST`` (including entries inside a ``conditional_routing`` block) can carry a ``show_if`` predicate that branches on the participant's stored answers. When the predicate is false, the page is removed from that participant's flow — the next/back navigation skips past it and it does not appear in their breadcrumb. ``PAGE_LIST`` itself lives in your project's configuration file (see :doc:`/getting_started/project_configuration`).
+Any entry in ``PAGE_LIST`` (including entries inside a ``conditional_routing`` block) can carry a ``show_if`` predicate that branches on the participant's stored answers. When the predicate is false, the page is removed from that participant's flow — the next/back navigation skips past it and it does not appear in their breadcrumb. ``PAGE_LIST`` itself lives in your project's configuration file (see :doc:`/building/conditions_branching`).
 
 .. code-block:: toml
 

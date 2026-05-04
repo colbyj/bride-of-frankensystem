@@ -345,8 +345,6 @@ Note that command-line flags take precedence over environment variables.
 See Also
 --------
 
-- :doc:`/getting_started/installation` - Installation instructions
-- :doc:`/getting_started/quickstart_create` - Generate a project with ``BOFS init``
-- :doc:`/getting_started/quickstart_existing` - Download and run an example project
-- :doc:`/reference/config_options` - Configuration reference
-- :doc:`/getting_started/admin` - Admin panel documentation
+- :doc:`/getting_started/install_and_run` - Install BOFS and create your first project
+- :doc:`/reference/configuration` - Configuration reference
+- :doc:`/building/monitoring_data` - Admin panel documentation

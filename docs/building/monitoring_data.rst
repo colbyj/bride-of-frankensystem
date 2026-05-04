@@ -1,5 +1,5 @@
-Admin Panel
-===========
+Monitoring and Exporting Data
+=============================
 
 Every BOFS project ships with an admin panel for monitoring participants, exporting data, previewing questionnaires, and inspecting the underlying database.
 
@@ -63,7 +63,7 @@ Each timeline card shows:
   - *Custom pages* writing to a JSONTable — the calculated export fields
     from the table's ``exports`` block, scoped to this participant. To opt
     a custom page in, decorate its view function with ``@page_tables``;
-    see :doc:`/advanced/database_tables` for details.
+    see :doc:`/reference/custom_tables` for details.
 
 The page header also shows the participant's external ID (e.g. Prolific PID),
 assigned condition, total duration, last-active timestamp, and an Excluded

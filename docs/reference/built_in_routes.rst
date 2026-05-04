@@ -29,6 +29,8 @@ Subsequent Pages
 
 .. autofunction:: BOFS.default.views.route_simple_html
 
+.. autofunction:: BOFS.default.views.route_custom_html
+
 .. autofunction:: BOFS.default.views.route_questionnaire
 
 .. autofunction:: BOFS.default.views.route_end
@@ -36,6 +38,9 @@ Subsequent Pages
 
 Developer Routes
 ----------------
+
+Navigation
+~~~~~~~~~~
 
 .. autofunction:: BOFS.default.views.route_redirect_previous_page
 
@@ -45,13 +50,24 @@ Developer Routes
 
 .. autofunction:: BOFS.default.views.route_redirect_to_page
 
-.. autofunction:: BOFS.default.views.route_restart
-
 .. autofunction:: BOFS.default.views.route_current_url
 
-.. autofunction:: BOFS.default.views.route_table
+.. autofunction:: BOFS.default.views.route_restart
+
+Form submission
+~~~~~~~~~~~~~~~
 
 .. autofunction:: BOFS.default.views.submit
 
 .. autofunction:: BOFS.default.views.route_questionnaire_question
+
+Activity tracking
+~~~~~~~~~~~~~~~~~
+
+.. autofunction:: BOFS.default.views.route_user_active
+
+Custom tables
+~~~~~~~~~~~~~
+
+.. autofunction:: BOFS.default.views.route_table
 

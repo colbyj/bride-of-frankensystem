@@ -23,6 +23,8 @@ The ``BOFS.util`` package contains several functions that you might find useful.
 
 .. autofunction:: BOFS.util.fetch_condition_count
 
+.. autofunction:: BOFS.util.fetch_condition_count_db
+
 .. autofunction:: BOFS.util.provide_consent
 
 .. autofunction:: BOFS.util.float_or_0
