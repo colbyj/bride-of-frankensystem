@@ -217,14 +217,33 @@ class TestParseSubscript:
 # Python evaluator
 # ---------------------------------------------------------------------------
 
-# Minimal function set for tests that don't want to import BOFS.util.
+# Minimal function set for tests that don't want to import BOFS.util. Mirrors
+# the None-propagation wrappers in BOFS.expressions.evaluator.default_functions
+# so the JS<->Py parity tests behave identically when a missing value flows
+# into a function call.
+from BOFS.expressions.evaluator import (
+    _aggregate_none,
+    _propagate_none,
+    _variadic_aggregate_none,
+)
+
 _TEST_FUNCS = {
-    "len": len, "min": min, "max": max, "sum": sum, "abs": abs,
-    "round": round, "int": int, "float": float, "str": str, "bool": bool,
-    "mean": lambda xs: sum(xs) / len(xs),
-    "median": lambda xs: sorted(xs)[len(xs) // 2],
-    "stdev": lambda xs: 0.0, "std": lambda xs: 0.0,
-    "var": lambda xs: 0.0, "variance": lambda xs: 0.0,
+    "len": _propagate_none(len),
+    "min": _variadic_aggregate_none(min),
+    "max": _variadic_aggregate_none(max),
+    "sum": _aggregate_none(sum),
+    "abs": _propagate_none(abs),
+    "round": _propagate_none(round),
+    "int": _propagate_none(int),
+    "float": _propagate_none(float),
+    "str": str,
+    "bool": bool,
+    "mean": _aggregate_none(lambda xs: sum(xs) / len(xs)),
+    "median": _aggregate_none(lambda xs: sorted(xs)[len(xs) // 2]),
+    "stdev": _aggregate_none(lambda xs: 0.0),
+    "std": _aggregate_none(lambda xs: 0.0),
+    "var": _aggregate_none(lambda xs: 0.0),
+    "variance": _aggregate_none(lambda xs: 0.0),
 }
 
 
@@ -330,6 +349,93 @@ class TestPythonEvaluator:
 
 
 # ---------------------------------------------------------------------------
+# Missing-value (None) propagation through the evaluator.
+#
+# A missing questionnaire response (e.g. a radiogrid item with no option
+# selected) is represented in env as ``None``. Arithmetic and ordered
+# comparisons short-circuit to ``None``; aggregate functions return ``None``
+# when any list element is ``None``. Equality and the boolean ops follow
+# standard Python truthiness, since those have well-defined behavior on
+# missing data.
+# ---------------------------------------------------------------------------
+
+class TestNonePropagation:
+    # Use the production default_functions() — they wrap aggregates so a
+    # None inside the list short-circuits the call to None.
+    def _eval(self, src, env):
+        from BOFS.expressions.evaluator import default_functions
+        return evaluate(parse(src), env, functions=default_functions())
+
+    def test_arithmetic_propagates_none(self):
+        # The reported bug: radiogrid sub-question with no option selected
+        # came through as "" (now mapped to None at the env-builder layer).
+        # `6 - q2` should yield None, not raise TypeError.
+        assert self._eval("6 - q2", {"q2": None}) is None
+        assert self._eval("q1 + q2", {"q1": 5, "q2": None}) is None
+        assert self._eval("q1 + q2", {"q1": None, "q2": 5}) is None
+        assert self._eval("q1 * q2", {"q1": None, "q2": 5}) is None
+        assert self._eval("q1 / q2", {"q1": None, "q2": 5}) is None
+
+    def test_chained_arithmetic_propagates(self):
+        # The full reported expression — ExampleQualitySum.
+        env = {"q1": 4, "q2": None, "q3": 5}
+        assert self._eval("q1 + 6-q2 + q3", env) is None
+
+    def test_unary_propagates_none(self):
+        assert self._eval("-x", {"x": None}) is None
+        assert self._eval("+x", {"x": None}) is None
+
+    def test_ordered_comparison_propagates_none(self):
+        assert self._eval("x < 5", {"x": None}) is None
+        assert self._eval("x >= 5", {"x": None}) is None
+        assert self._eval("5 > x", {"x": None}) is None
+
+    def test_equality_does_not_propagate(self):
+        # ==/!= follow Python: None == None is True, None == 5 is False.
+        assert self._eval("x == None", {"x": None}) is True
+        assert self._eval("x == 5", {"x": None}) is False
+        assert self._eval("x != 5", {"x": None}) is True
+
+    def test_logical_short_circuit_with_none(self):
+        # None is falsy.
+        assert self._eval("x and y", {"x": None, "y": 5}) is None
+        # `or` returns the second operand because None is falsy.
+        assert self._eval("x or y", {"x": None, "y": 5}) == 5
+
+    def test_mean_with_missing_returns_none(self):
+        # The reported expression — ExampleQualityMean.
+        env = {"q1": 4, "q2": None, "q3": 5}
+        assert self._eval("mean([q1, 6-q2, q3])", env) is None
+
+    def test_aggregate_funcs_propagate_none(self):
+        env = {"a": 1, "b": None, "c": 3}
+        assert self._eval("sum([a, b, c])", env) is None
+        assert self._eval("min([a, b, c])", env) is None
+        assert self._eval("max([a, b, c])", env) is None
+        assert self._eval("median([a, b, c])", env) is None
+        assert self._eval("stdev([a, b, c])", env) is None
+
+    def test_min_max_variadic_propagate_none(self):
+        # min(a, b, c) form, not min([a, b, c]).
+        env = {"a": 1, "b": None, "c": 3}
+        assert self._eval("min(a, b, c)", env) is None
+        assert self._eval("max(a, b, c)", env) is None
+
+    def test_unary_funcs_propagate_none(self):
+        assert self._eval("abs(x)", {"x": None}) is None
+        assert self._eval("round(x, 2)", {"x": None}) is None
+        assert self._eval("int(x)", {"x": None}) is None
+        assert self._eval("float(x)", {"x": None}) is None
+        assert self._eval("len(x)", {"x": None}) is None
+
+    def test_full_calc_succeeds_when_no_missing(self):
+        # Sanity: with all values present, the result is the same as before.
+        env = {"q1": 4, "q2": 2, "q3": 5}
+        assert self._eval("q1 + 6-q2 + q3", env) == 13.0
+        assert self._eval("mean([q1, 6-q2, q3])", env) == pytest.approx(13 / 3)
+
+
+# ---------------------------------------------------------------------------
 # Parity: same AST + same env should yield the same value in Python and JS.
 # Run via Node if available; skip cleanly otherwise.
 # ---------------------------------------------------------------------------
@@ -360,6 +466,21 @@ PARITY_CASES = [
     ("round(x, 2)",                   {"x": 3.14159}),
     ("age < 18 and country in ['US', 'CA']", {"age": 17, "country": "US"}),
     ("score >= 50 or override",       {"score": 30, "override": True}),
+    # None-propagation parity. JSON serializes None as null, which the JS
+    # evaluator reads back as null — same missing-value sentinel.
+    ("6 - q2",                        {"q2": None}),
+    ("q1 + q2",                       {"q1": 3, "q2": None}),
+    ("q1 + 6-q2 + q3",                {"q1": 4, "q2": None, "q3": 5}),
+    ("-x",                            {"x": None}),
+    ("x < 5",                         {"x": None}),
+    ("x == None",                     {"x": None}),
+    ("x == 5",                        {"x": None}),
+    ("x and y",                       {"x": None, "y": 5}),
+    ("x or y",                        {"x": None, "y": 5}),
+    ("mean([q1, q2, q3])",            {"q1": 4, "q2": None, "q3": 5}),
+    ("sum([a, b, c])",                {"a": 1, "b": None, "c": 3}),
+    ("min(a, b, c)",                  {"a": 1, "b": None, "c": 3}),
+    ("abs(x)",                        {"x": None}),
 ]
 
 

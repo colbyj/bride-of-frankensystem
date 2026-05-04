@@ -6,6 +6,14 @@
  * floor division, modulo, and `in`/`not_in` over both arrays and strings —
  * so a single AST evaluates identically on both sides of the wire.
  *
+ * Missing-value semantics: `null` represents a missing field. Arithmetic
+ * and ordered comparison ops short-circuit to `null` when any operand is
+ * `null`; aggregate functions (`mean`, `sum`, `min`, ...) return `null`
+ * when any list element is `null`. `==`/`!=` and the boolean ops follow
+ * standard Python truthiness (`null` is falsy). This matches the Python
+ * evaluator so the same AST evaluates identically on both sides of the
+ * wire even when some fields are unanswered.
+ *
  * Exposes a single global `BOFSExpr` with .evaluate(ast, env, functions?).
  */
 (function (root) {
@@ -43,45 +51,69 @@
         throw new Error("'in' requires a list or string on the right-hand side");
     }
 
+    function isMissing(v) {
+        return v === null || v === undefined;
+    }
+
+    function listHasMissing(xs) {
+        if (!Array.isArray(xs)) return false;
+        for (var i = 0; i < xs.length; i++) {
+            if (isMissing(xs[i])) return true;
+        }
+        return false;
+    }
+
     var FUNCS = {
         len: function (x) {
-            if (x === null || x === undefined) {
-                throw new Error("len() argument is null/undefined");
-            }
+            if (isMissing(x)) return null;
             if (typeof x === 'string' || Array.isArray(x)) return x.length;
             throw new Error("len() requires a string or list");
         },
         min: function () {
-            // min(iterable) or min(a, b, ...)
+            // min(iterable) or min(a, b, ...). Either shape returns null if
+            // any participating value is missing — matches the Python side.
             var args = Array.prototype.slice.call(arguments);
+            for (var i = 0; i < args.length; i++) {
+                if (isMissing(args[i])) return null;
+            }
             var values = (args.length === 1 && Array.isArray(args[0])) ? args[0] : args;
+            if (listHasMissing(values)) return null;
             if (values.length === 0) throw new Error("min() of empty sequence");
             return values.reduce(function (acc, v) { return v < acc ? v : acc; });
         },
         max: function () {
             var args = Array.prototype.slice.call(arguments);
+            for (var i = 0; i < args.length; i++) {
+                if (isMissing(args[i])) return null;
+            }
             var values = (args.length === 1 && Array.isArray(args[0])) ? args[0] : args;
+            if (listHasMissing(values)) return null;
             if (values.length === 0) throw new Error("max() of empty sequence");
             return values.reduce(function (acc, v) { return v > acc ? v : acc; });
         },
         sum: function (xs, start) {
+            if (isMissing(xs)) return null;
             if (!Array.isArray(xs)) throw new Error("sum() requires a list");
+            if (listHasMissing(xs)) return null;
             var s = (start === undefined) ? 0 : start;
             for (var i = 0; i < xs.length; i++) s += xs[i];
             return s;
         },
-        abs: function (x) { return Math.abs(x); },
+        abs: function (x) { return isMissing(x) ? null : Math.abs(x); },
         round: function (x, n) {
+            if (isMissing(x)) return null;
             if (n === undefined) return Math.round(x);
             var f = Math.pow(10, n);
             return Math.round(x * f) / f;
         },
         int: function (x) {
+            if (isMissing(x)) return null;
             var n = parseInt(x, 10);
             if (isNaN(n)) throw new Error("int(): cannot convert " + x);
             return n;
         },
         float: function (x) {
+            if (isMissing(x)) return null;
             var n = parseFloat(x);
             if (isNaN(n)) throw new Error("float(): cannot convert " + x);
             return n;
@@ -89,29 +121,38 @@
         str: function (x) { return String(x); },
         bool: function (x) { return truthy(x); },
         mean: function (xs) {
-            if (!Array.isArray(xs) || xs.length === 0) {
-                throw new Error("mean() requires a non-empty list");
-            }
+            if (isMissing(xs)) return null;
+            if (!Array.isArray(xs)) throw new Error("mean() requires a list");
+            if (listHasMissing(xs)) return null;
+            if (xs.length === 0) throw new Error("mean() requires a non-empty list");
             var s = 0;
             for (var i = 0; i < xs.length; i++) s += xs[i];
             return s / xs.length;
         },
         median: function (xs) {
-            if (!Array.isArray(xs) || xs.length === 0) {
-                throw new Error("median() requires a non-empty list");
-            }
+            if (isMissing(xs)) return null;
+            if (!Array.isArray(xs)) throw new Error("median() requires a list");
+            if (listHasMissing(xs)) return null;
+            if (xs.length === 0) throw new Error("median() requires a non-empty list");
             var sorted = xs.slice().sort(function (a, b) { return a - b; });
             var mid = Math.floor(sorted.length / 2);
             return (sorted.length % 2)
                 ? sorted[mid]
                 : (sorted[mid - 1] + sorted[mid]) / 2;
         },
-        stdev: function (xs) { return Math.sqrt(FUNCS.variance(xs)); },
-        std: function (xs) { return Math.sqrt(FUNCS.variance(xs)); },
+        stdev: function (xs) {
+            var v = FUNCS.variance(xs);
+            return v === null ? null : Math.sqrt(v);
+        },
+        std: function (xs) {
+            var v = FUNCS.variance(xs);
+            return v === null ? null : Math.sqrt(v);
+        },
         variance: function (xs) {
-            if (!Array.isArray(xs) || xs.length === 0) {
-                throw new Error("variance() requires a non-empty list");
-            }
+            if (isMissing(xs)) return null;
+            if (!Array.isArray(xs)) throw new Error("variance() requires a list");
+            if (listHasMissing(xs)) return null;
+            if (xs.length === 0) throw new Error("variance() requires a non-empty list");
             var m = FUNCS.mean(xs);
             var s = 0;
             for (var i = 0; i < xs.length; i++) {
@@ -185,13 +226,24 @@
 
         if (op === 'list') return values;
         if (op === 'not') return !truthy(values[0]);
-        if (op === 'neg') return -values[0];
-        if (op === 'pos') return +values[0];
+        if (op === 'neg') return isMissing(values[0]) ? null : -values[0];
+        if (op === 'pos') return isMissing(values[0]) ? null : +values[0];
 
         if (values.length !== 2) {
             throw new Error("operator '" + op + "' expects 2 arguments");
         }
         var a = values[0], b = values[1];
+
+        // Arithmetic and ordered comparisons propagate null/undefined — a
+        // missing questionnaire response makes the whole sub-expression
+        // missing, rather than crashing the evaluator.
+        var arithCompare = {
+            '+': 1, '-': 1, '*': 1, '/': 1, '//': 1, '%': 1,
+            '<': 1, '<=': 1, '>': 1, '>=': 1
+        };
+        if (arithCompare[op] && (isMissing(a) || isMissing(b))) {
+            return null;
+        }
 
         switch (op) {
             case '+':

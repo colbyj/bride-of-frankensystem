@@ -5,9 +5,52 @@ Operates on the JSON AST shape produced by :mod:`BOFS.expressions.parser`.
 The evaluator carries no globals, no imports, and no eval — every value comes
 either from the AST itself (constants, function names) or from the ``env``
 dict supplied by the caller (variable values, function implementations).
+
+Missing-value semantics: ``None`` represents a missing field (e.g. a
+questionnaire response with no option selected). Arithmetic and ordered
+comparison ops propagate ``None`` — any ``None`` operand makes the result
+``None``. Aggregate functions (``mean``, ``sum``, ``min``, ...) likewise
+return ``None`` when any list element is ``None``. ``==``/``!=`` and the
+boolean ops (``and``/``or``/``not``/``if``) follow standard Python (``None``
+is falsy, ``None == None`` is True), since those have well-defined behavior
+in the presence of missing data.
 """
 
 from .parser import ALLOWED_FUNCTIONS, ExpressionError
+
+
+def _propagate_none(fn):
+    """Wrap ``fn`` so any ``None`` positional arg short-circuits to ``None``."""
+    def _wrapped(*args):
+        if any(a is None for a in args):
+            return None
+        return fn(*args)
+    return _wrapped
+
+
+def _aggregate_none(fn):
+    """Wrap an aggregate (e.g. ``mean``) so a ``None`` input or any ``None``
+    inside the input list short-circuits to ``None``."""
+    def _wrapped(xs):
+        if xs is None:
+            return None
+        if isinstance(xs, list) and any(x is None for x in xs):
+            return None
+        return fn(xs)
+    return _wrapped
+
+
+def _variadic_aggregate_none(fn):
+    """``min`` / ``max`` accept either ``min(xs)`` or ``min(a, b, ...)`` —
+    propagate ``None`` from any element regardless of call shape."""
+    def _wrapped(*args):
+        if any(a is None for a in args):
+            return None
+        if len(args) == 1 and isinstance(args[0], list):
+            if any(x is None for x in args[0]):
+                return None
+        return fn(*args)
+    return _wrapped
 
 
 def default_functions():
@@ -15,25 +58,31 @@ def default_functions():
     Return the default function implementations: standard reductions and
     BOFS's stats helpers from :mod:`BOFS.util`. Imported lazily so the
     expression engine has no hard dependency on the rest of BOFS.
+
+    All functions propagate ``None`` so a missing field does not crash the
+    calculation — the result becomes ``None`` instead, matching SQL NULL
+    semantics. ``str`` and ``bool`` are exempt because Python's defaults
+    (``str(None) == "None"``, ``bool(None) is False``) are well-defined and
+    are what an author writing ``str(answer)`` or ``bool(flag)`` expects.
     """
     from BOFS.util import mean, median, stdev, std, var, variance
     return {
-        "len": len,
-        "min": min,
-        "max": max,
-        "sum": sum,
-        "abs": abs,
-        "round": round,
-        "int": int,
-        "float": float,
+        "len": _propagate_none(len),
+        "min": _variadic_aggregate_none(min),
+        "max": _variadic_aggregate_none(max),
+        "sum": _aggregate_none(sum),
+        "abs": _propagate_none(abs),
+        "round": _propagate_none(round),
+        "int": _propagate_none(int),
+        "float": _propagate_none(float),
         "str": str,
         "bool": bool,
-        "mean": mean,
-        "median": median,
-        "stdev": stdev,
-        "std": std,
-        "var": var,
-        "variance": variance,
+        "mean": _aggregate_none(mean),
+        "median": _aggregate_none(median),
+        "stdev": _aggregate_none(stdev),
+        "std": _aggregate_none(std),
+        "var": _aggregate_none(var),
+        "variance": _aggregate_none(variance),
     }
 
 
@@ -144,13 +193,20 @@ def _eval(node, env, functions):
     if op == "not":
         return not values[0]
     if op == "neg":
-        return -values[0]
+        return None if values[0] is None else -values[0]
     if op == "pos":
-        return +values[0]
+        return None if values[0] is None else +values[0]
 
     if len(values) != 2:
         raise ExpressionError(f"operator {op!r} expects 2 arguments, got {len(values)}")
     a, b = values
+
+    # Arithmetic and ordered comparisons propagate None — a missing
+    # questionnaire response makes the whole sub-expression missing, rather
+    # than crashing the evaluation with a TypeError.
+    if op in ("+", "-", "*", "/", "//", "%", "<", "<=", ">", ">="):
+        if a is None or b is None:
+            return None
 
     if op == "+":
         return a + b

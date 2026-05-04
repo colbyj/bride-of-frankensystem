@@ -234,6 +234,11 @@ class JSONQuestionnaire(object):
                 referenced = referenced_fields(ast_node)
 
                 def _calc(self):
+                    # Build the evaluation env. Missing values (None or empty
+                    # string — e.g. a radiogrid item with no option selected)
+                    # become None so the evaluator can propagate them: a calc
+                    # that depends on a missing field returns None for that
+                    # row rather than crashing the whole export.
                     env = {}
                     for fid in referenced:
                         if not hasattr(self, fid):
@@ -242,19 +247,23 @@ class JSONQuestionnaire(object):
                                 f"{table_name!r} references unknown field {fid!r}"
                             )
                         raw = getattr(self, fid)
-                        # Match the original eval-based behavior: numeric
-                        # coercion via float() so int/None/numeric-string
-                        # fields all participate in arithmetic uniformly.
-                        try:
-                            env[fid] = float(raw) if raw is not None else 0.0
-                        except (TypeError, ValueError):
-                            env[fid] = raw
+                        if raw is None or raw == "":
+                            env[fid] = None
+                        else:
+                            try:
+                                env[fid] = float(raw)
+                            except (TypeError, ValueError):
+                                env[fid] = raw
                     try:
                         return expr_evaluate(ast_node, env, functions=funcs)
                     except Exception as e:
+                        ref_state = ", ".join(
+                            f"{k}={env.get(k)!r}" for k in referenced
+                        )
                         raise Exception(
                             f"Unable to evaluate calculated field "
-                            f"`{calc_name}` on questionnaire `{table_name}`: {e}"
+                            f"`{calc_name}` on questionnaire `{table_name}`: "
+                            f"{e}. Referenced fields: {ref_state}"
                         )
 
                 return _calc

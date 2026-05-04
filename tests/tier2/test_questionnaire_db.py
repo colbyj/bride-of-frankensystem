@@ -136,6 +136,70 @@ class TestCreateDBClass:
         instance.q2 = 7
         assert instance.total() == 10.0
 
+    def test_calculated_field_with_missing_radiogrid_value(self, bofs_app):
+        # Reported bug: a participant submits a radiogrid with no option
+        # selected, so the sub-question column stores "" (string default).
+        # The calculation must yield None (missing), not raise TypeError —
+        # otherwise an unrelated participant breaks the entire export.
+        radio_calc = {
+            "title": "Grid Calc",
+            "instructions": "",
+            "questions": [
+                {
+                    "questiontype": "radiogrid",
+                    "id": "grid",
+                    "labels": ["1", "2", "3", "4", "5"],
+                    "q_text": [
+                        {"id": "q1", "text": "Item one"},
+                        {"id": "q2", "text": "Item two"},
+                        {"id": "q3", "text": "Item three"},
+                    ],
+                }
+            ],
+            "participant_calculations": {
+                "ExampleQualityMean": "mean([q1, 6-q2, q3])",
+                "ExampleQualitySum": "q1 + 6-q2 + q3",
+            },
+        }
+        q = write_questionnaire_file(bofs_app, "grid_calc", radio_calc)
+        instance = q.db_class()
+        # q1 and q3 answered; q2 left blank — radiogrid columns default to "".
+        instance.q1 = "4"
+        instance.q2 = ""
+        instance.q3 = "5"
+
+        assert instance.ExampleQualityMean() is None
+        assert instance.ExampleQualitySum() is None
+
+        # Same calc with all values present should produce a real result.
+        instance.q2 = "2"
+        assert instance.ExampleQualitySum() == 13.0
+
+    def test_calculated_field_error_message_includes_field_state(self, bofs_app):
+        # Genuine type errors (e.g. a non-numeric string in arithmetic) still
+        # raise — but the error must name the referenced fields and their
+        # values so the researcher can diagnose without guessing.
+        bad_calc = {
+            "title": "Bad",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "field", "id": "name"},
+            ],
+            "participant_calculations": {
+                "doubled": "name * 2 - 1",
+            },
+        }
+        q = write_questionnaire_file(bofs_app, "bad_calc", bad_calc)
+        instance = q.db_class()
+        instance.name = "alice"  # non-numeric, non-empty string
+
+        with pytest.raises(Exception) as exc_info:
+            instance.doubled()
+        msg = str(exc_info.value)
+        assert "doubled" in msg
+        assert "Referenced fields" in msg
+        assert "name=" in msg
+
     def test_no_calculations_ok(self, bofs_app):
         q = write_questionnaire_file(bofs_app, "survey", SIMPLE_QUESTIONNAIRE)
         assert q.get_calculated_fields() == []
