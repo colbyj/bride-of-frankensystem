@@ -527,3 +527,40 @@ def route_simple_html(pageName):
     simple_html = jinja.get_or_select_template("simple/%s.html" % pageName).render(participant=participant)
 
     return render_template("simple.html", simple_contents=simple_html)
+
+
+@default.route("/custom/<pageName>", methods=['POST', 'GET'])
+@verify_correct_page
+@verify_session_valid
+def route_custom_html(pageName):
+    """
+    ``/custom/<pageName>``
+
+    Generic route to render Jinja 2 templates as standalone pages with no BOFS template
+    wrapping. Unlike simple pages, custom pages are not wrapped in the project's
+    ``template.html``, so no header, breadcrumbs, or other BOFS chrome is rendered.
+    The template is responsible for the entire HTML document.
+
+    This is useful for tasks that need full control over the page (e.g., jsPsych or
+    lab.js experiments that take over the viewport). As with simple pages, you are
+    responsible for redirecting participants yourself (e.g., a JavaScript redirect to
+    ``/redirect_next_page``). A POST to this route also redirects to the next page.
+
+    Custom HTML files can be placed in the project root directory's templates folder in
+    ``/templates/custom/...`` or in one of your blueprint's templates folder in
+    ``/<my_blueprint>/templates/custom/...``.
+
+    The files must be in HTML format and use the ``.html`` extension. The ``pageName``
+    specified is the filename for the html file, without the file extension.
+
+    :param pageName: the name of the file to use to render the custom page (without the .html extension)
+    """
+    if request.method == "POST":
+        return redirect(join_urls('/redirect_from_page', request.path))
+
+    if 'participantID' in session:
+        participant = db.session.get(db.Participant, session['participantID'])
+    else:
+        participant = None
+
+    return render_template("custom/%s.html" % pageName, participant=participant)
