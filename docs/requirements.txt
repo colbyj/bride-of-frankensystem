@@ -8,3 +8,4 @@ bride-of-frankensystem
 sphinx
 sphinx-breeze-theme
 sphinx-tabs
+sphinx-design
