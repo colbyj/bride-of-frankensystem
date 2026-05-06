@@ -318,7 +318,7 @@ class Results(object):
                 return default
             if isinstance(value, bool):
                 return value
-            return str(value).strip().lower() == 'true'
+            return str(value).strip().lower() in ('true', 'on', '1', 'yes')
 
         include_unfinished = _parse('includeUnfinished', False)
         include_excluded   = _parse('includeExcluded', False)
