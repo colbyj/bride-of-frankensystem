@@ -39,9 +39,9 @@ The pieces
 
 This file structure is all that is needed for questionnaire-based projects. It allows you to do the following:
 
-.. tabs::
+.. tab-set::
 
-    .. tab:: Show a consent form
+    .. tab-item:: Show a consent form
 
         .. image:: /getting_started/images/simple_project_consent.svg
             :width: 80 %
@@ -51,7 +51,7 @@ This file structure is all that is needed for questionnaire-based projects. It a
 
         See :doc:`/building/consent` for the consent flow, route variants, multi-stage consent, and IRB notes.
 
-    .. tab:: Ask questions
+    .. tab-item:: Ask questions
 
         .. image:: /getting_started/images/simple_project_questions.svg
            :width: 80 %
@@ -61,7 +61,7 @@ This file structure is all that is needed for questionnaire-based projects. It a
 
         See :doc:`/building/adding_survey_questions` for question types, conditional visibility, and more.
 
-    .. tab:: Control the page order
+    .. tab-item:: Control the page order
 
         .. image:: /getting_started/images/simple_project_config.svg
            :width: 80 %
@@ -126,9 +126,9 @@ The simple project's three files cover questionnaire-based studies. To go past t
    :align: center
    :alt: Advanced project file structure — tables, templates, static, and blueprint directories
 
-.. tabs::
+.. tab-set::
 
-    .. tab:: Add your own pages
+    .. tab-item:: Add your own pages
 
         .. code-block:: html
 
@@ -146,7 +146,7 @@ The simple project's three files cover questionnaire-based studies. To go past t
         See :doc:`/building/your_own_pages` for the differences between
         the three and how to wire navigation.
 
-    .. tab:: Serve static files
+    .. tab-item:: Serve static files
 
         .. code-block:: text
 
@@ -163,7 +163,7 @@ The simple project's three files cover questionnaire-based studies. To go past t
         See :doc:`/building/your_own_pages` for embedding static assets
         in instruction, simple, and custom pages.
 
-    .. tab:: Store custom data
+    .. tab-item:: Store custom data
 
         .. code-block:: json
 
@@ -184,7 +184,7 @@ The simple project's three files cover questionnaire-based studies. To go past t
         See :doc:`/building/storing_custom_data` for column types,
         the JS read/write API, and calculated export fields.
 
-    .. tab:: Add Python routes
+    .. tab-item:: Add Python routes
 
         .. code-block:: python
 

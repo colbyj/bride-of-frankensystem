@@ -13,7 +13,11 @@ author = 'Colby Johanson'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc', 'sphinx_tabs.tabs', 'sphinx_design']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx_design',
+    'sphinxcontrib.rsvgconverter',
+]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_old']

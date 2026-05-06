@@ -32,9 +32,9 @@ Install BOFS into an isolated environment so its dependencies don't conflict wit
 .. note::
    If you only ever plan to work on a single BOFS project, you can skip the isolated environment and install BOFS into your system Python with ``pip install bride-of-frankensystem``. Working on multiple projects this way can cause dependency conflicts down the line.
 
-.. tabs::
+.. tab-set::
 
-   .. tab:: pip + venv
+   .. tab-item:: pip + venv
 
       The standard approach using Python's built-in tools.
 
@@ -70,7 +70,7 @@ Install BOFS into an isolated environment so its dependencies don't conflict wit
 
       **2.5 Test the installation.** Run ``BOFS``. You should see a help message listing the available commands.
 
-   .. tab:: uv
+   .. tab-item:: uv
 
       `uv <https://docs.astral.sh/uv/>`_ is a Python package manager from Astral. Its ``uv tool`` command installs Python applications into isolated environments and adds them to your PATH, so you don't need to activate anything before running BOFS.
 

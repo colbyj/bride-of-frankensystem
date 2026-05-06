@@ -119,9 +119,9 @@ Reverse Proxy
 
 A reverse proxy sits in front of BOFS, terminates TLS so traffic is encrypted as HTTPS, and forwards requests to BOFS over the local connection.
 
-.. tabs::
+.. tab-set::
 
-   .. tab:: Caddy
+   .. tab-item:: Caddy
 
       Caddy provisions and renews TLS certificates automatically via Let's Encrypt — no separate certbot step.
 
@@ -152,7 +152,7 @@ A reverse proxy sits in front of BOFS, terminates TLS so traffic is encrypted as
 
       Caddy obtains a TLS certificate the first time someone hits the domain.
 
-   .. tab:: Nginx
+   .. tab-item:: Nginx
 
       Two pieces are involved: installing Nginx and obtaining a TLS certificate for your domain.
 
@@ -259,9 +259,9 @@ Set a long, random ``ADMIN_PASSWORD`` in your TOML config:
 
 To restrict ``/admin`` to a specific IP at the reverse-proxy layer:
 
-.. tabs::
+.. tab-set::
 
-   .. tab:: Caddy
+   .. tab-item:: Caddy
 
       .. code-block:: text
 
@@ -275,7 +275,7 @@ To restrict ``/admin`` to a specific IP at the reverse-proxy layer:
               reverse_proxy 127.0.0.1:5000
           }
 
-   .. tab:: Nginx
+   .. tab-item:: Nginx
 
       .. code-block:: nginx
 
