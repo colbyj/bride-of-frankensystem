@@ -36,6 +36,6 @@ html_css_files = []
 
 # -- Options for LaTeX output ------------------------------------------------
 
-latex_elements = {
-    'preamble': r'\pdfminorversion=7',
-}
+# xelatex is used (not the pdflatex default) because rsvg-convert produces
+# PDF 1.7 SVG conversions, which pdflatex refuses to embed.
+latex_engine = 'xelatex'
