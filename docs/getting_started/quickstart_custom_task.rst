@@ -14,7 +14,14 @@ A custom task in BOFS is three pieces:
 - **A custom database table** that gives the task a place to write its data. You define the table in a small JSON file; BOFS creates the underlying SQL table at startup. The task POSTs to ``/table/<name>`` and the row appears in the database.
 - **A** ``PAGE_LIST`` **entry** that puts the task page in sequence with consent, instructions, post-task questionnaires, and the end page.
 
-The same three pieces compose for any in-browser task — p5.js sketches, jsPsych or lab.js trial sequences, Unity WebGL builds, raw vanilla JS. What changes is which library you load and what the per-trial data looks like.
+The same three pieces compose for any in-browser task. There are two shapes of JavaScript library that fit:
+
+- **Experiment frameworks** — jsPsych, lab.js, and PsychoJS. These ship the trial-loop scaffolding (timing, randomization, key capture, data accumulation). You write a timeline; the framework runs it. The integration with BOFS is the same in each case: vendor the library, host the task on a custom page, POST the per-trial data to a custom table at the end.
+- **Stimulus and visualization libraries** — p5.js, D3.js, Three.js, plain Canvas/WebGL. These render and respond to input but do not impose a trial-loop structure. You write the trial logic yourself in vanilla JavaScript. Examples: ``p5_example`` for a five-second click counter, ``ab_experiment`` for a between-subjects D3.js menu task.
+
+Unity WebGL is a third shape — a self-contained game build that is embedded as an asset rather than a JavaScript library.
+
+What changes between examples is which library you load and what the per-trial data looks like.
 
 The p5.js example
 -----------------
@@ -82,6 +89,8 @@ The example repository covers four more shapes of custom task. The PAGE_LIST and
 - **jsPsych** — the `jspsych_example <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/jspsych_example>`_ runs a Stroop task with `jsPsych <https://www.jspsych.org/>`_. Trial timing and key capture are handled by jsPsych; BOFS handles questionnaires, condition assignment, and storage. Per-trial data is POSTed in a single batch to ``/table/jspsych_trials``. The jsPsych library is vendored under ``static/jspsych/`` so the example runs offline.
 
 - **lab.js** — the `labjs_example <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/labjs_example>`_ is the parallel of the jsPsych example with `lab.js <https://lab.js.org/>`_ instead. The ``PAGE_LIST`` and questionnaires are identical; only the trial-running framework and the per-trial data shape change.
+
+- **PsychoJS** — the `psychojs_example <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/psychojs_example>`_ wraps a Stroop task built in `PsychoPy Builder <https://psychopy.org/>`_ and exported as `PsychoJS <https://psychopy.org/online/>`_. The Builder export is included verbatim apart from three marked edits: paths under ``static/psychojs/``, skipping the participant info dialog (BOFS provides the participant ID), and replacing ``quitPsychoJS`` to POST trial rows to ``/table/psychojs_trials`` and advance the BOFS page flow instead of contacting Pavlovia. The PsychoJS bundle is vendored under ``static/psychojs/lib/``.
 
 - **Unity WebGL** — the `unity_example_2021.1 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2021.1>`_ and `unity_example_2023.2 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2023.2>`_ projects host a Unity WebGL build inside a BOFS page. They demonstrate three layouts (BOFS-chrome, fullscreen, fully custom), pushing the participant ID into the running build, reading the assigned condition from inside Unity, posting data back to a custom table, and advancing the BOFS page flow from within Unity.
 

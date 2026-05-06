@@ -94,7 +94,7 @@ This example shows an instruction page where the Continue button only appears af
 Custom pages
 ------------
 
-A custom page renders your template as the complete HTML document. BOFS adds no header, breadcrumbs, or stylesheet. Use this when the task needs full control over the page — for example, a jsPsych, lab.js, p5.js, or Unity experiment that must occupy the entire viewport or supply its own ``<head>``.
+A custom page renders your template as the complete HTML document. BOFS adds no header, breadcrumbs, or stylesheet. Use this when the task needs full control over the page — for example, a jsPsych, lab.js, PsychoJS, p5.js, or Unity experiment that must occupy the entire viewport or supply its own ``<head>``.
 
 Place the file in ``templates/custom/`` and reference it in ``PAGE_LIST`` as ``custom/<filename>``.
 

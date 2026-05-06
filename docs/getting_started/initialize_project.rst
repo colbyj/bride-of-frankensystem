@@ -178,7 +178,7 @@ Where to go next
 Three forks, depending on what you want to build:
 
 - **Surveys, instruction pages, conditions** — read :doc:`/building/adding_survey_questions`, :doc:`/building/page_flow`, and :doc:`/building/conditions_branching` in order.
-- **A JavaScript task** (p5.js, jsPsych, lab.js, Unity) — read :doc:`quickstart_custom_task` next.
+- **A JavaScript task** (p5.js, jsPsych, lab.js, PsychoJS, Unity) — read :doc:`quickstart_custom_task` next.
 - **See what else is possible** — :doc:`quickstart_custom_task` doubles as a tour of BOFS's extensibility.
 
 When you're ready to put the project in front of real participants, see :doc:`/deploying/server`.

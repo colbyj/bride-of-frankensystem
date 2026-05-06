@@ -1,86 +1,101 @@
 Changes from 2.0 to 2.1
 =======================
 
-Getting Started
-* New `BOFS init` CLI wizard that walks users through creating a new BOFS project, and can launch the project with the browser opened automatically.
-* `SECRET_KEY` is no longer required in the config; an auto-generated hash is created and stored when the database is initialized.
-* Major overhaul of [the documentation](https://docs.frankensystem.net/), including expanded config options reference, util function reference, blueprint guidance, and docs for the `title` attribute, `required_selection`, and the `init` command.
+**Getting Started**
 
-New Question Types and Questionnaire Features
+* New `BOFS init` CLI wizard for creating a new BOFS project; can launch the project with the browser opened automatically.
+* `SECRET_KEY` is no longer required in the config; one is auto-generated and stored when the database is initialized.
+* Major overhaul of [the documentation](https://docs.frankensystem.net/), including expanded config options and util function references, blueprint guidance, and docs for the `title` attribute, `required_selection`, and the `init` command.
+
+**New Question Types and Questionnaire Features**
+
 * Added a "video" question type for embedding video stimuli.
-* Added a "picture_select" question type for choosing one option from a set of images. Supports horizontal (default) or vertical centered layouts, an explicit per-question `width`, and an `auto_resize` flag that normalizes every image to the smallest natural dimension in the group. The data type of the stored column is auto-detected (integer / float / string) from the image values, and the `images` list is validated at startup.
+* Added a "picture_select" question type for choosing one option from a set of images. Supports horizontal (default) or vertical centered layouts, a per-question `width`, and an `auto_resize` flag that normalizes images to the smallest natural dimension in the group. The stored column's data type is auto-detected (integer/float/string) from the image values, and the `images` list is validated at startup.
 * Checklist now supports options with associated text fields.
-* Radiolist now supports an "other" option with a free-text field, and can require a specific option to be chosen in order to continue.
-* Radiogrid can now be made optional, supports `questions` as an alias for `q_text`, and provides better validation feedback.
-* Questions can now define a `title` attribute that displays above the question box.
+* Radiolist now supports an "other" option with a free-text field, and can require a specific option to be chosen to continue.
+* Radiogrid can now be made optional, supports `questions` as an alias for `q_text`, and gives clearer validation feedback.
+* Questions can define a `title` attribute that displays above the question box.
 * Questions can be configured to show only for specific conditions.
 * Questionnaire questions are now loaded server-side instead of via htmx.
-* More thorough questionnaire validation: any issues are reported on the console and the user is directed to a friendlier error page.
-* If a participant returns to a prior questionnaire (not currently exposed in the UI, but supported internally), their previously-entered values are now reloaded into the form.
+* Questionnaire validation issues are reported on the console, and the user is directed to a friendlier error page.
+* If a participant returns to a prior questionnaire (supported internally, not exposed in the UI), their previously-entered values are reloaded into the form.
+* New `QuestionnaireInteraction` event log captures focus/blur/change/paste/visibility events for every input on every questionnaire (replacing the radiogrid-only click log). Text inputs also record per-field authenticity signals — keystrokes, backspaces, pastes, pasted character count, final length, total focus duration, and time-to-first-keystroke.
 
-Conditions
-* Can now optionally load conditions from a `.csv` file or an existing `.db` file, making longitudinal studies easier to set up.
-* Can "pause" individual conditions to stop new participants from being assigned to them.
-* If all conditions are paused, new participants are blocked from entering the study entirely.
+**Conditions**
 
-Admin Panel
-* New procedure diagram that visualizes the page flow.
-* Can now preview an individual participant's responses.
-* Admin panel now redirects users back to the log-in page when their session is no longer valid.
+* Can optionally load conditions from a `.csv` file or an existing `.db` file, making longitudinal studies easier to set up.
+* Individual conditions can be "paused" to stop new participants from being assigned to them.
+* If all conditions are paused, new participants are blocked from entering the study.
+
+**Admin Panel**
+
+* New procedure diagram visualizing the page flow.
+* Can preview an individual participant's responses.
+* Admin panel redirects users back to the log-in page when their session is no longer valid.
 * Refined admin control panel shown at the bottom of pages when logged in as admin or running in debug mode.
 * Export button on the database table view moved to the top of the page.
 
-Debug Mode and Developer Experience
-* In debug mode, a condition picker is shown so developers can choose which condition to test.
-* In debug mode (or when accessed via localhost), users are now offered the option to restart the experiment from `/end`; the restart route keeps the admin login session intact.
-* The debug toolbar is now shown on pages before the participant exists, with buttons disabled and a note explaining that consent must be given (or the participant created) first.
-* A console warning is shown when `@verify_correct_page` is missing on a custom route; a new `@suppress_activity_polling` decorator silences the warning when the polling script can't be injected.
+*Debug Mode and Developer Experience**
 
-Custom Routes and Templates
+* In debug mode, a condition picker lets developers choose which condition to test.
+* In debug mode (or via localhost), users can restart the experiment from `/end`; the restart route keeps the admin login session intact.
+* The debug toolbar is now shown on pages before the participant record exists, but with reduced functionality.
+* A console warning is shown when `@verify_correct_page` is missing on a custom route.
+
+**Custom Routes and Templates**
+
 * Activity polling is now injected via `after_request`, so participants on long-running tasks with fully custom HTML are no longer falsely marked as abandoned. Pages are also marked "submitted" when the session's current URL is updated.
-* Participant progress tracking moved entirely out of `@verify_correct_page` into a `before_request_` handler, so custom routes that omit the decorator still track progress properly.
-* Can now set the template's header colour from the config file.
-* Can load alternative `style.css` files via configuration.
-* Template macros extracted into their own file for easier reuse and overriding.
-* `mTurkID` can now also be passed in via the `external_id` URL argument.
-* Allow `APPLICATION_ROOT` to be missing from the config.
+* Participant progress tracking moved out of `@verify_correct_page` into a `before_request_` handler, so custom routes that omit the decorator still track progress properly.
+* Template's header colour can be set from the config file.
+* Alternative `style.css` files can be loaded via configuration.
+* `APPLICATION_ROOT` can now be omitted from the config.
 
-Expression Engine and Show-If
-* Added a small expression engine for `participant_calculations`, replacing the previous use of `eval()`.
+**Expression Engine and Show-If**
+
+* Added an expression engine for `participant_calculations`, replacing the use of `eval()`.
 * Added `show_if` predicates on questionnaire questions (live, browser-side, against same-page form values) and on entries in `PAGE_LIST` (server-side, against stored answers). See `docs/advanced/expressions.rst` for the syntax.
-* Page-level `show_if` can reference `condition` (the participant's assigned condition number) and `tables.<name>.<column>` (per-participant aggregates from a JSONTable's `exports` block).
-* Each arm of `conditional_routing` now accepts an optional `show_if` predicate alongside (or instead of) `condition`. The first arm whose `condition` matches and whose `show_if` is true wins.
-* Validation now rejects Python keywords as field IDs, calculated-field names, table column names, and table export field names. It also flags collisions where a table's export field name matches a column on the same table, and warns when a page-level `show_if` references a `group_by` export (which produces multiple values per participant). The names `condition` and `tables` are reserved at the top of an expression and cannot be used as questionnaire/table filenames, field IDs, or calculated-field names.
-* `tables.<name>.<column>` references can now subscript into a `group_by` export's per-level dict in either dotted form (`tables.scores.round_score.1`) or bracket form (`tables.scores.round_score[1]`, `tables.scores.round_score["learning"]`, `tables.scores.round_score[condition]`). The validation warning above is suppressed when the reference supplies a key. A bare reference to a `group_by` export now resolves to the whole dict, so it can be passed to functions like `len(...)` or `mean([...])`.
-* The expression DSL now accepts subscripts (`a[k]`) generally — only dicts and lists are subscriptable at evaluation time; slice subscripts (`a[1:2]`) are rejected at parse time.
+* `conditional_routing` now accepts an optional `show_if` predicate alongside (or instead of) `condition`.
+* All user-facing strings in questionnaire JSON (top-level `title`/`instructions`, per-question `title`/`instructions`/`text`/`placeholder`/`left`/`right`/`labels`/`q_text[].text`, etc.) are scanned for `{{ expression }}` placeholders at render time. Each placeholder is evaluated as a BOFS expression against the current participant and substituted (HTML-escaped) into the rendered HTML.
 
-Inline Expressions in Questionnaire JSON
-* **Breaking**: Any user-facing string in a questionnaire JSON (top-level `title`/`instructions`, per-question `title`/`instructions`/`text`/`placeholder`/`left`/`right`/`labels`/`q_text[].text`, etc.) is now scanned for `{{ expression }}` placeholders at render time. Each placeholder is evaluated as a BOFS expression against the current participant and substituted (HTML-escaped) into the rendered HTML. Errors and unresolved references substitute as empty strings. The `id`, `questiontype`, `show_if`, `participant_calculations`, `code`, and `src` fields are skipped. Admin previews render the raw JSON. Existing questionnaires that contain literal `{{` in user-facing copy will see different rendering; researchers needing a literal `{{` can write `{{ '{{' }}`.
+**Participant Data Access in Templates and Custom Routes**
 
-Participant Data Access in Templates and Custom Routes
-* `participant` is now available as a template variable in every BOFS template; resolves to `None` when no participant is in session (admin previews, error pages).
+* `participant` is now available as a template variable in every BOFS template; resolves to `None` when no participant is in session.
 * New `participant.evaluate(expression)` runs a BOFS expression against the participant's stored data. The same syntax used in `show_if` and `participant_calculations` is now usable from templates and custom blueprint code.
 * New `participant.has_questionnaire(name, tag='')` distinguishes a real submission from the blank-default row that `participant.questionnaire(name)` returns when nothing has been submitted yet.
-* `participant.table(name)` now returns a `TableAccessor` exposing the participant's raw rows (`accessor.rows`), every scalar export aggregate as an attribute (`accessor.<export_field>`, computed lazily and memoised per accessor instance), and all aggregates as a dict (`accessor.exports`). **Breaking**: the previous return value was the SQLAlchemy backref list directly. The accessor proxies iteration, `len()`, indexing, `bool()`, and `in` to `accessor.rows`, so `{% for row in participant.table('foo') %}`, `participant.table('foo')|length`, and `participant.table('foo')[0]` continue to work without changes. Code that called list-only methods (`.append`, `.sort`) on the return value will break — operate on `accessor.rows` instead.
+* `participant.table(name)` now returns a `TableAccessor` exposing the participant's raw rows (`accessor.rows`), every export aggregate as an attribute, and all aggregates as a dict (`accessor.exports`). Scalar exports resolve to a single value; `group_by` exports resolve to a dict keyed by the group value (or by a tuple when `group_by` is a list of columns).
 
-Internal Refactoring
-* Introduced a service layer to consolidate previously scattered logic: `ParticipantService`, `SessionRecoveryService`, `ParticipantRoutingService`, `ParticipantQuestionnaireService`, and `AdminStatsService`.
-* `Results` class moved to `services/data_export.py`; fixed an issue with export flags discovered during the move.
+**Security and Hardening**
+
+* Added IP-based brute-force protection on the admin login.
+* Admin sessions are bound to the IP they were issued for. Participant sessions are bound by default and can be opted out via `SESSION_BIND_TO_IP_PARTICIPANT = false`.
+* New `BEHIND_REVERSE_PROXY` config (default `false`). When `true`, BOFS reads the real client IP from `X-Forwarded-For` via Werkzeug's `ProxyFix`; otherwise `X-Real-IP` and `X-Forwarded-For` are ignored. Enable this when running behind Caddy or nginx, or IP-based protection sees every request as coming from the proxy.
+* Researcher-authored HTML in questionnaire JSON (`instructions`, `title`, `text`, `left`/`right`, sub-question text for grids and checklists) is run through a `bleach`-backed allowlist sanitizer at JSON load. Permitted tags cover text formatting, lists, tables, links, images, and `<video>`/`<audio>`/`<source>`/`<track>`; protocols are restricted to `http`, `https`, and `mailto`.
+* CSRF protection is enforced across the admin blueprint via a `before_request` hook backed by `flask_wtf`.
+* `csv.writer`-based serialisation.
+* Admin password comparison uses `hmac.compare_digest` at both the login and the database-delete confirmation.
+* `route_database_download` resolves the SQLite URI relative to `current_app.root_path` and refuses paths that escape it.
+
+**Internal Refactoring**
+
+* Introduced a service layer consolidating previously scattered logic: `ParticipantService`, `SessionRecoveryService`, `ParticipantRoutingService`, `ParticipantQuestionnaireService`, and `AdminStatsService`.
+* `Results` class moved to `services/data_export.py`; fixed an export-flags issue discovered during the move.
 * Added unit tests covering JSON tables, built-in model classes, results calculations, session management, page routing, participant management, and questionnaire handling.
 
-Bug Fixes
+**Bug Fixes**
+
 * Fixed `redirect_next_page` edge cases.
 * Fixed condition being lost when external ID was loaded via URL arguments.
 * Fixed debug condition picker showing on projects with no conditions.
 * Fixed slider default size not applying to the right label.
 * Fixed page-list composition issue in the admin progress route.
-* Fixed Python 3.9 typehint compatibility issue.
 * Fallback source for standard deviation/variance now uses the population method.
+
 
 Changes from 1.2 to 2.0
 =======================
 
-Core Changes
+**Core Changes**
+
 * Removed support for Python 2.7.x
 * Changes to support the lastest Flask version and latest SQLAlchemy.
 * [New documentation](https://docs.frankensystem.net/).
@@ -97,7 +112,8 @@ Core Changes
 * Detect web scrapers and if found exclude them from the condition counts and progress page.
 * Many bug fixes.
 
-Project Configuration Options
+**Project Configuration Options**
+
 * Can now specify a specific completion code, or redirect users to an external URL upon reading `/end`.
 * `/start_mturk` route is now `/external_id`.
 * Can now configure what the prompt on `/external_id` says.
@@ -105,14 +121,16 @@ Project Configuration Options
 * Conditions are now defined with labels and can be disabled selectively; labels show on progress page and are used in the export instead of the numbers.
 * Can now configure `ABANDONED_MINUTES` and `COUNTS_INCLUDE_ABANDONED`, relating to ignoring participants who abandoned the task when considering participant counts within conditions.
 
-Administration
+**Administration**
+
 * Can now download SQLite database from admin panel as well as clear it out.
 * Admin panel styling changes.
 * Admin login now redirects user to where they were trying to go instead of always redirecting to the progress page.
 * Added the ability to selectively indicate individual participants to exclude from the participant counts.
 * Added a results page to the admin panel to view summary statistics of any numeric data.
 
-Tables, Questionnaires, and Blueprints
+**Tables, Questionnaires, and Blueprints**
+
 * Can define custom exports within the [JSON-defined tables](https://docs.frankensystem.net/en/latest/tables.html).
 * Can now use 'HAVING' clauses in custom exports.
 * Can now configure default value of sliders.

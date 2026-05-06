@@ -9,7 +9,7 @@ Where BOFS fits
 If you have used other tools for online studies, BOFS sits at a specific spot in the landscape.
 
 - **Survey platforms (Qualtrics, SurveyMonkey, Google Forms)** handle questionnaires with point-and-click editing on hosted infrastructure. They cannot embed a JavaScript task or open the data layer for custom logic. If your study is questionnaires only and your institution already provides Qualtrics, that may be a simpler choice.
-- **JavaScript experiment libraries (jsPsych, lab.js)** handle in-browser trial logic — precise timing, key capture, randomization. They do not host the surrounding study (consent, condition assignment, sessions, admin panel). A jsPsych or lab.js task can run inside a BOFS custom page; the two are complementary.
+- **JavaScript experiment libraries (jsPsych, lab.js, PsychoJS)** handle in-browser trial logic — precise timing, key capture, randomization. They do not host the surrounding study (consent, condition assignment, sessions, admin panel). A jsPsych, lab.js, or PsychoJS task can run inside a BOFS custom page; the two are complementary.
 - **Custom Flask, Django, or Express applications** give you full control of every detail, and full responsibility for everything else. When BOFS's built-in patterns are not enough, it exposes the same Flask underneath — custom routes drop into the same project.
 
 BOFS sits in the middle: research-specific scaffolding (consent, conditions, sessions, data storage, admin panel) plus an open boundary for questionnaires, JavaScript tasks, or Python where each is the right fit.
