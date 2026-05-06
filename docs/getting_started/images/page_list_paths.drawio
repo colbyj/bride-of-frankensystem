@@ -1,0 +1,150 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="aE5w1qmKHDLxlNPR76pP">
+    <mxGraphModel dx="1093" dy="698" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="FLXTgydPradgtQ5n2XYN-45" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" value="" vertex="1">
+          <mxGeometry height="620" width="702.5" x="187.5" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-4" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;perimeterSpacing=0;align=center;verticalAlign=middle;fontColor=default;" value="Consent" vertex="1">
+          <mxGeometry height="30" width="100" x="343.75" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-5" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;dashed=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;" value="Your Pages" vertex="1">
+          <mxGeometry height="30" width="122.5" x="480" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;align=center;verticalAlign=middle;fontColor=default;" value="End" vertex="1">
+          <mxGeometry height="30" width="100" x="633.75" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-57" parent="1" style="shape=curlyBracket;whiteSpace=wrap;html=1;rounded=1;flipH=1;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;legacyAnchorPoints=0;rotation=90;strokeColor=#878787;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" value="" vertex="1">
+          <mxGeometry height="390" width="15" x="531.25" y="130" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-61" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-58" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="320" y="295" />
+              <mxPoint x="320" y="295" />
+            </Array>
+            <mxPoint x="330" y="295" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-58" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontSize=12;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" value="Typical Page List" vertex="1">
+          <mxGeometry height="30" width="107.5" x="187.5" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-72" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-62" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-68">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-62" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" value="Consent" vertex="1">
+          <mxGeometry height="30" width="130" x="270" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-71" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-63" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-67">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-63" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" value="Create Participant" vertex="1">
+          <mxGeometry height="30" width="130" x="270" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-75" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-69" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=-0.001;entryY=0.448;entryDx=0;entryDy=0;edgeStyle=orthogonalEdgeStyle;entryPerimeter=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-73">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-69" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" value="End" vertex="1">
+          <mxGeometry height="30" width="130" x="270" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-21" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" value="Custom Pages" vertex="1">
+          <mxGeometry height="30" width="130" x="270" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-20" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" value="Simple Pages" vertex="1">
+          <mxGeometry height="30" width="130" x="270" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-40" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.75;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-38" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-32" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-15" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="Blueprint-Defined" vertex="1">
+          <mxGeometry height="40" width="80" x="200" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-43" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-42">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-42" parent="1" style="rounded=0;whiteSpace=wrap;fillColor=#EFF4FC;strokeColor=#8FC0FF;glass=0;align=left;fontSize=12;fontColor=default;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;verticalAlign=middle;" value="Defined via Python in a &lt;font style=&quot;color: rgb(153, 0, 0);&quot; face=&quot;Lucida Console&quot;&gt;views.py&lt;/font&gt; file and an accompanying template HTML file. Use this approach if the built-in or scaffolded pages do not provide the needed functionality.&lt;div&gt;&lt;div style=&quot;margin-top: 4px;&quot;&gt;This method allows researchers to write arbitrary HTTP routes, using the Flask web framework.&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="557.5" x="320" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-80" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-62">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-81" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-63">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-82" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-34">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-83" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-69">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-13" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="Built-In Pages" vertex="1">
+          <mxGeometry height="40" width="80" x="197.5" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-76" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-77" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-78" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-79" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" value="Scaffolded Pages" vertex="1">
+          <mxGeometry height="40" width="80" x="197.5" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-26" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;entryX=-0.001;entryY=0.55;entryDx=0;entryDy=0;entryPerimeter=0;" target="FLXTgydPradgtQ5n2XYN-25" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <UserObject label="Questionnaires" id="FLXTgydPradgtQ5n2XYN-18">
+          <mxCell parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1">
+            <mxGeometry height="30" width="130" x="270" y="620" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-39" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" value="Instruction Pages" vertex="1">
+          <mxGeometry height="30" width="130" x="270" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-25" parent="1" style="rounded=0;whiteSpace=wrap;html=1;glass=0;align=left;fontSize=12;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fillColor=#EFF4FC;strokeColor=#8FC0FF;shadow=0;" value="&lt;div style=&quot;line-height: 130%;&quot;&gt;Defined using JSON. Files placed in &lt;font face=&quot;Lucida Console&quot; style=&quot;color: rgb(153, 0, 0);&quot;&gt;/questionnaires/&amp;lt;questionnaireName&amp;gt;.json&lt;/font&gt;&lt;div style=&quot;margin-top: 4px;&quot;&gt;Choose from pre-made question types or make your own via HTML templates.&lt;/div&gt;&lt;div style=&quot;margin-top: 4px;&quot;&gt;Path: &lt;font style=&quot;color: rgb(153, 0, 0);&quot; face=&quot;Lucida Console&quot;&gt;questionnaires/&amp;lt;name&amp;gt;/&amp;lt;tag&amp;gt;&lt;/font&gt;&lt;font&gt; &lt;font face=&quot;Tahoma&quot; style=&quot;color: rgb(0, 0, 0);&quot;&gt;(&lt;/font&gt;&lt;font face=&quot;Lucida Console&quot; style=&quot;color: light-dark(rgb(153, 0, 0), rgb(255, 181, 181));&quot;&gt;/&amp;lt;tag&amp;gt;&lt;/font&gt;&lt;/font&gt;&amp;nbsp;is optional, use if using the same questionnaire twice)&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="100" width="437.5" x="440" y="580" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-32" parent="1" style="rounded=0;whiteSpace=wrap;glass=0;align=left;fontSize=12;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;verticalAlign=middle;fillColor=#EFF4FC;strokeColor=#8FC0FF;fontColor=default;shadow=0;" value="&lt;div style=&quot;line-height: 130%;&quot;&gt;&lt;font&gt;Defined using HTML. Files placed in&lt;br&gt;&lt;font face=&quot;Lucida Console&quot; style=&quot;color: rgb(153, 0, 0);&quot;&gt;/templates/instructions/&amp;lt;page&amp;gt;.html&lt;/font&gt;, &lt;font face=&quot;Lucida Console&quot; style=&quot;color: rgb(153, 0, 0);&quot;&gt;/templates/simple/&amp;lt;page&amp;gt;.html&lt;/font&gt;, or &lt;font face=&quot;Lucida Console&quot; style=&quot;color: rgb(153, 0, 0);&quot;&gt;/templates/custom/&amp;lt;page&amp;gt;.html&lt;/font&gt;,&amp;nbsp;&lt;br&gt;&lt;/font&gt;&lt;div&gt;&lt;div style=&quot;margin-top: 4px;&quot;&gt;&lt;font&gt;Can optionally use template scripting (Jinja) to display user data or conditionally affect what shows on the page. Instruction pages show a &quot;continue&quot; button; custom pages show no theming.&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 4px;&quot;&gt;&lt;font&gt;Display-only by default. Use JavaScript to send data to &quot;tables&quot; (e.g., to collect task-related data).&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 4px;&quot;&gt;&lt;font&gt;Path: &lt;font face=&quot;Lucida Console&quot; style=&quot;color: rgb(153, 0, 0);&quot;&gt;instructions/&amp;lt;page&amp;gt;&lt;/font&gt;, &lt;font style=&quot;color: rgb(153, 0, 0);&quot; face=&quot;Lucida Console&quot;&gt;simple/&amp;lt;page&amp;gt;&lt;/font&gt;, or &lt;font style=&quot;color: rgb(153, 0, 0);&quot; face=&quot;Lucida Console&quot;&gt;custom/&amp;lt;page&amp;gt;&lt;/font&gt;.&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="180" width="437.5" x="440" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-84" edge="1" parent="1" source="FLXTgydPradgtQ5n2XYN-34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;" target="FLXTgydPradgtQ5n2XYN-35">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-34" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;fontSize=14;fillColor=#d5e8d4;strokeColor=#82b366;" value="Record External ID" vertex="1">
+          <mxGeometry height="30" width="130" x="270" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-35" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EFF4FC;strokeColor=#8FC0FF;glass=0;align=left;fontSize=12;fontColor=default;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;verticalAlign=middle;shadow=0;" value="&lt;div style=&quot;line-height: 130%;&quot;&gt;Collect a participant&#39;s Mechanical Turk, Prolific, or other ID.&amp;nbsp;&lt;div style=&quot;margin-top: 4px;&quot;&gt;Path&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(77, 77, 77), rgb(171, 171, 171));&quot;&gt;: &lt;/span&gt;&lt;font face=&quot;Lucida Console&quot; style=&quot;background-color: transparent; color: rgb(153, 0, 0);&quot;&gt;external_id&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="437.5" x="440" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-68" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EFF4FC;strokeColor=#8FC0FF;glass=0;align=left;fontSize=12;fontColor=default;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;verticalAlign=middle;absoluteArcSize=0;arcSize=12;fixDash=0;dropTarget=0;" value="&lt;div style=&quot;line-height: 130%;&quot;&gt;Show the consent form (defined in &lt;font style=&quot;color: rgb(153, 0, 0);&quot; face=&quot;Lucida Console&quot;&gt;/consent.html&lt;/font&gt;), create a participant entry in database upon consent. Use as the first page in the list.&amp;nbsp;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font style=&quot;color: light-dark(rgb(51, 51, 51), rgb(171, 171, 171));&quot;&gt;Path: &lt;/font&gt;&lt;/span&gt;&lt;font face=&quot;Lucida Console&quot; style=&quot;background-color: transparent; color: rgb(153, 0, 0);&quot;&gt;consent&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="437.5" x="440" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-67" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EFF4FC;strokeColor=#8FC0FF;glass=0;align=left;fontSize=12;fontColor=default;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;verticalAlign=middle;shadow=0;" value="&lt;div style=&quot;line-height: 130%;&quot;&gt;Create a participant entry in database automatically and auto-redirect to the next page. Can be the first page in the list.&amp;nbsp;&lt;span style=&quot;background-color: transparent;&quot;&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(171, 171, 171));&quot;&gt;Path&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(77, 77, 77), rgb(171, 171, 171));&quot;&gt;: &lt;/span&gt;&lt;font face=&quot;Lucida Console&quot; style=&quot;background-color: transparent; color: rgb(153, 0, 0);&quot;&gt;create_participant&lt;/font&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="40" width="437.5" x="440" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="FLXTgydPradgtQ5n2XYN-73" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EFF4FC;strokeColor=#8FC0FF;glass=0;align=left;fontSize=12;fontColor=default;fontFamily=Lato,proxima-nova,Helvetica Neue,Arial,sans-serif;verticalAlign=middle;shadow=0;" value="&lt;div style=&quot;line-height: 130%;&quot;&gt;Conclude the experiment/survey. Optionally give the user a completion code or redirect them to an external URL. Always the last page in the list.&amp;nbsp;&lt;div style=&quot;margin-top: 4px;&quot;&gt;Path&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(77, 77, 77), rgb(171, 171, 171));&quot;&gt;: &lt;/span&gt;&lt;font face=&quot;Lucida Console&quot; style=&quot;background-color: transparent; color: rgb(153, 0, 0);&quot;&gt;end&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="55" width="437.5" x="440" y="510" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

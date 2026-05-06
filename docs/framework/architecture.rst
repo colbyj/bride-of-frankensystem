@@ -1,7 +1,7 @@
 The BOFS Architecture
 =====================
 
-This section is for developers who want to go past the built-in patterns — write Python routes, render dynamic templates, query the database directly, or understand how sessions work. If you're configuring an experiment with TOML, JSON, and HTML and don't need any of that, you can stop at the :doc:`/index` toctree's "Building Your Experiment" section.
+This section is for developers who want to go past the built-in patterns — write Python routes, render dynamic templates, query the database directly, or understand how sessions work. If you're configuring an experiment with TOML, JSON, and HTML and don't need any of that, you can focus on the "Building Your Experiment" section and "Reference" section.
 
 What BOFS actually is
 ---------------------
@@ -116,3 +116,13 @@ The rest of this section walks each layer in turn:
 - :doc:`sessions` — database-backed sessions, session lifecycle, recovery, IP binding.
 
 See also: the `advanced example <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/advanced_example>`_ in the example projects repo — a worked project that touches most of these extension points in one place.
+
+.. toctree::
+   :hidden:
+
+   self
+   blueprints_routes
+   templates_jinja
+   participant_data
+   database_layer
+   sessions

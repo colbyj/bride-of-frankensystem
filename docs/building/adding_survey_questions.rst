@@ -3,6 +3,8 @@ Adding Survey Questions
 
 Questionnaires in BOFS are JSON files stored in your project's ``questionnaires/`` directory. Each file is one questionnaire and renders as one page in the experiment. For multiple pages of questions, create multiple files.
 
+Questionnaires can also live inside a blueprint at ``<blueprint_name>/questionnaires/``. See :doc:`/framework/blueprints_routes` for how blueprint-scoped questionnaires are discovered.
+
 A minimal example
 -----------------
 

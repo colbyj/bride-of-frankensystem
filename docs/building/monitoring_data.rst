@@ -105,10 +105,10 @@ Database Management
 For SQLite databases only:
 
 * ``/admin/database_download`` downloads the full database file — useful for backups or offline analysis.
-* ``/admin/database_delete`` clears the database. The action is password-protected and creates an automatic backup, but only the table structure survives.
+* ``/admin/database_delete`` clears the database. The action is password-protected; only the table structure survives. It attempts to copy the SQLite file to a timestamped sibling first, but treat that copy as a courtesy, not a backup — it is not verified, does not include WAL/SHM sidecar files, and may not be reachable from where you're running BOFS (e.g. inside a container).
 
 .. warning::
-    Database deletion is irreversible (aside from the automatic backup). Make sure you have your own backup before using it.
+    Database deletion is irreversible. Take your own backup (``/admin/database_download``, or copy the ``.db`` file directly) before using it.
 
 Configuration
 -------------

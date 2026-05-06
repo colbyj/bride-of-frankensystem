@@ -1,0 +1,239 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="8-qarGaNWlEJKBIqLOpS">
+    <mxGraphModel dx="1093" dy="698" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-3" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.code_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-4" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.script_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-13" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;my_study/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="250" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-28" edge="1" parent="1" source="UnlweMAUC4G7V9_fxanQ-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=light-dark(#000000,#ABABAB);fillColor=#dae8fc;strokeColor=#6c8ebf;" target="UnlweMAUC4G7V9_fxanQ-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-14" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;config1.toml&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="290" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-15" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;consent.html&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="290" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-18" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;questionnaires/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="140" x="290" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-19" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.code_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="290" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-20" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;my_questions.json&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="160" x="330" y="390" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-22" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="UnlweMAUC4G7V9_fxanQ-4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="315" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-23" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="UnlweMAUC4G7V9_fxanQ-3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="215" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-24" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="362" />
+              <mxPoint x="250" y="362" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+            <mxPoint x="250" y="362" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-25" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="265" y="405" />
+            </Array>
+            <mxPoint x="265" y="374.34000000000003" as="sourcePoint" />
+            <mxPoint x="290" y="405" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-26" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Define settings, page flow, conditions, etc.&amp;nbsp;&lt;div style=&quot;margin-top: 4px;&quot;&gt;The file you reference in the BOFS command.&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;margin-top: 6px;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Filename can be anything you like.&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="280" x="480" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-1" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.code_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-4" edge="1" parent="1" source="xSClNSHaVlQnWdRqsnNF-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" target="UnlweMAUC4G7V9_fxanQ-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-2" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;config2.toml&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="290" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-3" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="xSClNSHaVlQnWdRqsnNF-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="265" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-7" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;tables/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="80" x="290" y="440" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-9" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;my_table.json&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="330" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-10" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.code_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="290" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-12" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;templates/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="100" x="290" y="530" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-39" edge="1" parent="1" source="xSClNSHaVlQnWdRqsnNF-16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.005;entryY=0.719;entryDx=0;entryDy=0;entryPerimeter=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" target="xSClNSHaVlQnWdRqsnNF-35">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="715" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-16" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;static/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="80" x="290" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-18" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;instructions/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="140" x="330" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-20" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;simple/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="140" x="330" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-22" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;custom/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="140" x="330" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-23" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.411;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="450" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+            <mxPoint x="250" y="450.00374" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-25" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.022;entryY=0.466;entryDx=0;entryDy=0;entryPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="541" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+            <mxPoint x="249.34000000000003" y="541.34244" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-26" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="V42WB70ZyHJssXB_nZfX-16">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="715" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+            <mxPoint x="249.34000000000003" y="711.00168" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-27" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="xSClNSHaVlQnWdRqsnNF-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="265" y="495" />
+            </Array>
+            <mxPoint x="265" y="464.34000000000003" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-31" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="To store additional data (e.g., for an experimental task), you can define database tables using JSON.&lt;div style=&quot;margin-top: 8px;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Each table is one JSON file.&amp;nbsp;&lt;/span&gt;&lt;div&gt;&lt;div style=&quot;margin-top: 8px; margin-right: 0px;&quot;&gt;You can POST data to your table via &lt;font style=&quot;color: rgb(153, 0, 0);&quot; face=&quot;Lucida Console&quot;&gt;/table/&amp;lt;name&amp;gt;&lt;/font&gt;, data gets automatically timestamped and associated with the participant.&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="280" x="480" y="344.34000000000003" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-32" edge="1" parent="1" source="xSClNSHaVlQnWdRqsnNF-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="480" y="455" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-33" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="To add additional pages, add HTML files to one of these directories.&amp;nbsp;&lt;div style=&quot;margin-top: 8px;&quot;&gt;&quot;Instruction&quot; pages display your HTML with BOFS chrome and display a &quot;continue&quot; button.&lt;/div&gt;&lt;div style=&quot;margin-top: 8px;&quot;&gt;&quot;Simple&quot; pages&amp;nbsp;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;pages display your HTML with BOFS chrome, but without a &quot;continue&quot; button.&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;margin-top: 8px;&quot;&gt;&quot;Custom&quot; pages&amp;nbsp;&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255)); background-color: transparent;&quot;&gt;pages display your HTML without BOFS chrome, and without a &quot;continue&quot; button.&lt;/span&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="165.66" width="280" x="480" y="474.34" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-35" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="To add static assets (images, videos, audio clips, JavaScript), add them to the &lt;font face=&quot;Lucida Console&quot; style=&quot;color: rgb(153, 0, 0);&quot;&gt;static/&lt;/font&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&amp;nbsp;directory.&lt;/span&gt;&lt;div style=&quot;margin-top: 8px;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;These can be referenced from any template or questionnaire at the &lt;font face=&quot;Lucida Console&quot; style=&quot;color: light-dark(rgb(153, 0, 0), rgb(255, 255, 255));&quot;&gt;/static/&amp;lt;filename&amp;gt;&lt;/font&gt; URL.&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="90" width="280" x="480" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-38" edge="1" parent="1" source="xSClNSHaVlQnWdRqsnNF-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=-0.008;entryY=0.425;entryDx=0;entryDy=0;entryPerimeter=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" target="xSClNSHaVlQnWdRqsnNF-33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-45" edge="1" parent="1" source="xSClNSHaVlQnWdRqsnNF-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" target="xSClNSHaVlQnWdRqsnNF-44">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-41" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;my_blueprint/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="290" y="747.17" as="geometry" />
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-43" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="763" />
+            </Array>
+            <mxPoint x="225" y="174.34999999999997" as="sourcePoint" />
+            <mxPoint x="250" y="763" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="xSClNSHaVlQnWdRqsnNF-44" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Use &quot;blueprints&quot; to extend BOFS&#39;s functionality in any additional way. This exposes the underlying mechanisms for creating new routes in Python via the Flask web framework." vertex="1">
+          <mxGeometry height="80" width="280" x="480" y="750" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-2" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="210" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-3" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="344.34" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-4" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="434.34" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-12" edge="1" parent="1" source="V42WB70ZyHJssXB_nZfX-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="V42WB70ZyHJssXB_nZfX-6">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="265" y="585" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-13" edge="1" parent="1" source="V42WB70ZyHJssXB_nZfX-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="V42WB70ZyHJssXB_nZfX-9">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="265" y="625" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-14" edge="1" parent="1" source="V42WB70ZyHJssXB_nZfX-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="V42WB70ZyHJssXB_nZfX-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="265" y="665" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-5" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="526" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-6" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="290" y="570" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-9" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="290" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-10" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="290" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-16" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="V42WB70ZyHJssXB_nZfX-17" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="747.17" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

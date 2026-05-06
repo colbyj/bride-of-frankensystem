@@ -1,12 +1,7 @@
 Consent Forms
 =============
 
-Consent looks like a single checkbox on the surface and isn't. BOFS offers four first-page route variants, lets you customize the wrapper template, supports multi-stage consent for media releases or debrief acknowledgements, and has a few quirks researchers tend to discover the hard way (e.g., the consent response itself isn't persisted — see below). This page covers all of it.
-
-Why this has its own page
--------------------------
-
-Required for human-subjects research; an IRB amendment is the cost of getting the consent flow wrong. The defaults work, but the right variant for your study depends on whether you're collecting consent in BOFS at all, whether you're assigning conditions, and whether you have additional consents to record.
+BOFS provides four first-page route variants (with and without consent display, with and without condition assignment), a wrapper template you can override, and support for multi-stage consent. The consent response itself is not persisted — only the existence of a ``Participant`` row indicates that consent was given.
 
 The default consent flow
 ------------------------
@@ -77,8 +72,6 @@ What happens on decline
 
 Declining the consent radio fails the form's required-field validation. The participant sees the form re-rendered with an error message ("You must provide your consent to continue"). They cannot advance, and closing the tab is their exit.
 
-Two consequences worth being explicit about:
-
 - **No participant row is created** for someone who declines. The consent flow is gated on agreement; there is no "declined" record to inspect later.
 - **The consent value itself is not persisted.** BOFS uses the radio choice to gate the form submission; once a participant agrees and the row is created, only the existence of the row indicates consent. The participant's ``timeStarted`` is the closest equivalent to a "consent timestamp."
 
@@ -87,7 +80,7 @@ If your IRB requires an explicit decline log or a stored consent record, you can
 Writing consent.html
 --------------------
 
-The file should contain the actual text the IRB approved — purpose, procedures, risks, benefits, confidentiality, voluntary participation, contact information. Common patterns:
+The file contains your consent text — BOFS adds the radio buttons and Continue button around it. A minimal example:
 
 .. code-block:: html
 
@@ -104,10 +97,7 @@ The file should contain the actual text the IRB approved — purpose, procedures
    <h3>Contact for questions</h3>
    <p>...</p>
 
-   <p>For your records, a downloadable copy of this consent form is available
-   <a href="/static/consent.pdf">here</a>.</p>
-
-The PDF link works if you put ``consent.pdf`` in your project's ``static/`` directory. Static files are served at ``/static/<filename>``.
+To link a downloadable PDF copy, place ``consent.pdf`` in your project's ``static/`` directory and link it at ``/static/consent.pdf``. Static files are served at ``/static/<filename>``.
 
 Multi-stage consent
 -------------------
@@ -129,13 +119,6 @@ Customizing the consent wrapper
 -------------------------------
 
 To change the agree/decline wording, the button text, or the layout of the form BOFS wraps around your ``consent.html``, override the wrapper template by creating ``templates/consent.html`` in your project (note: ``consent.html`` *and* ``templates/consent.html`` are different — the first is your study's consent text, the second overrides the wrapper). See :doc:`/framework/templates_jinja` for template lookup order and override patterns.
-
-IRB practical notes
--------------------
-
-- **Versioning consent text across IRB amendments.** If the consent text changes mid-study, don't quietly overwrite ``consent.html`` — participants who already submitted saw the old version. Either start a new project, copy the consent file (``consent_v2.html``) and switch, or version-control the file with git so the diff is recoverable.
-- **What's actually in the database.** As noted above, consent itself isn't a column on the Participant row. If your IRB expects a per-participant audit field, add a one-question follow-up (``"Did you consent?"`` ``"Yes"``) and the response will be stored normally.
-- **The consent page must be the first page in ``PAGE_LIST``.** ``consent``, ``consent_nc``, ``create_participant``, and ``create_participant_nc`` are the only valid first-page routes. Putting any of them later in the list, or omitting them entirely, won't work — see :doc:`page_flow` for the full required-routes rules.
 
 See also
 --------

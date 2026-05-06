@@ -10,9 +10,9 @@ The general pattern
 
 A custom task in BOFS is three pieces:
 
-- **A custom page** that hosts the task's HTML and JavaScript. BOFS serves your HTML and any static assets (libraries, images) from the project's ``static/`` and ``templates/`` directories.
+- **A custom page** that hosts the task's HTML and JavaScript. BOFS serves your HTML from the project's ``templates/`` directory, and any static assets (libraries, images) from the project's ``static/``.
 - **A custom database table** that gives the task a place to write its data. You define the table in a small JSON file; BOFS creates the underlying SQL table at startup. The task POSTs to ``/table/<name>`` and the row appears in the database.
-- **A ``PAGE_LIST`` entry** that puts the task page in sequence with consent, instructions, post-task questionnaires, and the end page.
+- **A** ``PAGE_LIST`` **entry** that puts the task page in sequence with consent, instructions, post-task questionnaires, and the end page.
 
 The same three pieces compose for any in-browser task — p5.js sketches, jsPsych or lab.js trial sequences, Unity WebGL builds, raw vanilla JS. What changes is which library you load and what the per-trial data looks like.
 
@@ -61,7 +61,7 @@ Files in ``templates/simple/`` are served at ``/simple/<filename>`` (no ``.html`
 
 BOFS creates the ``my_task`` table at startup. The export aggregates show up per-participant in the admin export and are also addressable from page-level ``show_if`` predicates as ``tables.my_task.average_score`` and ``tables.my_task.high_score``.
 
-**``PAGE_LIST``** ties consent, instructions, the task, and the end page together:
+``PAGE_LIST`` ties consent, instructions, the task, and the end page together:
 
 .. code-block:: toml
 
@@ -81,7 +81,7 @@ The example repository covers four more shapes of custom task. The PAGE_LIST and
 
 - **jsPsych** — the `jspsych_example <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/jspsych_example>`_ runs a Stroop task with `jsPsych <https://www.jspsych.org/>`_. Trial timing and key capture are handled by jsPsych; BOFS handles questionnaires, condition assignment, and storage. Per-trial data is POSTed in a single batch to ``/table/jspsych_trials``. The jsPsych library is vendored under ``static/jspsych/`` so the example runs offline.
 
-- **lab.js** — the `labjs_example <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/labjs_example>`_ is the parallel of the jsPsych example with `lab.js <https://lab.js.org/>`_ instead. The PAGE_LIST and questionnaires are identical; only the trial-running framework and the per-trial data shape change.
+- **lab.js** — the `labjs_example <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/labjs_example>`_ is the parallel of the jsPsych example with `lab.js <https://lab.js.org/>`_ instead. The ``PAGE_LIST`` and questionnaires are identical; only the trial-running framework and the per-trial data shape change.
 
 - **Unity WebGL** — the `unity_example_2021.1 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2021.1>`_ and `unity_example_2023.2 <https://github.com/colbyj/bride-of-frankensystem-examples/tree/master/unity_example_2023.2>`_ projects host a Unity WebGL build inside a BOFS page. They demonstrate three layouts (BOFS-chrome, fullscreen, fully custom), pushing the participant ID into the running build, reading the assigned condition from inside Unity, posting data back to a custom table, and advancing the BOFS page flow from within Unity.
 
@@ -93,7 +93,7 @@ Where to learn more
 To build the rest of an experiment around your task:
 
 - :doc:`/building/adding_survey_questions` — pre/post-task questionnaires, question types, conditional questions.
-- :doc:`/building/page_flow` — adding pages, repeating questionnaires with different ``tag`` values, multiple ``config.toml`` files for dev versus production.
+- :doc:`/building/page_flow` — adding pages, repeating questionnaires with different ``tag`` values, using multiple ``.toml`` files for dev/production splits or running several experiments out of one project.
 - :doc:`/building/conditions_branching` — A/B and multi-arm experiments, conditional routing, page-level ``show_if``.
 - :doc:`/building/storing_custom_data` — going deeper on custom tables, including JS read/write and Python access.
 - :doc:`/building/monitoring_data` — admin panel, exports, results.

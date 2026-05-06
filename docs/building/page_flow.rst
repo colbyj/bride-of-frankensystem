@@ -121,25 +121,29 @@ Pre-test/post-test designs and longitudinal studies often need the same question
 
    PAGE_LIST = [
        {name="Consent",      path="consent"},
-       {name="Mood (pre)",   path="questionnaire/mood",  tag="pre"},
+       {name="Mood (pre)",   path="questionnaire/mood/pre"},
        {name="Task",         path="custom/task"},
-       {name="Mood (post)",  path="questionnaire/mood",  tag="post"},
+       {name="Mood (post)",  path="questionnaire/mood/post"},
        {name="End",          path="end"}
    ]
 
 Each tagged submission is stored as a separate row. Reading back a tagged response from a template or blueprint route uses ``participant.questionnaire("mood", "pre")`` and ``participant.questionnaire("mood", "post")``. See :doc:`/framework/participant_data` for the full API. Longitudinal studies that reuse questionnaires across separate sessions are covered in :doc:`longitudinal`.
 
-Multiple config files (dev vs. production)
-------------------------------------------
+Multiple config files
+---------------------
 
-A BOFS project can have more than one ``.toml`` file — they're self-contained. Common practice: keep ``config.toml`` for production settings, and ``dev.toml`` (or similar) for local development. ``BOFS run`` takes the path to whichever file you want to load:
+A BOFS project isn't tied to a single ``config.toml``. Each ``.toml`` file is self-contained — its own settings, ``PAGE_LIST``, ``CONDITIONS``, database URI, port — and ``BOFS run`` takes the path to whichever one you want to load:
 
 .. code-block:: bash
 
-   BOFS run dev.toml -d                # development with debug toolbar
-   BOFS run config.toml                # production, no debug
+   BOFS run config.toml
+   BOFS run pilot.toml -d
+   BOFS run study_a.toml
 
-Typical things that differ between the two: ``PORT``, ``SQLALCHEMY_DATABASE_URI``, ``ADMIN_PASSWORD``, ``BEHIND_REVERSE_PROXY``. The ``PAGE_LIST``, ``CONDITIONS``, and questionnaire references usually don't.
+Two common reasons to keep more than one:
+
+- **Dev vs. production.** ``dev.toml`` for local work and ``config.toml`` for the deployed instance. ``PAGE_LIST``, ``CONDITIONS``, and questionnaire references usually match across both; what differs is ``PORT``, ``SQLALCHEMY_DATABASE_URI``, ``ADMIN_PASSWORD``, and ``BEHIND_REVERSE_PROXY``.
+- **Multiple experiments in one project.** Separate studies that share the same custom pages, blueprints, or questionnaires can each have their own ``.toml`` with a different ``PAGE_LIST`` and database. Switch between them by passing a different file to ``BOFS run``.
 
 .. _database-choice:
 
@@ -148,9 +152,9 @@ Choosing a database
 
 The ``SQLALCHEMY_DATABASE_URI`` setting tells BOFS which database to use:
 
-- **SQLite** (default for development): ``sqlite:///study.db``. Single-file database, no setup, fine for piloting and small studies.
-- **PostgreSQL** (recommended for production with many concurrent participants): ``postgresql://user:password@host/dbname``. Requires a PostgreSQL server.
-- **MySQL/MariaDB**: ``mysql+pymysql://user:password@host/dbname``.
+**SQLite** is the recommended default: ``sqlite:///study.db``. It's a single-file database with no setup, and is good for development, piloting, and small or medium studies (i.e., dozens of concurrent users, not hundreds; the total participant count is not a factor).
+
+If you need to handle a larger volume of participants, consider using PostgreSQL or MySQL. These can be hosted on a separate server to spread server load. BOFS uses SQLAlchemy to generate the database schema and interact with the database, so any database supported by SQLAlchemy is also supported by BOFS.
 
 .. warning::
 

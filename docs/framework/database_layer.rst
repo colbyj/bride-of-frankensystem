@@ -271,7 +271,7 @@ Limitations
 Switching from SQLite to PostgreSQL
 -----------------------------------
 
-For development, SQLite is built in and requires nothing. For production with many concurrent participants, PostgreSQL is the typical choice — it handles concurrent writers cleanly where SQLite serialises them.
+For development, SQLite is built in and requires nothing. For production with many concurrent participants, PostgreSQL is an option — it handles concurrent writers cleanly where SQLite serialises them.
 
 The only change is the connection string in ``config.toml``:
 

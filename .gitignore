@@ -14,3 +14,4 @@ CLAUDE/*
 .claude/*
 nul
 .coverage
+*.bkp

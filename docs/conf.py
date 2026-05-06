@@ -7,13 +7,13 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Bride of Frankensystem'
-copyright = '2024, Colby Johanson'
+copyright = '2026, Colby Johanson'
 author = 'Colby Johanson'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc', 'sphinx_tabs.tabs']
+extensions = ['sphinx.ext.autodoc', 'sphinx_tabs.tabs', 'sphinxcontrib.mermaid', 'sphinx_design']
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_old']
@@ -24,5 +24,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_old']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 #html_theme = 'nature'
-html_theme = 'sphinx_rtd_theme'
+#html_theme = 'sphinx_rtd_theme'
+html_theme = 'breeze'
+html_theme_options = {'header_tabs': True}
 html_static_path = ['_static']
+html_css_files = []

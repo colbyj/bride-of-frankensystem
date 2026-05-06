@@ -25,9 +25,10 @@ A blueprint named ``my_blueprint`` lives at the project root:
        ├── views.py           # route definitions (required for discovery)
        ├── templates/         # Jinja2 templates, scoped to this blueprint
        ├── static/            # static files, served at /my_blueprint/<path>
-       └── tables/            # custom table definitions, scoped to this blueprint
+       ├── tables/            # custom table definitions, scoped to this blueprint
+       └── questionnaires/    # questionnaire JSON files, scoped to this blueprint
 
-The ``templates/``, ``static/``, and ``tables/`` subdirectories inside a blueprint work the same way as the equivalent directories at the project root. Files inside them are merged into the project's overall template lookup, static-file serving, and table registry — see :doc:`templates_jinja` and :doc:`database_layer` for details.
+The ``templates/``, ``static/``, ``tables/``, and ``questionnaires/`` subdirectories inside a blueprint work the same way as the equivalent directories at the project root. Files inside them are merged into the project's overall template lookup, static-file serving, table registry, and questionnaire registry — see :doc:`templates_jinja`, :doc:`database_layer`, and :doc:`/building/adding_survey_questions` for details.
 
 The views.py boilerplate
 ------------------------

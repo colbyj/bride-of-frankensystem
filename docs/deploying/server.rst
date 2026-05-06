@@ -1,7 +1,7 @@
 Deploying to a Server
 =====================
 
-This page covers production deployment: choosing a web server, configuring a reverse proxy with HTTPS, selecting a database, and securing the admin panel. For local development setup, see :doc:`/getting_started/install_and_run`. For crowdsourcing-platform integration (MTurk, Prolific), see :doc:`/deploying/recruiting`.
+This page covers production deployment: choosing a web server, configuring a reverse proxy with HTTPS, selecting a database, and securing the admin panel. For local development setup, see :doc:`/getting_started/installation`. For crowdsourcing-platform integration (MTurk, Prolific), see :doc:`/deploying/recruiting`.
 
 .. warning::
    Production servers hold participant data. Use a strong admin password, terminate TLS, and back up the database regularly.
@@ -19,19 +19,19 @@ The built-in development server (``BOFS run config.toml -d``) is single-threaded
 System Requirements
 -------------------
 
-**Small studies (fewer than 25 concurrent participants)** can run on a single shared VM:
+**Small studies (less than a few dozen concurrent participants)** can run on a single shared VM:
 
-- Ubuntu 20.04 or newer (or another recent Linux distribution)
+- Ubuntu 22.04 or newer (or another recent Linux distribution)
 - Python 3.9 or newer
 - 1 GB RAM, 1 vCPU, 10 GB or more storage
-- SQLite (bundled) or a small PostgreSQL instance
+- SQLite (bundled)
 
 **Large studies (50+ concurrent participants)** benefit from a dedicated database. Two layouts work:
 
-- *Single server*: 4 GB+ RAM, 2+ cores, 50 GB+ SSD, PostgreSQL on the same machine.
-- *Two servers*: 2 GB / 2 cores for the BOFS application server; 2 GB+ / 2 cores / 50 GB+ SSD for a dedicated PostgreSQL server.
+- *Single server*: 4 GB+ RAM, 2+ cores, PostgreSQL on the same machine.
+- *Two servers*: 2 GB / 2 cores for the BOFS application server; 2 GB+ / 2 cores for a dedicated PostgreSQL server.
 
-**Extremely large studies** can scale horizontally: multiple BOFS instances behind a load balancer, a shared PostgreSQL with connection pooling, and a CDN for static files. Most research studies do not reach this point — a single-server setup handles hundreds of concurrent users.
+**Extremely large studies** can scale horizontally: multiple BOFS instances behind a load balancer, a shared PostgreSQL with connection pooling, and a CDN for static files. Doing this is beyond the scope of the documentation. Most research studies do *not* reach this point — *a single-server setup is capable of handling hundreds of concurrent users*.
 
 Setting Up the Server
 ---------------------
@@ -39,7 +39,7 @@ Setting Up the Server
 This is not a complete server administration tutorial; it covers the BOFS-specific steps. Adapt commands to your distribution and hosting environment.
 
 Install BOFS in a Virtual Environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -49,7 +49,7 @@ Install BOFS in a Virtual Environment
     pip install bride-of-frankensystem
 
 Copy Your Experiment to the Server
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use ``scp``, ``rsync``, or ``git clone`` from a private repository:
 
@@ -59,7 +59,7 @@ Use ``scp``, ``rsync``, or ``git clone`` from a private repository:
     scp -r /local/path/to/experiment/* user@server:~/experiments/my_study/
 
 Verify the Installation
-~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
@@ -385,3 +385,9 @@ Run a small pilot study before opening the project to real participants. Walk th
 
 .. warning::
    Production servers handling research data may need to comply with IRB requirements, GDPR, HIPAA, or other regulations. Consult your institution's IT and compliance teams before collecting data.
+
+.. toctree::
+   :hidden:
+
+   self
+   recruiting

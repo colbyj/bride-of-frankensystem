@@ -49,8 +49,8 @@ Session recovery
 
 Two configuration settings control what happens when a participant returns with an external ID that's already been seen.
 
-- **``RETRIEVE_SESSIONS = true``** (default) — when an incoming request carries an external ID (URL parameter or manual entry) that matches an existing participant, BOFS loads that participant's session and resumes from their current page. The participant doesn't see consent again; their condition assignment is preserved.
-- **``ALLOW_RETAKES = false``** (default) — a participant whose session is already marked ``finished`` is blocked from starting over. They see a "you've already completed this study" message.
+- ``RETRIEVE_SESSIONS = true`` (default) — when an incoming request carries an external ID (URL parameter or manual entry) that matches an existing participant, BOFS loads that participant's session and resumes from their current page. The participant doesn't see consent again; their condition assignment is preserved.
+- ``ALLOW_RETAKES = false`` (default) — a participant whose session is already marked ``finished`` is blocked from starting over. They see a "you've already completed this study" message.
 
 Both default to a configuration appropriate for crowdsourced single-session studies: workers who closed their browser can resume; double submissions are blocked.
 
@@ -63,7 +63,7 @@ IP binding
 
 To reduce session-hijacking risk, BOFS binds sessions to the IP they were created on. Two settings control this:
 
-- **``SESSION_BIND_TO_IP_PARTICIPANT = true``** (default) — a participant session is invalidated if a request arrives from a different IP than the one that created it. Set this to ``false`` for studies where participants legitimately switch networks mid-session — for example, mobile users moving between cellular and wifi, where each network change produces a new public IP.
+- ``SESSION_BIND_TO_IP_PARTICIPANT = true`` (default) — a participant session is invalidated if a request arrives from a different IP than the one that created it. Set this to ``false`` for studies where participants legitimately switch networks mid-session — for example, mobile users moving between cellular and wifi, where each network change produces a new public IP.
 - **Admin sessions are always IP-bound.** There is no opt-out. The trade-off — that an admin moving between networks has to re-authenticate — is accepted because an admin compromise has more impact.
 
 When ``BEHIND_REVERSE_PROXY = true``, BOFS reads the client's real IP from the ``X-Forwarded-For`` header instead of the direct socket connection. Without this, IP binding compares against the reverse proxy's address, which is the same for every client — defeating the binding entirely. See :doc:`/deploying/server` for the deployment context.
@@ -75,9 +75,9 @@ Recovering from self-lockout
 
 If you (the admin) get locked out — wrong password attempts from your own IP, or a misconfigured ``SESSION_BIND_TO_IP_PARTICIPANT`` after a network change — there are three escapes:
 
-- **``BRUTE_FORCE_AUTO_TRUST_ADMIN = true``** (default) adds successful admin IPs to a persistent allowlist (``admin_trusted_ip`` table) so they're exempted from future bans. If you've ever logged in from this IP successfully, you're in.
-- **``TRUSTED_IPS = ["..."]``** is an explicit allowlist that bypasses brute-force protection entirely. Add your office or VPN IP here.
-- **``BRUTE_FORCE_PROTECTION = false``** is the kill-switch. Disable it temporarily to log in, then re-enable. Restart BOFS after the change.
+- ``BRUTE_FORCE_AUTO_TRUST_ADMIN = true`` (default) adds successful admin IPs to a persistent allowlist (``admin_trusted_ip`` table) so they're exempted from future bans. If you've ever logged in from this IP successfully, you're in.
+- ``TRUSTED_IPS = ["..."]`` is an explicit allowlist that bypasses brute-force protection entirely. Add your office or VPN IP here.
+- ``BRUTE_FORCE_PROTECTION = false`` is the kill-switch. Disable it temporarily to log in, then re-enable. Restart BOFS after the change.
 
 For the per-setting reference, see :doc:`/reference/configuration`.
 

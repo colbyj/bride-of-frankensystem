@@ -22,7 +22,7 @@ A few rules to keep in mind:
 - **Condition numbers start at 1**, in the order they appear in the list. ``Control`` is condition ``1``, ``High Reward`` is ``2``, ``Low Reward`` is ``3``.
 - **Participants who haven't been assigned yet have condition ``0``.** This includes participants in projects with no ``CONDITIONS`` block at all.
 - **Abandoned participants aren't counted when balancing.** "Abandoned" means inactive longer than ``ABANDONED_MINUTES`` (default 5 minutes). To include them, set ``COUNTS_INCLUDE_ABANDONED = true``.
-- **Setting ``enabled = false`` removes a condition from rotation** without renumbering. Useful when one cell hits its target N before the others.
+- **Setting** ``enabled = false`` **removes a condition from rotation** without renumbering. Useful when one cell hits its target N before the others. You can also temporarily disable or enable conditions from the admin panel's progress page.
 
 Where condition assignment happens
 ----------------------------------

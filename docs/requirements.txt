@@ -6,5 +6,5 @@ flask-compress
 toml
 bride-of-frankensystem
 sphinx
-sphinx-rtd-theme
+sphinx-breeze-theme
 sphinx-tabs

@@ -1,0 +1,94 @@
+<mxfile host="Electron">
+  <diagram name="Page-1" id="8-qarGaNWlEJKBIqLOpS">
+    <mxGraphModel dx="641" dy="409" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-3" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.code_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-4" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.script_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-13" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;my_study/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="250" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-28" edge="1" parent="1" source="UnlweMAUC4G7V9_fxanQ-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=light-dark(#000000,#ABABAB);fillColor=#dae8fc;strokeColor=#6c8ebf;" target="UnlweMAUC4G7V9_fxanQ-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-14" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;config.toml&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="290" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-29" edge="1" parent="1" source="UnlweMAUC4G7V9_fxanQ-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontColor=light-dark(#000000,#ABABAB);fillColor=#dae8fc;strokeColor=#6c8ebf;" target="UnlweMAUC4G7V9_fxanQ-27">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-15" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;consent.html&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="120" x="290" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-32" edge="1" parent="1" source="UnlweMAUC4G7V9_fxanQ-18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" target="UnlweMAUC4G7V9_fxanQ-30" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-18" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;questionnaires/&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="140" x="290" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-19" parent="1" style="verticalLabelPosition=bottom;html=1;verticalAlign=top;align=center;strokeColor=none;fillColor=#00BEF2;shape=mxgraph.azure.code_file;pointerEvents=1;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="290" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-20" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;Lucida Console&quot; style=&quot;font-size: 14px;&quot;&gt;my_questions.json&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="160" x="330" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-22" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="UnlweMAUC4G7V9_fxanQ-4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="275" />
+            </Array>
+            <mxPoint x="225" y="174.35000000000002" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-23" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="UnlweMAUC4G7V9_fxanQ-3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="215" />
+            </Array>
+            <mxPoint x="225" y="174.35000000000002" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-24" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="Sp_RO6KV-Q3vtz0CaPkR-3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="335" />
+            </Array>
+            <mxPoint x="225" y="174.35000000000002" as="sourcePoint" />
+            <mxPoint x="250" y="330.00374" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-25" edge="1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="UnlweMAUC4G7V9_fxanQ-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="265" y="385" />
+            </Array>
+            <mxPoint x="265" y="344.34000000000003" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-26" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Define settings, page flow, conditions, etc.&amp;nbsp;&lt;div style=&quot;margin-top: 4px;&quot;&gt;The file you reference in the BOFS command.&amp;nbsp;&lt;/div&gt;&lt;div style=&quot;margin-top: 6px;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Filename can be anything you like.&amp;nbsp;&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="280" x="480" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-27" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Consent form, defined in HTML.&lt;div style=&quot;margin-top: 6px;&quot;&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;Filename must match.&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="50" width="280" x="480" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-30" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="One JSON file per questionnaire.&amp;nbsp;&lt;div style=&quot;margin-top: 4px;&quot;&gt;Each questionnaire is one page.&lt;/div&gt;&lt;div style=&quot;margin-top: 6px;&quot;&gt;You can name your questionnaire files whatever you like.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="80" width="240" x="520" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="UnlweMAUC4G7V9_fxanQ-33" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=center;spacingLeft=4;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="The study is started with&lt;font face=&quot;Lucida Console&quot;&gt; &lt;/font&gt;&lt;font style=&quot;color: rgb(153, 0, 0);&quot; face=&quot;Lucida Console&quot;&gt;BOFS config.toml&amp;nbsp;&lt;/font&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(171, 171, 171));&quot; face=&quot;Helvetica&quot;&gt;and is hosted via your web browser at &lt;/font&gt;&lt;font style=&quot;color: light-dark(rgb(153, 0, 0), rgb(171, 171, 171));&quot; face=&quot;Lucida Console&quot;&gt;https://localhost:5000&lt;/font&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(171, 171, 171));&quot; face=&quot;Lucida Console&quot;&gt; &lt;/font&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(171, 171, 171));&quot; face=&quot;Helvetica&quot;&gt;with the admin panel at&lt;/font&gt;&lt;font style=&quot;color: light-dark(rgb(0, 0, 0), rgb(171, 171, 171));&quot; face=&quot;Lucida Console&quot;&gt; &lt;/font&gt;&lt;font style=&quot;color: light-dark(rgb(153, 0, 0), rgb(171, 171, 171));&quot; face=&quot;Lucida Console&quot;&gt;https://localhost:5000/admin&lt;/font&gt;&lt;div style=&quot;margin-top: 8px;&quot;&gt;You must deploy your study to a server before it is publicly accessible.&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="550" x="210" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="Sp_RO6KV-Q3vtz0CaPkR-2" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="210" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="Sp_RO6KV-Q3vtz0CaPkR-3" parent="1" style="sketch=0;pointerEvents=1;shadow=0;dashed=0;html=1;strokeColor=none;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;outlineConnect=0;align=center;shape=mxgraph.office.concepts.folder;fillColor=#2072B8;" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="250" y="320" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
