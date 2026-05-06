@@ -33,3 +33,9 @@ html_theme = 'breeze'
 html_theme_options = {'header_tabs': True}
 html_static_path = ['_static']
 html_css_files = []
+
+# -- Options for LaTeX output ------------------------------------------------
+
+latex_elements = {
+    'preamble': r'\pdfminorversion=7',
+}

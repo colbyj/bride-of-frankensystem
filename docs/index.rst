@@ -3,6 +3,15 @@ Bride of Frankensystem
 
 `Bride of Frankensystem <https://frankensystem.net>`_ (BOFS) is an open-source framework for online behavioral experiments and surveys. It sits between survey-only platforms (Qualtrics, SurveyMonkey) and building from scratch: editing TOML, JSON, and HTML gets you a running study, and Python is available when you need it.
 
+.. toctree::
+   :hidden:
+
+   Getting Started <getting_started/what_is_bofs>
+   Building Your Experiment <building/index>
+   Understanding the Framework <framework/architecture>
+   Deploying Your Experiment <deploying/server>
+   Reference <reference/index>
+
 Where to start
 --------------
 
@@ -13,17 +22,6 @@ Where to start
 .. note::
 
    If you need additional help, please `join us on Discord <https://discord.gg/XzXtUKFCJA>`_.
-
-
-.. toctree::
-   :hidden:
-
-   Getting Started <getting_started/what_is_bofs>
-   Building Your Experiment <building/index>
-   Understanding the Framework <framework/architecture>
-   Deploying Your Experiment <deploying/server>
-   Reference <reference/index>
-
 
 Citation
 --------
