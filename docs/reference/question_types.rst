@@ -34,6 +34,8 @@ Currently, the following types of input are supported:
 -  ``multi_field`` - Multi-line text entry
 -  ``drop_down`` - Select one option from a drop-down list
 -  ``picture_select`` - Select one option from a set of images
+-  ``image_click`` - Click on an image to record one or more (x, y)
+   positions in the image's natural pixel space
 -  ``textview`` - Display plain text (HTML syntax is supported)
 -  ``video`` - Embed an HTML5 video, optionally requiring the participant to
    watch it before continuing
@@ -392,6 +394,85 @@ thumbnail; the participant's selection is stored as the chosen image's
                {"src": "/static/option_a.jpg", "value": 1, "label": "Option A"},
                {"src": "/static/option_b.jpg", "value": 2, "label": "Option B"}
            ]
+       }
+
+
+image_click
+-----------
+
+``questiontype == 'image_click'``
+
+Displays an image and stores the natural-image pixel coordinates of one or
+more clicks. Each click leaves a crosshair marker at the cursor position.
+
+Coordinates are reported in the source image's *natural* pixel space
+(origin top-left, x to the right, y downward), independent of how the
+browser sized the image. A click on a 1000×800 image always lands within
+``(0, 0)–(1000, 800)`` even when the image was scaled to fit the viewport.
+
+**Properties**
+
+-  ``id``: unique id for this question (required, string)
+-  ``image_src``: URL of the image to display (required, string), e.g.
+   ``/static/map.png``
+-  ``instructions``: text shown above the image (optional, string)
+-  ``required``: when ``true``, the *Continue* button is disabled until the
+   participant has placed at least one click (optional, boolean, default
+   ``false``)
+-  ``max_clicks``: maximum number of clicks accepted (optional, integer,
+   default ``1``).
+
+   -  ``1`` (default): each click moves the single marker to the new
+      position.
+   -  any integer ``> 1``: up to that many markers can be placed; once
+      full, a new click drops the oldest marker.
+   -  ``0``: unlimited clicks.
+
+-  ``image_max_width``: CSS ``max-width`` for the displayed image (optional,
+   string), e.g. ``"800px"`` or ``"100%"``. Coordinates remain in natural
+   pixels regardless.
+-  ``marker_color``: CSS colour of the crosshair (optional, string, default
+   ``"#ff0000"``)
+-  ``marker_size``: pixel size of the crosshair (optional, integer, default
+   ``14``)
+
+**Storage**
+
+The database schema depends on ``max_clicks``:
+
+-  When ``max_clicks`` is ``1`` (the default), two ``FLOAT`` columns are
+   created — ``{id}_x`` and ``{id}_y`` — holding the natural-pixel x and y
+   of the click.
+-  Otherwise, one ``TEXT`` column ``{id}`` is created, holding a JSON
+   array of ``{"x": ..., "y": ...}`` objects in click order, e.g.
+   ``[{"x": 123.45, "y": 67.89}, {"x": 200.0, "y": 150.5}]``.
+
+If the participant submits without clicking and ``required`` is ``false``,
+the corresponding columns receive their default zero / empty value.
+
+**Example (single-click)**
+
+.. code:: json
+
+       {
+           "questiontype": "image_click",
+           "id": "target_location",
+           "instructions": "Click on the location you think is correct.",
+           "image_src": "/static/map.png",
+           "required": true
+       }
+
+**Example (multi-click)**
+
+.. code:: json
+
+       {
+           "questiontype": "image_click",
+           "id": "all_errors",
+           "instructions": "Click on every part of the diagram that looks wrong.",
+           "image_src": "/static/diagram.png",
+           "max_clicks": 0,
+           "marker_color": "#0066ff"
        }
 
 

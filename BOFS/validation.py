@@ -429,6 +429,40 @@ def validate_picture_select(json_data: dict, filename: str) -> list[ValidationRe
     return results
 
 
+def validate_image_click(json_data: dict, filename: str) -> list[ValidationResult]:
+    """Check that image_click questions have a usable image and a sane max_clicks."""
+    results = []
+    questions = json_data.get("questions", [])
+    if not isinstance(questions, list):
+        return results
+
+    for i, q in enumerate(questions):
+        if not isinstance(q, dict) or q.get("questiontype") != "image_click":
+            continue
+
+        src = q.get("image_src")
+        if not isinstance(src, str) or not src:
+            results.append(ValidationResult(
+                "error", filename,
+                f"Question #{i+1} ('image_click') is missing the required 'image_src' string.",
+                'Add an "image_src" pointing at the image to display, '
+                'e.g. "/static/map.png".'
+            ))
+
+        if "max_clicks" in q:
+            mc = q["max_clicks"]
+            if not isinstance(mc, int) or isinstance(mc, bool) or mc < 0:
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Question #{i+1} ('image_click'): 'max_clicks' must be a "
+                    f"non-negative integer (got {mc!r}).",
+                    "Use 1 for single-click, an integer >1 to cap multi-click, "
+                    "or 0 for unlimited clicks."
+                ))
+
+    return results
+
+
 def validate_show_if(json_data: dict, filename: str) -> list[ValidationResult]:
     """Check that any per-question ``show_if`` predicates parse cleanly and
     only reference field IDs declared on this questionnaire."""
@@ -585,6 +619,7 @@ def validate_questionnaire(json_data: dict, filename: str,
     results.extend(validate_question_ids(json_data, filename))
     results.extend(validate_field_ids(json_data, filename))
     results.extend(validate_picture_select(json_data, filename))
+    results.extend(validate_image_click(json_data, filename))
     results.extend(validate_calculations(json_data, filename))
     results.extend(validate_show_if(json_data, filename))
 

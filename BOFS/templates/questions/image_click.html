@@ -1,0 +1,271 @@
+{# Image-click question type. Displays an image and captures the natural-image
+   pixel coordinates of one or more clicks.
+
+   JSON fields:
+     image_src    (required) URL of the image to display (e.g. "/static/map.png").
+     max_clicks   (optional, default 1) When 1, each click moves a single
+                  marker; storage is two FLOAT columns "{id}_x" and "{id}_y".
+                  When >1, up to that many markers can be placed (oldest is
+                  replaced once full); when 0, unlimited. Multi-click storage
+                  is one TEXT column "{id}" holding a JSON array of
+                  {"x":..,"y":..} objects in click order.
+     marker_color (optional, default "#ff0000") CSS colour of the crosshair.
+     marker_size  (optional, default 14) Pixel size of the crosshair.
+     image_max_width  (optional) CSS max-width for the displayed image.
+     required     (optional, default false) When true, btnNext is disabled
+                  until the participant places at least one click.
+
+   Stored coordinates are in the natural pixel space of the source image
+   (origin top-left, x to the right, y downward), not the displayed pixel
+   space, so they remain meaningful regardless of browser zoom or image scaling.
+#}
+{% set max_clicks = question.max_clicks|default(1) %}
+{% set marker_color = question.marker_color|default('#ff0000') %}
+{% set marker_size = question.marker_size|default(14) %}
+{% set is_single = (max_clicks == 1) %}
+{% set required = question.required|default(false) %}
+
+<div class="bofs-image-click-wrapper"
+     data-qid="{{ question.id }}"
+     data-max-clicks="{{ max_clicks }}"
+     data-marker-color="{{ marker_color }}"
+     data-marker-size="{{ marker_size }}"
+     {% if required %}data-image-click-required="true"{% endif %}
+     style="position: relative; display: inline-block; user-select: none; -webkit-user-select: none;">
+    <img class="bofs-image-click-img"
+         src="{{ question.image_src }}"
+         {% if question.image_max_width %}style="max-width: {{ question.image_max_width }}; height: auto; display: block;"{% else %}style="display: block;"{% endif %}
+         draggable="false"
+         alt="">
+    {% if is_single %}
+    <input type="hidden" class="bofs-image-click-x" name="{{ question.id }}_x"
+           {% if question.prior_x is defined %}value="{{ question.prior_x }}"{% else %}disabled{% endif %}>
+    <input type="hidden" class="bofs-image-click-y" name="{{ question.id }}_y"
+           {% if question.prior_y is defined %}value="{{ question.prior_y }}"{% else %}disabled{% endif %}>
+    {% else %}
+    <input type="hidden" class="bofs-image-click-points" name="{{ question.id }}"
+           {% if question.has_value %}value="{{ question.value|e }}"{% else %}disabled{% endif %}>
+    {% endif %}
+</div>
+
+<script>
+(function() {
+    // Page-level gate: disable #btnNext until every required image_click
+    // question on the page has at least one stored point. Mirrors the
+    // structure of bofsMediaGate but tracks a separate counter and notice
+    // so the user-facing message matches the actual blocker.
+    if (!window.bofsImageClickGate) {
+        window.bofsImageClickGate = (function() {
+            var pending = 0;
+            var deferred = false;
+            function btn() { return document.getElementById('btnNext'); }
+            function ensureNotice() {
+                var b = btn();
+                if (!b) return null;
+                var n = document.getElementById('bofs-image-click-notice');
+                if (!n) {
+                    n = document.createElement('div');
+                    n.id = 'bofs-image-click-notice';
+                    n.style.fontStyle = 'italic';
+                    n.style.marginTop = '6px';
+                    b.parentNode.insertBefore(n, b.nextSibling);
+                }
+                return n;
+            }
+            function refresh() {
+                var b = btn();
+                if (!b) { deferred = true; return; }
+                var n = ensureNotice();
+                if (pending > 0) {
+                    b.disabled = true;
+                    if (n) {
+                        n.textContent = pending > 1
+                            ? 'Please click on each image before continuing.'
+                            : 'Please click on the image before continuing.';
+                        n.style.display = '';
+                    }
+                } else {
+                    b.disabled = false;
+                    if (n) { n.textContent = ''; n.style.display = 'none'; }
+                }
+            }
+            document.addEventListener('DOMContentLoaded', function() {
+                if (deferred) refresh();
+            });
+            return {
+                add: function() { pending += 1; refresh(); },
+                satisfy: function() { if (pending > 0) { pending -= 1; refresh(); } }
+            };
+        })();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var wrappers = document.querySelectorAll('.bofs-image-click-wrapper[data-qid="{{ question.id }}"]');
+        wrappers.forEach(function(wrapper) {
+            var img = wrapper.querySelector('.bofs-image-click-img');
+            var maxClicks = parseInt(wrapper.getAttribute('data-max-clicks'), 10);
+            var markerColor = wrapper.getAttribute('data-marker-color');
+            var markerSize = parseInt(wrapper.getAttribute('data-marker-size'), 10);
+            var required = wrapper.getAttribute('data-image-click-required') === 'true';
+            var isSingle = (maxClicks === 1);
+            var satisfied = false;
+
+            var xInput = wrapper.querySelector('.bofs-image-click-x');
+            var yInput = wrapper.querySelector('.bofs-image-click-y');
+            var pointsInput = wrapper.querySelector('.bofs-image-click-points');
+
+            // points: array of {x, y} in NATURAL image pixels.
+            var points = [];
+            if (isSingle) {
+                if (xInput && xInput.value !== '' && yInput && yInput.value !== '' && !xInput.disabled) {
+                    points.push({ x: parseFloat(xInput.value), y: parseFloat(yInput.value) });
+                }
+            } else if (pointsInput && pointsInput.value && !pointsInput.disabled) {
+                try {
+                    var parsed = JSON.parse(pointsInput.value);
+                    if (Array.isArray(parsed)) {
+                        parsed.forEach(function(p) {
+                            if (p && typeof p.x === 'number' && typeof p.y === 'number') {
+                                points.push({ x: p.x, y: p.y });
+                            }
+                        });
+                    }
+                } catch (e) { /* ignore malformed prior value */ }
+            }
+
+            if (required) {
+                window.bofsImageClickGate.add();
+            }
+
+            function makeMarker() {
+                var m = document.createElement('div');
+                m.className = 'bofs-image-click-marker';
+                m.style.position = 'absolute';
+                m.style.pointerEvents = 'none';
+                m.style.width = markerSize + 'px';
+                m.style.height = markerSize + 'px';
+                m.style.marginLeft = (-markerSize / 2) + 'px';
+                m.style.marginTop = (-markerSize / 2) + 'px';
+                // Crosshair: two thin bars centred on the click point.
+                var bar1 = document.createElement('div');
+                bar1.style.position = 'absolute';
+                bar1.style.left = '0'; bar1.style.right = '0';
+                bar1.style.top = '50%'; bar1.style.height = '2px';
+                bar1.style.marginTop = '-1px';
+                bar1.style.background = markerColor;
+                var bar2 = document.createElement('div');
+                bar2.style.position = 'absolute';
+                bar2.style.top = '0'; bar2.style.bottom = '0';
+                bar2.style.left = '50%'; bar2.style.width = '2px';
+                bar2.style.marginLeft = '-1px';
+                bar2.style.background = markerColor;
+                m.appendChild(bar1);
+                m.appendChild(bar2);
+                return m;
+            }
+
+            function clearMarkers() {
+                wrapper.querySelectorAll('.bofs-image-click-marker').forEach(function(m) { m.remove(); });
+            }
+
+            function naturalToDisplay(natX, natY) {
+                // Place markers in display space so they stay aligned when the
+                // image is resized (e.g. responsive layouts, browser zoom).
+                if (!img.naturalWidth || !img.naturalHeight) return null;
+                var rect = img.getBoundingClientRect();
+                return {
+                    left: natX * (rect.width / img.naturalWidth),
+                    top:  natY * (rect.height / img.naturalHeight)
+                };
+            }
+
+            function renderMarkers() {
+                clearMarkers();
+                points.forEach(function(p) {
+                    var pos = naturalToDisplay(p.x, p.y);
+                    if (!pos) return;
+                    var m = makeMarker();
+                    m.style.left = pos.left + 'px';
+                    m.style.top = pos.top + 'px';
+                    wrapper.appendChild(m);
+                });
+            }
+
+            function writeBack() {
+                if (isSingle) {
+                    if (points.length === 0) {
+                        if (xInput) { xInput.disabled = true; xInput.value = ''; }
+                        if (yInput) { yInput.disabled = true; yInput.value = ''; }
+                    } else {
+                        if (xInput) { xInput.disabled = false; xInput.value = points[0].x.toFixed(2); }
+                        if (yInput) { yInput.disabled = false; yInput.value = points[0].y.toFixed(2); }
+                    }
+                } else if (pointsInput) {
+                    if (points.length === 0) {
+                        pointsInput.disabled = true;
+                        pointsInput.value = '';
+                    } else {
+                        pointsInput.disabled = false;
+                        pointsInput.value = JSON.stringify(points.map(function(p) {
+                            return { x: +p.x.toFixed(2), y: +p.y.toFixed(2) };
+                        }));
+                    }
+                }
+            }
+
+            function updateGate() {
+                if (!required) return;
+                var nowSatisfied = points.length > 0;
+                if (nowSatisfied && !satisfied) {
+                    window.bofsImageClickGate.satisfy();
+                    satisfied = true;
+                } else if (!nowSatisfied && satisfied) {
+                    window.bofsImageClickGate.add();
+                    satisfied = false;
+                }
+            }
+
+            function handleClick(event) {
+                if (!img.naturalWidth || !img.naturalHeight) return;
+                var rect = img.getBoundingClientRect();
+                var displayX = event.clientX - rect.left;
+                var displayY = event.clientY - rect.top;
+                if (displayX < 0 || displayY < 0 || displayX > rect.width || displayY > rect.height) return;
+                var natX = displayX * (img.naturalWidth / rect.width);
+                var natY = displayY * (img.naturalHeight / rect.height);
+                // Clamp to natural-pixel bounds (defends against rounding past edge).
+                natX = Math.max(0, Math.min(img.naturalWidth, natX));
+                natY = Math.max(0, Math.min(img.naturalHeight, natY));
+
+                if (isSingle) {
+                    points = [{ x: natX, y: natY }];
+                } else {
+                    points.push({ x: natX, y: natY });
+                    // maxClicks == 0 → unlimited; otherwise drop oldest when full.
+                    if (maxClicks > 0 && points.length > maxClicks) {
+                        points.shift();
+                    }
+                }
+                renderMarkers();
+                writeBack();
+                updateGate();
+            }
+
+            img.addEventListener('click', handleClick);
+            window.addEventListener('resize', renderMarkers);
+
+            // Restore prior markers once the image's natural size is known.
+            function initialRender() {
+                renderMarkers();
+                writeBack();
+                updateGate();
+            }
+            if (img.complete && img.naturalWidth) {
+                initialRender();
+            } else {
+                img.addEventListener('load', initialRender);
+            }
+        });
+    });
+})();
+</script>

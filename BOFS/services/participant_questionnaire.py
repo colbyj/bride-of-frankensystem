@@ -139,6 +139,17 @@ class ParticipantQuestionnaireService:
                 full_id = q['id'] + suffix
                 if full_id in prior_values:
                     q['prior' + suffix] = prior_values[full_id]
+
+        # image_click in single-click mode stores _x/_y like an expanded type.
+        # (Multi-click mode stores a JSON string under the bare id, which the
+        # generic `id in prior_values` branch above already populates as `value`.)
+        if parent_type == 'image_click' and 'id' in q:
+            max_clicks = q.get('max_clicks', 1)
+            if isinstance(max_clicks, int) and max_clicks == 1:
+                for suffix in ('_x', '_y'):
+                    full_id = q['id'] + suffix
+                    if full_id in prior_values:
+                        q['prior' + suffix] = prior_values[full_id]
         for sub_key in ('questions', 'q_text'):
             subs = q.get(sub_key)
             if not isinstance(subs, list):

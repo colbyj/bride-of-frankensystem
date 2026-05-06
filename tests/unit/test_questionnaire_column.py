@@ -352,6 +352,62 @@ def test_fetch_fields_audio_expands_into_three_columns(tmp_path):
     assert all(f.data_type == "float" for f in fields)
 
 
+def test_fetch_fields_image_click_single_expands_to_xy_floats(tmp_path):
+    """Default (single-click) image_click stores natural-pixel x,y as two FLOAT
+    columns named {id}_x and {id}_y. No bare {id} column is created."""
+    data = {
+        "questions": [
+            {"questiontype": "image_click", "id": "spot",
+             "image_src": "/static/m.png"},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "ic_single", data)
+    fields = q.fetch_fields()
+    assert [f.id for f in fields] == ["spot_x", "spot_y"]
+    assert all(f.data_type == "float" for f in fields)
+
+
+def test_fetch_fields_image_click_explicit_max_clicks_one_same_as_default(tmp_path):
+    data = {
+        "questions": [
+            {"questiontype": "image_click", "id": "spot",
+             "image_src": "/static/m.png", "max_clicks": 1},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "ic_single_explicit", data)
+    fields = q.fetch_fields()
+    assert [f.id for f in fields] == ["spot_x", "spot_y"]
+    assert all(f.data_type == "float" for f in fields)
+
+
+def test_fetch_fields_image_click_multi_uses_single_text_column(tmp_path):
+    """max_clicks > 1 stores the click array as JSON in one TEXT column at {id}."""
+    data = {
+        "questions": [
+            {"questiontype": "image_click", "id": "spots",
+             "image_src": "/static/m.png", "max_clicks": 3},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "ic_multi", data)
+    fields = q.fetch_fields()
+    assert [f.id for f in fields] == ["spots"]
+    assert fields[0].data_type == "string"
+
+
+def test_fetch_fields_image_click_unlimited_uses_single_text_column(tmp_path):
+    """max_clicks == 0 (unlimited) also routes to the single TEXT column shape."""
+    data = {
+        "questions": [
+            {"questiontype": "image_click", "id": "spots",
+             "image_src": "/static/m.png", "max_clicks": 0},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "ic_unlimited", data)
+    fields = q.fetch_fields()
+    assert [f.id for f in fields] == ["spots"]
+    assert fields[0].data_type == "string"
+
+
 def test_fetch_fields_empty_questions(tmp_path):
     data = {"questions": []}
     q = _write_questionnaire(tmp_path, "empty", data)

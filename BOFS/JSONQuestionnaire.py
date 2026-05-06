@@ -153,7 +153,19 @@ class JSONQuestionnaire(object):
 
             if 'id' in q:
                 qtype = q.get('questiontype')
-                if qtype in EXPANDED_TYPES:
+                if qtype == 'image_click':
+                    # Single-click (max_clicks omitted or == 1) stores natural-image
+                    # pixel x,y as two float columns. Multi-click stores a JSON
+                    # array of {"x":..,"y":..} points in one TEXT column.
+                    max_clicks = q.get('max_clicks', 1)
+                    if isinstance(max_clicks, int) and max_clicks == 1:
+                        for suffix in ('_x', '_y'):
+                            self.__fields.append(JSONQuestionnaireColumn(
+                                {'id': q['id'] + suffix, 'datatype': 'float'}))
+                    else:
+                        self.__fields.append(JSONQuestionnaireColumn(
+                            {'id': q['id'], 'datatype': 'string'}))
+                elif qtype in EXPANDED_TYPES:
                     for suffix, dtype in EXPANDED_TYPES[qtype]:
                         self.__fields.append(JSONQuestionnaireColumn(
                             {'id': q['id'] + suffix, 'datatype': dtype}))
