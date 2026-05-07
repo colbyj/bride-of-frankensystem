@@ -1,51 +1,94 @@
 :root {
     --contents-width: 967px;
-    --top-bar-color: #8CB737;
-    --font-size-main: 12pt;
-    --font-size-h1: 18pt;
-    --font-size-h2: 16pt;
-    --font-size-h3: 13pt;
-    --font-size-h4: 11pt;
-    --question-title-font-size: 13pt;
-    --question-instructions-font-size: 11pt;
-    --bs-border-color: black;
+
+    /* Theme accent — overridable via HEADER_COLOR config (template.html line 9). */
+    --bofs-accent: #8CB737;
+    --bofs-accent-strong: color-mix(in srgb, var(--bofs-accent) 80%, black);
+    --bofs-accent-soft: color-mix(in srgb, var(--bofs-accent) 12%, white);
+    --bofs-accent-ring: color-mix(in srgb, var(--bofs-accent) 35%, transparent);
+    --top-bar-color: var(--bofs-accent);
+
+    /* Card surfaces — neutral, no tint. Accent color stays on the title bar and button only. */
+    --bofs-card-bg: #ffffff;
+    --bofs-card-border: color-mix(in srgb, var(--bofs-accent) 20%, #e2e5e7);
+
+    /* Type scale — rem-based, anchored to html { font-size: 16px }. */
+    --font-size-main: 1rem;            /* 16px */
+    --font-size-h1: 1.5rem;            /* 24px */
+    --font-size-h2: 1.3125rem;         /* 21px */
+    --font-size-h3: 1.0625rem;         /* 17px */
+    --font-size-h4: 0.9375rem;         /* 15px */
+    --question-title-font-size: 1.0625rem;
+    --question-instructions-font-size: 0.9375rem;
+
+    /* Form-input border stays high-contrast for accessibility — do not soften. */
+    --bs-border-color: #000;
+
+    --bofs-radius: 8px;
+    --bofs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --bofs-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+html {
+    font-size: 16px;
 }
 
 @media only screen and (max-width: 768px) {
     :root {
         --contents-width: 100vw;
-        --font-size-main: 11pt;
-        --font-size-h1: 16pt;
-        --font-size-h2: 14pt;
-        --font-size-h3: 12pt;
-        --font-size-h4: 10pt;
-        --question-title-font-size: 12pt;
-        --question-instructions-font-size: 10pt;
-        --bs-border-color: black;
+        --font-size-main: 0.9375rem;       /* 15px */
+        --font-size-h1: 1.375rem;          /* 22px */
+        --font-size-h2: 1.1875rem;         /* 19px */
+        --font-size-h3: 1rem;              /* 16px */
+        --font-size-h4: 0.875rem;          /* 14px */
+        --question-title-font-size: 1rem;
+        --question-instructions-font-size: 0.875rem;
     }
 
     .content {
-        padding: 0 5px;
+        padding: 0 12px;
+    }
+
+    /* Radiogrids, tables — let them scroll rather than collapsing text. */
+    .question table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* End-of-study completion code card — override inline 500px width. */
+    .question[style*="width: 500px"] {
+        width: 100% !important;
+        max-width: calc(100vw - 24px);
+        box-sizing: border-box;
+    }
+    .question[style*="width: 500px"] input[readonly][style*="width: 350px"] {
+        width: 100% !important;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     input[type=range] {
-        width: 90vw !important;
+        width: 90vw;
     }
 
     input, select, textarea, .slider-labels {
-        max-width: 90vw !important;
+        max-width: 90vw;
     }
 }
 
 body {
     padding: 0;
     margin: 0;
-    font-family: 'segoe ui', arial, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: var(--font-size-main);
+    color: #1f2937;
+    background-color: #fafafa;
 }
 
 .bofs-main-content {
-    padding-top: 12px;
+    padding-top: 16px;
 }
 
 /* Reserved by JS at load time so content isn't hidden under the fixed toolbar.
@@ -54,21 +97,21 @@ body {
     padding-bottom: 110px;
 }
 
-.questions {
-    /*border: 1px solid #4e4e4e;*/
-}
-
 .question {
     margin-top: 8px;
     margin-bottom: 16px;
-    border: 1px solid #EEEEEE;
-    background-color: #F7F7F7;
-    border-radius: 8px;
-    /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
+    border: 1px solid var(--bofs-card-border);
+    background-color: var(--bofs-card-bg);
+    border-radius: var(--bofs-radius);
+    box-shadow: var(--bofs-shadow-sm);
 }
 
 .bofs-hidden {
     display: none;
+}
+
+#instructions {
+    margin-bottom: 1rem;
 }
 
 .question-title {
@@ -89,10 +132,10 @@ body {
 
 .navigation {
     margin-top: 15px;
-    border: 1px solid #ccc;
-    background-color: #ccc;
-    border-radius: 8px;
-    /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
+    border: 1px solid var(--bofs-card-border);
+    background-color: var(--bofs-card-bg);
+    border-radius: var(--bofs-radius);
+    box-shadow: var(--bofs-shadow-sm);
     margin-bottom: 30px;
 }
 
@@ -104,29 +147,18 @@ body {
     position: relative;
 }
 
-h1 {
-    font-size: var(--font-size-h1);
-}
-
-h2 {
-    font-size: var(--font-size-h2);
-}
-
-h3 {
-    font-size: var(--font-size-h3);
-}
-
-h4 {
-    font-size: var(--font-size-h4);
-}
+h1 { font-size: var(--font-size-h1); }
+h2 { font-size: var(--font-size-h2); }
+h3 { font-size: var(--font-size-h3); }
+h4 { font-size: var(--font-size-h4); }
 
 .title-bar {
     background-color: var(--top-bar-color);
-    box-shadow: 0 5px 10px rgb(238, 238, 238);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3);
     color: white;
     margin: 0;
-    padding: 5px;
-    text-shadow: 1px 1px #333333;
+    padding: 4px 5px;
 }
 
 .title-text {
@@ -134,7 +166,9 @@ h4 {
     margin-left: auto;
     margin-right: auto;
     font-size: var(--font-size-h1);
+    font-weight: 600;
     height: 42px;
+    letter-spacing: 0.005em;
 }
 
 .content {
@@ -147,16 +181,46 @@ h4 {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
+    color: #4b5563;
 }
 
 .error-box {
     padding: 1em;
-    margin: 5px;
-    border: 1px solid rgba(0, 0, 0, 0.33);
+    margin: 5px 0;
+    border: 1px solid color-mix(in srgb, #dc2626 20%, transparent);
     border-left-width: 3px;
-    background-color: rgba(255, 0, 0, 0.05);
+    border-left-color: #dc2626;
+    background-color: color-mix(in srgb, #dc2626 5%, #fef2f2);
+    border-radius: var(--bofs-radius);
+    box-shadow: var(--bofs-shadow-sm);
 }
 
+/* Themed primary button — uses the accent so HEADER_COLOR drives it. */
+.btn.btn-bofs-primary {
+    background-color: var(--bofs-accent);
+    border: 1px solid var(--bofs-accent);
+    color: #fff;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 6px;
+    transition: background-color 120ms, border-color 120ms, transform 80ms, box-shadow 120ms;
+}
+
+.btn.btn-bofs-primary:hover,
+.btn.btn-bofs-primary:focus {
+    background-color: var(--bofs-accent-strong);
+    border-color: var(--bofs-accent-strong);
+    color: #fff;
+}
+
+.btn.btn-bofs-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--bofs-accent-ring);
+}
+
+.btn.btn-bofs-primary:active {
+    transform: translateY(1px);
+}
 
 .debug-session pre {
     display: block; margin: 0;
@@ -183,11 +247,11 @@ h4 {
 
 .admin-toolbar .btn,
 .admin-toolbar .dropdown-item {
-    font-size: 10pt;
+    font-size: 0.8125rem;
 }
 
 .admin-toolbar-status {
-    font-size: 10pt;
+    font-size: 0.8125rem;
     color: #cfd2d6;
     padding: 2px 4px 6px 4px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -239,18 +303,23 @@ h4 {
     overflow-y: auto;
 }
 
-/*a, a:visited { text-decoration: none; color: #1144cc; }
-a:hover { text-decoration: underline; }*/
-
 table { border-spacing: 0; }
-th { padding: 6px; position: sticky; top: 0; background-color: #F7F7F7; border-bottom: 1px solid #EEEEEE; z-index: 1; }
-.evenRow { background-color: #EFEFEF; }
+th { padding: 6px; position: sticky; top: 0; background-color: var(--bofs-card-bg); border-bottom: 1px solid var(--bofs-card-border); z-index: 1; font-weight: 600; }
+.evenRow { background-color: color-mix(in srgb, var(--bofs-accent) 3%, #f9f9f9); }
 .evenRow td { padding: 4px; }
 .oddRow td { padding: 4px; }
-.evenRow:hover { background-color: #F4F2DC; }
-.oddRow:hover { background-color: #FEFFE8; }
+.evenRow:hover { background-color: var(--bofs-accent-soft); }
+.oddRow:hover { background-color: var(--bofs-accent-soft); }
 
-.form-check { padding: 6px 22px; }
-.form-check input {  }
+.form-check {
+    padding: 6px 22px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+}
 
-ul li { padding-bottom: 4px;  }
+.form-check-inline {
+    display: inline-grid;
+    vertical-align: top;
+}
+
+ul li { padding-bottom: 4px; }

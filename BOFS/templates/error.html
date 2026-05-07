@@ -6,67 +6,75 @@
     <style>
         :root {
             --contents-width: 967px;
+            --bofs-accent: #8CB737;
         }
         @media only screen and (max-width: 768px) {
             :root { --contents-width: 100vw; }
-            .content { padding: 0 10px; }
+            .content { padding: 0 12px; }
         }
         body {
             padding: 0;
             margin: 0;
-            font-family: 'segoe ui', arial, sans-serif;
-            font-size: 12pt;
-            color: #333;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-size: 1rem;
+            color: #1f2937;
+            background-color: #fafafa;
         }
         .content {
             width: var(--contents-width);
             margin: 0 auto;
             padding: 20px 0;
         }
-        h1 { font-size: 18pt; margin-bottom: 8px; }
-        p.subtitle { color: #666; margin-top: 0; }
+        h1 { font-size: 1.5rem; margin-bottom: 8px; font-weight: 600; }
+        p.subtitle { color: #6b7280; margin-top: 0; }
         .error-item {
             padding: 12px 16px;
             margin: 8px 0;
-            border: 1px solid rgba(0,0,0,0.15);
+            border: 1px solid rgba(0,0,0,0.1);
             border-left-width: 4px;
-            border-radius: 4px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
         .error-item.error {
-            border-left-color: #d9534f;
-            background-color: rgba(217, 83, 79, 0.06);
+            border-left-color: #dc2626;
+            border-color: color-mix(in srgb, #dc2626 20%, transparent);
+            background-color: color-mix(in srgb, #dc2626 5%, #fef2f2);
         }
         .error-item.warning {
-            border-left-color: #f0ad4e;
-            background-color: rgba(240, 173, 78, 0.06);
+            border-left-color: #d97706;
+            border-color: color-mix(in srgb, #d97706 20%, transparent);
+            background-color: color-mix(in srgb, #d97706 5%, #fffbeb);
         }
         .error-item .message { font-weight: 600; }
         .error-item .suggestion {
-            margin-top: 6px; color: #555; font-size: 11pt;
+            margin-top: 6px; color: #6b7280; font-size: 0.9375rem;
         }
         .error-item .suggestion code {
             background: #f0f0f0;
             padding: 1px 5px;
             border-radius: 3px;
-            font-size: 10pt;
+            font-size: 0.875rem;
         }
         .error-group { margin-bottom: 24px; }
         .error-group h2 {
-            font-size: 14pt;
+            font-size: 1.25rem;
+            font-weight: 600;
             margin-bottom: 4px;
             padding-bottom: 4px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #e5e7eb;
         }
         .hint {
             overflow: auto;
             margin-top: 30px;
             padding: 16px;
-            background: #f7f7f7;
-            border-radius: 6px;
-            font-size: 11pt;
-            color: #555;
+            background: #f9fafb;
+            border: 1px solid color-mix(in srgb, var(--bofs-accent) 20%, #e2e5e7);
+            border-radius: 8px;
+            font-size: 0.9375rem;
+            color: #4b5563;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
-        .hint h3 { font-size: 13pt; margin-top: 0; }
+        .hint h3 { font-size: 1.0625rem; margin-top: 0; }
         a { color: #1144cc; }
     </style>
 </head>
