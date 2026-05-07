@@ -22,7 +22,9 @@ Where to start
 .. note::
 
    Source code and issue tracker: `github.com/colbyj/bride-of-frankensystem <https://github.com/colbyj/bride-of-frankensystem>`_.
+
    Example projects: `github.com/colbyj/bride-of-frankensystem-examples <https://github.com/colbyj/bride-of-frankensystem-examples>`_.
+
    If you need additional help, please `join us on Discord <https://discord.gg/XzXtUKFCJA>`_.
 
 Citation

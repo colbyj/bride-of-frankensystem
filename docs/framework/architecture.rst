@@ -92,7 +92,8 @@ A representative project at the framework level looks like:
        ├── views.py
        ├── templates/               # blueprint-scoped templates
        ├── static/                  # blueprint-scoped static files
-       └── tables/                  # blueprint-scoped custom tables
+       ├── tables/                  # blueprint-scoped custom tables
+       └── questionnaires/          # blueprint-scoped questionnaires
 
 Each subdirectory is auto-discovered by BOFS at startup. You don't import anything from BOFS in your blueprint's ``__init__.py``; you just declare a Flask ``Blueprint`` object and write routes in ``views.py``. BOFS finds it.
 
