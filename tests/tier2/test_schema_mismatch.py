@@ -136,6 +136,40 @@ class TestOrphanedColumnDetection:
         assert "q3" in orphaned_names
         assert "q1" not in orphaned_names
 
+    def test_detects_removed_group_sub_field(self, bofs_app):
+        """Removing a sub-question from a group should leave its column
+        orphaned, just like removing a top-level question."""
+        write_questionnaire_file(bofs_app, "group_orphan", {
+            "questions": [
+                {
+                    "questiontype": "group",
+                    "id": "demographics",
+                    "questions": [
+                        {"questiontype": "field", "id": "first_name"},
+                        {"questiontype": "num_field", "id": "age"},
+                    ],
+                }
+            ]
+        })
+
+        q_new = _reload_questionnaire(bofs_app, "group_orphan", {
+            "questions": [
+                {
+                    "questiontype": "group",
+                    "id": "demographics",
+                    "questions": [
+                        {"questiontype": "field", "id": "first_name"},
+                    ],
+                }
+            ]
+        })
+
+        orphaned_names = [c['name'] for c in q_new._orphaned_columns]
+        assert "age" in orphaned_names
+        assert "first_name" not in orphaned_names
+        # The group's own id was never a column, so it's not orphaned either.
+        assert "demographics" not in orphaned_names
+
     def test_standard_columns_not_flagged(self, bofs_app):
         """Standard columns (participantID, tag, etc.) should never be flagged."""
         q = write_questionnaire_file(bofs_app, "standard_test", {

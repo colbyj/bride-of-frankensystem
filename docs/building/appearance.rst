@@ -12,7 +12,9 @@ Set ``HEADER_COLOR`` in your project's ``.toml`` file to change the title bar ba
 
     HEADER_COLOR = "#003366"   # hex, named color, rgb(), rgba(), hsl(), or hsla()
 
-When ``HEADER_COLOR`` is unset, the default green from ``style.css`` is used. See :doc:`/reference/configuration` for the full setting description.
+When ``HEADER_COLOR`` is unset, the default green from ``style.css`` is used. The accent also trickles into the question and navigation card borders (``--bofs-card-border`` uses ``color-mix()`` to produce a subtle tint), so a single color setting keeps the page visually cohesive.
+
+See :doc:`/reference/configuration` for the full setting description.
 
 Override the stylesheet
 -----------------------
@@ -52,14 +54,18 @@ The full set of variables from the default stylesheet:
         --top-bar-color: #8CB737;
         --bs-border-color: black;
 
-        /* Typography */
-        --font-size-main: 12pt;
-        --font-size-h1: 18pt;
-        --font-size-h2: 16pt;
-        --font-size-h3: 13pt;
-        --font-size-h4: 11pt;
-        --question-title-font-size: 13pt;
-        --question-instructions-font-size: 11pt;
+        /* Card surfaces */
+        --bofs-card-bg: #ffffff;
+        --bofs-card-border: color-mix(in srgb, var(--bofs-accent) 20%, #e2e5e7);
+
+        /* Typography (rem values at 16px base) */
+        --font-size-main: 1rem;            /* 16px */
+        --font-size-h1: 1.5rem;            /* 24px */
+        --font-size-h2: 1.3125rem;         /* 21px */
+        --font-size-h3: 1.0625rem;         /* 17px */
+        --font-size-h4: 0.9375rem;         /* 15px */
+        --question-title-font-size: 1.0625rem;
+        --question-instructions-font-size: 0.9375rem;
     }
 
 To change only a few values, import the default and redeclare the variables you want to change:
@@ -70,7 +76,7 @@ To change only a few values, import the default and redeclare the variables you 
 
     :root {
         --top-bar-color: #003366;
-        --font-size-main: 14pt;
+        --font-size-main: 1.125rem;
         --contents-width: 800px;
     }
 

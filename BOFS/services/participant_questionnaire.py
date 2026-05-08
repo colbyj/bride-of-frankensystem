@@ -156,7 +156,17 @@ class ParticipantQuestionnaireService:
                 continue
             new_subs = []
             for sub in subs:
-                if isinstance(sub, dict) and sub.get('id') in prior_values:
+                if parent_type == 'group' and isinstance(sub, dict):
+                    # Group sub-questions are heterogeneous and may be
+                    # expanded-types (audio/video/image_click) themselves —
+                    # recurse so each sub goes through its own type-specific
+                    # prior-value handling.
+                    new_subs.append(
+                        ParticipantQuestionnaireService._inject_prior_values(
+                            sub, prior_values
+                        )
+                    )
+                elif isinstance(sub, dict) and sub.get('id') in prior_values:
                     s = dict(sub)
                     s['value'] = prior_values[sub['id']]
                     s['has_value'] = True
@@ -194,9 +204,38 @@ class ParticipantQuestionnaireService:
         questions_html = []
         prior_values = prior_values or {}
 
-        # Render the HTML for each question
+        # Render the HTML for each question. For groups, pre-render each
+        # sub-question through the same render_questionnaire_question path
+        # used for top-level questions — this is what gets each sub the
+        # per-question try/except wrapper and the explicit ``participant``
+        # kwarg. The pre-rendered strings are stashed on the group's dict
+        # under ``_sub_html`` (parallel to ``questions``) and the group
+        # template splices them in by loop index, mirroring how the outer
+        # macro consumes ``q_html``.
         for question_data in json_data['questions']:
             injected = ParticipantQuestionnaireService._inject_prior_values(question_data, prior_values)
+
+            if injected.get('questiontype') == 'group':
+                sub_html = []
+                for sub in injected.get('questions', []) or []:
+                    sub_type = sub.get('questiontype') if isinstance(sub, dict) else None
+                    if sub_type == 'group' or not isinstance(sub_type, str):
+                        # Validation rejects nested groups; if one slips
+                        # through, surface it inline rather than crashing
+                        # the whole group render.
+                        sub_html.append(
+                            '<div class="bofs-error">Invalid sub-question '
+                            'inside group.</div>'
+                        )
+                    else:
+                        sub_html.append(
+                            ParticipantQuestionnaireService.render_questionnaire_question(
+                                sub_type, sub
+                            )
+                        )
+                injected = dict(injected)
+                injected['_sub_html'] = sub_html
+
             question_html = ParticipantQuestionnaireService.render_questionnaire_question(
                 injected['questiontype'], injected)
             questions_html.append(question_html)

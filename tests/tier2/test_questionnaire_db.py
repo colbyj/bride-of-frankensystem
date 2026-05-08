@@ -67,6 +67,27 @@ DATATYPE_QUESTIONNAIRE = {
 }
 
 
+GROUP_QUESTIONNAIRE = {
+    "title": "Grouped",
+    "instructions": "",
+    "questions": [
+        {"questiontype": "field", "id": "intro"},
+        {
+            "questiontype": "group",
+            "id": "demographics",
+            "text": "About you",
+            "show_sub_labels": True,
+            "questions": [
+                {"questiontype": "field", "id": "first_name"},
+                {"questiontype": "num_field", "id": "age"},
+                {"questiontype": "slider", "id": "experience"},
+            ],
+        },
+        {"questiontype": "field", "id": "outro"},
+    ],
+}
+
+
 # ===========================================================================
 # TestCreateDBClass
 # ===========================================================================
@@ -107,6 +128,32 @@ class TestCreateDBClass:
         table_cols = {c.name for c in q.db_class.__table__.c}
         assert "g_q1" in table_cols
         assert "g_q2" in table_cols
+
+    def test_radiogrid_parent_id_is_not_a_column(self, bofs_app):
+        """The radiogrid's own id is structural; only its rows are stored."""
+        q = write_questionnaire_file(bofs_app, "grid_q2", RADIOGRID_QUESTIONNAIRE)
+        table_cols = {c.name for c in q.db_class.__table__.c}
+        assert "grid" not in table_cols
+
+    def test_group_sub_columns_created(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "grouped", GROUP_QUESTIONNAIRE)
+        table_cols = {c.name for c in q.db_class.__table__.c}
+        for name in ("intro", "first_name", "age", "experience", "outro"):
+            assert name in table_cols, f"missing column {name}"
+
+    def test_group_parent_id_is_not_a_column(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "grouped2", GROUP_QUESTIONNAIRE)
+        table_cols = {c.name for c in q.db_class.__table__.c}
+        assert "demographics" not in table_cols
+
+    def test_group_sub_column_types(self, bofs_app):
+        """Each sub-question's column type derives from its own questiontype,
+        not from the group."""
+        q = write_questionnaire_file(bofs_app, "grouped3", GROUP_QUESTIONNAIRE)
+        cols = q.db_class.__table__.c
+        assert cols["first_name"].type.__class__.__name__ in ("Text", "TEXT")
+        assert cols["age"].type.__class__.__name__ == "Integer"
+        assert cols["experience"].type.__class__.__name__ == "Integer"
 
     def test_duration_property(self, bofs_app):
         q = write_questionnaire_file(bofs_app, "survey", SIMPLE_QUESTIONNAIRE)
@@ -655,6 +702,92 @@ class TestHandleQuestionnaire:
         ).filter_by(eventType="paste").one()
         assert row.questionID == "essay"
         assert row.value == "chars=42"
+
+    def test_group_submission_persists_each_sub(self, bofs_app):
+        """End-to-end submission: each sub-question's form value lands in
+        its own column under the flat sub-id namespace."""
+        q = write_questionnaire_file(bofs_app, "grouped_e2e", GROUP_QUESTIONNAIRE)
+        pid = self._create_participant(bofs_app)
+
+        with bofs_app.test_request_context(
+            "/questionnaire/grouped_e2e",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "intro": "Hi",
+                "first_name": "Alice",
+                "age": "30",
+                "experience": "7",
+                "outro": "Bye",
+                "questionnaireInteractions": "",
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        results = q.fetch_all_data()
+        assert len(results) == 1
+        row = results[0]
+        assert row.intro == "Hi"
+        assert row.first_name == "Alice"
+        assert row.age == 30
+        assert row.experience == 7
+        assert row.outro == "Bye"
+
+
+# ===========================================================================
+# Group prior-value injection — exercises the recursive branch in
+# _inject_prior_values that lets sub-questions go through their own
+# type-specific expansion (so a sub-audio gets prior_started, etc.).
+# ===========================================================================
+
+class TestGroupPriorValues:
+    def test_group_sub_field_repopulates_value(self, bofs_app):
+        q = write_questionnaire_file(bofs_app, "grouped_pv", GROUP_QUESTIONNAIRE)
+        questionnaire_q = q.json_data["questions"][1]  # the group
+        injected = ParticipantQuestionnaireService._inject_prior_values(
+            questionnaire_q, {"first_name": "Alice", "age": 30, "experience": 7}
+        )
+        subs = injected["questions"]
+        by_id = {s["id"]: s for s in subs}
+        assert by_id["first_name"]["value"] == "Alice"
+        assert by_id["first_name"]["has_value"] is True
+        assert by_id["age"]["value"] == 30
+        assert by_id["age"]["has_value"] is True
+        assert by_id["experience"]["value"] == 7
+
+    def test_group_sub_audio_prior_keys_surface(self, bofs_app):
+        """Audio sub-questions must get prior_started / prior_ended /
+        prior_listened keys so the audio template can repopulate hidden
+        fields when a participant returns mid-flow."""
+        data = {
+            "title": "Group with audio",
+            "instructions": "",
+            "questions": [
+                {
+                    "questiontype": "group",
+                    "id": "g",
+                    "questions": [
+                        {"questiontype": "audio", "id": "clip", "src": "/a.ogg"},
+                    ],
+                }
+            ],
+        }
+        q = write_questionnaire_file(bofs_app, "grouped_audio_pv", data)
+        group_q = q.json_data["questions"][0]
+        prior = {
+            "clip_started": 1.5,
+            "clip_ended": 12.0,
+            "clip_listened": 10.5,
+        }
+        injected = ParticipantQuestionnaireService._inject_prior_values(
+            group_q, prior
+        )
+        sub = injected["questions"][0]
+        assert sub["prior_started"] == 1.5
+        assert sub["prior_ended"] == 12.0
+        assert sub["prior_listened"] == 10.5
 
 
 # ===========================================================================

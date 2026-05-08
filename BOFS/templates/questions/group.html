@@ -1,0 +1,33 @@
+{# Group container — renders a shared header above N heterogeneous sub-questions.
+
+   Two presentation modes via question.show_sub_labels:
+     * false (default, "compound"): sub-question labels suppressed; reads as
+       one logical question with N inputs (e.g. height + weight, judgment +
+       confidence).
+     * true ("visual grouping"): each sub-question keeps its own label so
+       the group is a labelled cluster of independent fields.
+
+   Sub-questions are pre-rendered by render_unloaded_questionnaire (which
+   calls render_questionnaire_question per sub) and stashed on
+   question._sub_html. We splice in those pre-rendered strings here, parallel
+   to question.questions by loop index — the same pattern the outer
+   questionnaire macro uses with q_html. #}
+<fieldset class="bofs-group {% if not question.show_sub_labels %}bofs-group-compound{% endif %}"{% if question.id %} id="{{ question.id }}"{% endif %}>
+    {% if question.text %}
+        <div class="bofs-group-header mt-2 mb-2">{{ question.text | safe }}</div>
+    {% endif %}
+    <div class="d-flex flex-column gap-1">
+        {% for sub in question.questions %}
+            {% if sub.questiontype != 'group' %}
+                <div>
+                    {% if question.show_sub_labels and sub.questiontype != 'textview' and sub.instructions %}
+                        <div class="question-instructions">{{ sub.instructions | safe }}</div>
+                    {% endif %}
+                    <div class="question-inputs">
+                        {{ question._sub_html[loop.index0] | safe }}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</fieldset>

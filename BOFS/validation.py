@@ -26,6 +26,10 @@ BUILTIN_QUESTION_TYPES = _scan_builtin_types()
 # Question types that don't produce database columns (display-only)
 DISPLAY_ONLY_TYPES = frozenset({"textview"})
 
+# Container types whose own ``id`` is structural (HTML wrapper) and never
+# produces a DB column — only their nested sub-questions contribute columns.
+CONTAINER_TYPES = frozenset({"group"})
+
 # Question types whose top-level `id` expands into multiple suffixed columns.
 # Maps questiontype -> list of (suffix, datatype) pairs.
 EXPANDED_TYPES = {
@@ -129,32 +133,70 @@ def is_python_attribute_safe(name: str) -> bool:
     return bool(_SQL_SAFE_RE.match(name)) and not keyword.iskeyword(name)
 
 
+def _ids_for_question(q: dict, i: int, ids: list) -> None:
+    """Append (field_id, i) pairs for a single question definition.
+
+    Mirrors the column-emission rules in
+    ``JSONQuestionnaire._emit_question_columns``:
+      * Container questions with non-empty nested ``questions``/``q_text``
+        emit row ids only — the parent id is structural.
+      * ``EXPANDED_TYPES`` (audio, video) fan out into suffixed ids.
+      * ``image_click`` fans out into ``_x``/``_y`` (single-click) or one
+        bare id (multi-click).
+      * Generic 1:1 case adds the bare id.
+    """
+    if not isinstance(q, dict):
+        return
+
+    nested = q.get("questions") or q.get("q_text")
+    if isinstance(nested, list) and len(nested) > 0:
+        # Container case — parent id is not a field. Emit row ids only.
+        for sub in nested:
+            if isinstance(sub, dict) and "id" in sub:
+                ids.append((sub["id"], i))
+        return
+
+    if "id" not in q:
+        return
+
+    qtype = q.get("questiontype")
+    fid = q["id"]
+    if qtype in EXPANDED_TYPES and isinstance(fid, str):
+        for suffix, _dtype in EXPANDED_TYPES[qtype]:
+            ids.append((fid + suffix, i))
+    elif qtype == "image_click" and isinstance(fid, str):
+        max_clicks = q.get("max_clicks", 1)
+        if isinstance(max_clicks, int) and max_clicks == 1:
+            ids.append((fid + "_x", i))
+            ids.append((fid + "_y", i))
+        else:
+            ids.append((fid, i))
+    else:
+        ids.append((fid, i))
+
+
 def _collect_field_ids(json_data: dict) -> list[tuple[str, int]]:
     """
     Walk the questions list and return (field_id, question_index) pairs,
     mirroring the logic in JSONQuestionnaire.fetch_fields().
     """
-    ids = []
+    ids: list[tuple[str, int]] = []
     questions = json_data.get("questions", [])
     if not isinstance(questions, list):
         return ids
 
     for i, q in enumerate(questions):
-        # Nested questions (radiogrid, checklist, etc.)
-        nested = q.get("questions") or q.get("q_text")
-        if isinstance(nested, list):
-            for sub in nested:
-                if isinstance(sub, dict) and "id" in sub:
-                    ids.append((sub["id"], i))
-
-        # Top-level ID
-        if "id" in q:
-            qtype = q.get("questiontype")
-            if qtype in EXPANDED_TYPES and isinstance(q["id"], str):
-                for suffix, _dtype in EXPANDED_TYPES[qtype]:
-                    ids.append((q["id"] + suffix, i))
-            else:
-                ids.append((q["id"], i))
+        if not isinstance(q, dict):
+            continue
+        if q.get("questiontype") == "group":
+            # Sub-questions of any non-group type (including textview, which
+            # has no id) are walked through the standard id collector so
+            # column-emitting subs contribute columns and id-less ones don't.
+            for sub in q.get("questions", []) or []:
+                if isinstance(sub, dict) and sub.get("questiontype") != "group":
+                    _ids_for_question(sub, i, ids)
+            continue
+        _ids_for_question(q, i, ids)
 
     return ids
 
@@ -233,6 +275,41 @@ def validate_question_types(json_data: dict, filename: str,
                 f"Question #{i+1} uses unknown questiontype '{qtype}'.",
                 suggestion
             ))
+            continue
+
+        # Validate sub-question types inside a group. Nested groups and
+        # textview sub-questions are reported separately by
+        # validate_question_ids; here we only check that other sub-types
+        # are recognised so a typo'd sub-questiontype gets the same
+        # "did you mean" treatment.
+        if qtype == "group":
+            for j, sub in enumerate(q.get("questions", []) or []):
+                if not isinstance(sub, dict):
+                    continue
+                sub_type = sub.get("questiontype")
+                if sub_type is None:
+                    results.append(ValidationResult(
+                        "error", filename,
+                        f"Question #{i+1} ('group'), sub-item #{j+1} is "
+                        f"missing 'questiontype'.",
+                        "Add a \"questiontype\" field on each sub-question."
+                    ))
+                    continue
+                if sub_type == "group":
+                    # Nested groups: reported by validate_question_ids with
+                    # a clearer message; skip the unknown-type check here.
+                    continue
+                if sub_type not in valid_types:
+                    suggestion = f"Available types: {', '.join(sorted_types)}"
+                    close = get_close_matches(sub_type, sorted_types, n=1, cutoff=0.5)
+                    if close:
+                        suggestion = f"Did you mean '{close[0]}'? " + suggestion
+                    results.append(ValidationResult(
+                        "error", filename,
+                        f"Question #{i+1} ('group'), sub-item #{j+1} uses "
+                        f"unknown questiontype '{sub_type}'.",
+                        suggestion
+                    ))
 
     return results
 
@@ -240,7 +317,10 @@ def validate_question_types(json_data: dict, filename: str,
 def validate_question_ids(json_data: dict, filename: str) -> list[ValidationResult]:
     """
     Check that non-display questions have IDs, and that questions which
-    use nested sub-questions (radiogrid, checklist) have IDs on those sub-items.
+    use nested sub-questions (radiogrid, checklist, group) have IDs on
+    those sub-items. Also enforces group-specific rules: groups must have
+    a non-empty ``questions`` list, and sub-questions of a group cannot
+    themselves be ``textview`` or another ``group``.
     """
     results = []
     questions = json_data.get("questions", [])
@@ -255,6 +335,56 @@ def validate_question_ids(json_data: dict, filename: str) -> list[ValidationResu
 
         # Display-only types don't need IDs
         if qtype in DISPLAY_ONLY_TYPES:
+            continue
+
+        if qtype == "group":
+            subs = q.get("questions")
+            if not isinstance(subs, list) or len(subs) == 0:
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Question #{i+1} ('group') has no sub-questions.",
+                    "Add a non-empty \"questions\" array containing the "
+                    "sub-questions to render inside the group."
+                ))
+                continue
+            for j, sub in enumerate(subs):
+                if not isinstance(sub, dict):
+                    continue
+                sub_type = sub.get("questiontype", "")
+                if sub_type == "group":
+                    results.append(ValidationResult(
+                        "error", filename,
+                        f"Question #{i+1} ('group'), sub-item #{j+1} is "
+                        f"itself a 'group'. Nested groups are not supported.",
+                        "Flatten the structure: list all sub-questions "
+                        "directly inside the outer group."
+                    ))
+                    continue
+                # Display-only sub-types (textview) intentionally have no id.
+                if sub_type in DISPLAY_ONLY_TYPES:
+                    continue
+                # Sub-questions still need their own IDs (or nested IDs).
+                sub_nested = sub.get("questions") or sub.get("q_text")
+                if isinstance(sub_nested, list) and len(sub_nested) > 0:
+                    for k, row in enumerate(sub_nested):
+                        if isinstance(row, dict) and "id" not in row:
+                            results.append(ValidationResult(
+                                "warning", filename,
+                                f"Question #{i+1} ('group'), sub-item #{j+1} "
+                                f"('{sub_type}'), row #{k+1} has no 'id'. "
+                                f"It will not be stored in the database.",
+                                "Add an \"id\" field to each row that "
+                                "should be recorded."
+                            ))
+                elif "id" not in sub:
+                    results.append(ValidationResult(
+                        "warning", filename,
+                        f"Question #{i+1} ('group'), sub-item #{j+1} "
+                        f"('{sub_type}') has no 'id'. It will not be "
+                        f"stored in the database.",
+                        "Add an \"id\" field if this sub-question's "
+                        "response should be recorded."
+                    ))
             continue
 
         nested = q.get("questions") or q.get("q_text")

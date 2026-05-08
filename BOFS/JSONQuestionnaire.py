@@ -145,34 +145,71 @@ class JSONQuestionnaire(object):
             if 'q_text' in q and 'questions' not in q:
                 q['questions'] = q['q_text']
 
-            if 'questions' in q:
-                question_type = q['questiontype']
-                for qt in q['questions']:
-                    if 'id' in qt:
-                        self.__fields.append(JSONQuestionnaireColumn(qt, question_type))
+            if q.get('questiontype') == 'group':
+                # Heterogeneous container: each sub-question contributes its
+                # own column(s) under its own questiontype. The group's own
+                # id is never a column. ``textview`` subs are allowed (for
+                # mid-group prose) and naturally produce no columns since
+                # they have no id; nested groups are rejected at validation.
+                for sub in q.get('questions', []):
+                    if sub.get('questiontype') == 'group':
+                        continue  # validation rejects this; defence in depth
+                    if 'q_text' in sub and 'questions' not in sub:
+                        sub['questions'] = sub['q_text']
+                    self._emit_question_columns(sub, self.__fields)
+                continue
 
-            if 'id' in q:
-                qtype = q.get('questiontype')
-                if qtype == 'image_click':
-                    # Single-click (max_clicks omitted or == 1) stores natural-image
-                    # pixel x,y as two float columns. Multi-click stores a JSON
-                    # array of {"x":..,"y":..} points in one TEXT column.
-                    max_clicks = q.get('max_clicks', 1)
-                    if isinstance(max_clicks, int) and max_clicks == 1:
-                        for suffix in ('_x', '_y'):
-                            self.__fields.append(JSONQuestionnaireColumn(
-                                {'id': q['id'] + suffix, 'datatype': 'float'}))
-                    else:
-                        self.__fields.append(JSONQuestionnaireColumn(
-                            {'id': q['id'], 'datatype': 'string'}))
-                elif qtype in EXPANDED_TYPES:
-                    for suffix, dtype in EXPANDED_TYPES[qtype]:
-                        self.__fields.append(JSONQuestionnaireColumn(
-                            {'id': q['id'] + suffix, 'datatype': dtype}))
-                else:
-                    self.__fields.append(JSONQuestionnaireColumn(q))
+            self._emit_question_columns(q, self.__fields)
 
         return self.__fields
+
+    @staticmethod
+    def _emit_question_columns(q: dict, fields: list) -> None:
+        """Append column(s) for a single question definition.
+
+        Handles all column-emission cases used by both top-level questions
+        and group sub-questions:
+          * Homogeneous nested types (radiogrid/checklist): each row id
+            becomes a column whose data_type derives from the parent's
+            questiontype.
+          * ``image_click`` (single vs multi-click branches).
+          * ``EXPANDED_TYPES`` fanout (audio/video).
+          * Generic 1:1 case.
+
+        Container questions (those with a non-empty nested ``questions``
+        list) emit columns only for their rows — the parent id is structural
+        and never a column."""
+        qtype = q.get('questiontype')
+
+        # Homogeneous nested rows (radiogrid, checklist) — container case.
+        # The parent's own id is not a DB column; only the row ids are.
+        if q.get('questions'):
+            for row in q['questions']:
+                if 'id' in row:
+                    fields.append(JSONQuestionnaireColumn(row, qtype))
+            return
+
+        if 'id' not in q:
+            return
+
+        if qtype == 'image_click':
+            # Single-click (max_clicks omitted or == 1) stores natural-image
+            # pixel x,y as two float columns. Multi-click stores a JSON
+            # array of {"x":..,"y":..} points in one TEXT column.
+            max_clicks = q.get('max_clicks', 1)
+            if isinstance(max_clicks, int) and max_clicks == 1:
+                for suffix in ('_x', '_y'):
+                    fields.append(JSONQuestionnaireColumn(
+                        {'id': q['id'] + suffix, 'datatype': 'float'}))
+            else:
+                fields.append(JSONQuestionnaireColumn(
+                    {'id': q['id'], 'datatype': 'string'}))
+        elif qtype in EXPANDED_TYPES:
+            for suffix, dtype in EXPANDED_TYPES[qtype]:
+                fields.append(JSONQuestionnaireColumn(
+                    {'id': q['id'] + suffix, 'datatype': dtype}))
+        else:
+            fields.append(JSONQuestionnaireColumn(q))
 
     def compile_show_if(self) -> None:
         """Parse any ``show_if`` predicate strings on top-level questions into

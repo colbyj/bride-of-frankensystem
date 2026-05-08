@@ -155,6 +155,180 @@ class TestValidateQuestionIds:
 
 
 # ===========================================================================
+# Group container validation
+# ===========================================================================
+
+class TestValidateGroup:
+    def test_valid_group_passes(self):
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "demographics",
+            "text": "About you",
+            "questions": [
+                {"questiontype": "field", "id": "first_name"},
+                {"questiontype": "num_field", "id": "age"},
+            ],
+        }]}
+        errors = validate_question_ids(data, "test")
+        assert errors == []
+
+    def test_group_empty_questions_is_error(self):
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "g",
+            "questions": [],
+        }]}
+        errors = validate_question_ids(data, "test")
+        assert any(e.severity == "error" and "no sub-questions" in e.message
+                   for e in errors)
+
+    def test_group_missing_questions_is_error(self):
+        data = {"questions": [{"questiontype": "group", "id": "g"}]}
+        errors = validate_question_ids(data, "test")
+        assert any(e.severity == "error" and "no sub-questions" in e.message
+                   for e in errors)
+
+    def test_group_with_textview_sub_is_allowed(self):
+        """Textview is allowed inside groups for mid-section prose. It has
+        no id and produces no DB column, so no warnings either."""
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "g",
+            "questions": [
+                {"questiontype": "field", "id": "first_name"},
+                {"questiontype": "textview", "text": "Now your work history."},
+                {"questiontype": "field", "id": "employer"},
+            ],
+        }]}
+        errors = validate_question_ids(data, "test")
+        assert errors == []
+
+    def test_group_with_nested_group_sub_is_error(self):
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "outer",
+            "questions": [
+                {"questiontype": "group", "id": "inner",
+                 "questions": [{"questiontype": "field", "id": "x"}]},
+            ],
+        }]}
+        errors = validate_question_ids(data, "test")
+        assert any(e.severity == "error" and "Nested groups" in e.message
+                   for e in errors)
+
+    def test_group_sub_without_id_warns(self):
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "g",
+            "questions": [
+                {"questiontype": "field"},  # missing id
+            ],
+        }]}
+        errors = validate_question_ids(data, "test")
+        assert any(e.severity == "warning" and "sub-item" in e.message
+                   for e in errors)
+
+    def test_group_sub_radiogrid_row_without_id_warns(self):
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "g",
+            "questions": [
+                {"questiontype": "radiogrid", "id": "r",
+                 "q_text": [
+                     {"id": "ok", "text": "OK"},
+                     {"text": "no id"},
+                 ]},
+            ],
+        }]}
+        errors = validate_question_ids(data, "test")
+        assert any(e.severity == "warning" and "row" in e.message
+                   for e in errors)
+
+    def test_group_sub_with_unknown_type_is_error(self):
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "g",
+            "questions": [
+                {"questiontype": "magical_widget", "id": "x"},
+            ],
+        }]}
+        errors = validate_question_types(data, "test")
+        assert any(e.severity == "error" and "magical_widget" in e.message
+                   for e in errors)
+
+    def test_group_sub_with_close_match_suggests(self):
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "g",
+            "questions": [
+                {"questiontype": "dropdown", "id": "x"},
+            ],
+        }]}
+        errors = validate_question_types(data, "test")
+        assert any("drop_down" in (e.suggestion or "") for e in errors)
+
+    def test_group_field_id_uniqueness_across_subs(self):
+        """Sub-IDs share the flat field-id namespace; duplicates inside one
+        group must be detected."""
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "g",
+            "questions": [
+                {"questiontype": "field", "id": "dup"},
+                {"questiontype": "num_field", "id": "dup"},
+            ],
+        }]}
+        errors = validate_field_ids(data, "test")
+        assert any("uplicate" in e.message for e in errors)
+
+    def test_group_field_id_uniqueness_across_top_level_and_group(self):
+        data = {"questions": [
+            {"questiontype": "field", "id": "shared"},
+            {
+                "questiontype": "group",
+                "id": "g",
+                "questions": [
+                    {"questiontype": "num_field", "id": "shared"},
+                ],
+            },
+        ]}
+        errors = validate_field_ids(data, "test")
+        assert any("uplicate" in e.message for e in errors)
+
+    def test_group_parent_id_does_not_register_as_field(self):
+        """The group's own id is structural — it must not collide with a
+        sub-question's id of the same name (since the group id is not a
+        field at all)."""
+        data = {"questions": [{
+            "questiontype": "group",
+            "id": "shared",
+            "questions": [
+                {"questiontype": "field", "id": "shared"},
+            ],
+        }]}
+        errors = validate_field_ids(data, "test")
+        # No duplicate-id error: 'shared' appears once (only the sub).
+        assert not any("uplicate" in e.message for e in errors)
+
+    def test_group_audio_sub_expands_in_field_ids(self):
+        """An audio sub-question inside a group registers its expanded ids
+        (e.g. clip_started) for uniqueness checks."""
+        data = {"questions": [
+            {"questiontype": "field", "id": "clip_started"},
+            {
+                "questiontype": "group",
+                "id": "g",
+                "questions": [
+                    {"questiontype": "audio", "id": "clip", "src": "/a.ogg"},
+                ],
+            },
+        ]}
+        errors = validate_field_ids(data, "test")
+        assert any("uplicate" in e.message and "clip_started" in e.message
+                   for e in errors)
+
+
+# ===========================================================================
 # validate_field_ids
 # ===========================================================================
 

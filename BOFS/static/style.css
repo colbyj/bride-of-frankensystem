@@ -322,4 +322,6 @@ th { padding: 6px; position: sticky; top: 0; background-color: var(--bofs-card-b
     vertical-align: top;
 }
 
+.form-check label { cursor: pointer; }
+
 ul li { padding-bottom: 4px; }

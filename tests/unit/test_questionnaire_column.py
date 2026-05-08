@@ -464,6 +464,245 @@ def test_fetch_fields_nested_question_without_id_skipped(tmp_path):
     assert [f.id for f in fields] == ["has_id"]
 
 
+def test_fetch_fields_radiogrid_parent_id_is_not_a_column(tmp_path):
+    """Container questions (radiogrid, checklist) have structural parent IDs:
+    the rows are stored, the parent itself is not. The parent id is only the
+    HTML wrapper id."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "radiogrid",
+                "id": "grid",
+                "labels": ["1", "2", "3"],
+                "q_text": [
+                    {"id": "g_q1", "text": "Item one"},
+                    {"id": "g_q2", "text": "Item two"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "grid_no_parent_col", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["g_q1", "g_q2"]
+    assert "grid" not in field_ids
+
+
+def test_fetch_fields_checklist_parent_id_is_not_a_column(tmp_path):
+    data = {
+        "questions": [
+            {
+                "questiontype": "checklist",
+                "id": "checks",
+                "questions": [
+                    {"id": "opt_a", "text": "Option A"},
+                    {"id": "opt_b", "text": "Option B"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "check_no_parent_col", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["opt_a", "opt_b"]
+    assert "checks" not in field_ids
+
+
+# ===========================================================================
+# JSONQuestionnaire — fetch_fields with `group` containers
+# ===========================================================================
+
+def test_fetch_fields_group_basic(tmp_path):
+    """Group expands into one column per sub-question, in JSON order. Each
+    sub-question's data_type is derived from its own questiontype (not the
+    group's)."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "demographics",
+                "text": "About you",
+                "show_sub_labels": True,
+                "questions": [
+                    {"questiontype": "field", "id": "first_name"},
+                    {"questiontype": "num_field", "id": "age"},
+                    {"questiontype": "slider", "id": "experience"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_basic", data)
+    fields = q.fetch_fields()
+    field_ids = [f.id for f in fields]
+    assert field_ids == ["first_name", "age", "experience"]
+    by_id = {f.id: f.data_type for f in fields}
+    assert by_id["first_name"] == "string"
+    assert by_id["age"] == "integer"
+    assert by_id["experience"] == "integer"
+
+
+def test_fetch_fields_group_id_is_not_a_column(tmp_path):
+    """The group's own id is structural (HTML wrapper) and never a column."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "bmi",
+                "text": "Height and weight",
+                "questions": [
+                    {"questiontype": "num_field", "id": "height_cm"},
+                    {"questiontype": "num_field", "id": "weight_kg"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_no_parent_col", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["height_cm", "weight_kg"]
+    assert "bmi" not in field_ids
+
+
+def test_fetch_fields_group_audio_sub_expands_into_three_columns(tmp_path):
+    """Sub-questions go through the same expansion rules as top-level. An
+    audio sub-question fans out into _started/_ended/_listened, all FLOAT."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "media_block",
+                "questions": [
+                    {"questiontype": "field", "id": "name"},
+                    {"questiontype": "audio", "id": "clip", "src": "/a.ogg"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_audio", data)
+    fields = q.fetch_fields()
+    field_ids = [f.id for f in fields]
+    assert field_ids == ["name", "clip_started", "clip_ended", "clip_listened"]
+    by_id = {f.id: f.data_type for f in fields}
+    assert by_id["clip_started"] == "float"
+    assert by_id["clip_ended"] == "float"
+    assert by_id["clip_listened"] == "float"
+
+
+def test_fetch_fields_group_image_click_single_sub_expands_to_xy(tmp_path):
+    """A single-click image_click sub-question fans out into _x/_y FLOAT
+    columns inside a group, just like at top level."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "click_block",
+                "questions": [
+                    {
+                        "questiontype": "image_click",
+                        "id": "spot",
+                        "image_src": "/m.png",
+                    },
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_image_click", data)
+    fields = q.fetch_fields()
+    assert [f.id for f in fields] == ["spot_x", "spot_y"]
+    assert all(f.data_type == "float" for f in fields)
+
+
+def test_fetch_fields_group_with_radiogrid_sub(tmp_path):
+    """A radiogrid sub-question contributes its rows; its own parent id is
+    structural and not a column (matches top-level radiogrid behavior)."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "scales_block",
+                "questions": [
+                    {
+                        "questiontype": "radiogrid",
+                        "id": "satisfaction",
+                        "labels": ["1", "2", "3"],
+                        "q_text": [
+                            {"id": "sat_overall", "text": "Overall"},
+                            {"id": "sat_speed", "text": "Speed"},
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_radiogrid", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["sat_overall", "sat_speed"]
+    assert "satisfaction" not in field_ids
+    assert "scales_block" not in field_ids
+
+
+def test_fetch_fields_group_textview_sub_produces_no_column(tmp_path):
+    """Textview subs are allowed (for mid-group prose) but have no id and
+    therefore contribute no columns."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "g",
+                "questions": [
+                    {"questiontype": "field", "id": "before"},
+                    {"questiontype": "textview", "text": "Now the next part."},
+                    {"questiontype": "field", "id": "after"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_textview_sub", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["before", "after"]
+
+
+def test_fetch_fields_group_skips_nested_group_subs(tmp_path):
+    """Validation rejects nested groups, but fetch_fields skips them
+    defensively so a malformed JSON loaded directly via the API still
+    produces a working column set."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "g",
+                "questions": [
+                    {"questiontype": "group", "id": "nested",
+                     "questions": [{"questiontype": "field", "id": "x"}]},
+                    {"questiontype": "field", "id": "kept"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_skip_nested", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["kept"]
+
+
+def test_fetch_fields_top_level_and_group_share_flat_namespace(tmp_path):
+    """Top-level questions and group sub-questions occupy a flat id namespace;
+    the order of returned columns matches JSON traversal order."""
+    data = {
+        "questions": [
+            {"questiontype": "field", "id": "intro"},
+            {
+                "questiontype": "group",
+                "id": "block",
+                "questions": [
+                    {"questiontype": "field", "id": "a"},
+                    {"questiontype": "num_field", "id": "b"},
+                ],
+            },
+            {"questiontype": "field", "id": "outro"},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_flat", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["intro", "a", "b", "outro"]
+
+
 # ===========================================================================
 # JSONQuestionnaire — get_field
 # ===========================================================================
