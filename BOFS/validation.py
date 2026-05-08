@@ -570,12 +570,12 @@ def validate_image_click(json_data: dict, filename: str) -> list[ValidationResul
         if not isinstance(q, dict) or q.get("questiontype") != "image_click":
             continue
 
-        src = q.get("image_src")
+        src = q.get("src")
         if not isinstance(src, str) or not src:
             results.append(ValidationResult(
                 "error", filename,
-                f"Question #{i+1} ('image_click') is missing the required 'image_src' string.",
-                'Add an "image_src" pointing at the image to display, '
+                f"Question #{i+1} ('image_click') is missing the required 'src' string.",
+                'Add a "src" pointing at the image to display, '
                 'e.g. "/static/map.png".'
             ))
 
@@ -588,6 +588,17 @@ def validate_image_click(json_data: dict, filename: str) -> list[ValidationResul
                     f"non-negative integer (got {mc!r}).",
                     "Use 1 for single-click, an integer >1 to cap multi-click, "
                     "or 0 for unlimited clicks."
+                ))
+
+        if "width" in q:
+            w = q["width"]
+            if not isinstance(w, int) or isinstance(w, bool) or w <= 0:
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Question #{i+1} ('image_click'): 'width' must be a "
+                    f"positive integer pixel value (got {w!r}).",
+                    'Set "width" to an integer like 600 to cap the displayed '
+                    "image width."
                 ))
 
     return results

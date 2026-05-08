@@ -355,14 +355,14 @@ thumbnail; the participant's selection is stored as the chosen image's
    (optional, boolean: ``true`` or ``false``, default is ``false``)
 -  ``shuffle``: whether to shuffle the image order on each render
    (optional, boolean: ``true`` or ``false``, default is ``false``)
--  ``vertical``: stack the images in a single centered column instead of
-   wrapping them in a centered row (optional, boolean: ``true`` or
-   ``false``, default is ``false``)
+-  ``horizontal``: when ``true`` (the default), images wrap in a centered
+   row; when ``false``, they stack in a single centered column (optional,
+   boolean: ``true`` or ``false``, default is ``true``)
 -  ``width``: explicit width (in pixels) applied to every image
    (optional, integer). Ignored when ``auto_resize`` is ``true``.
 -  ``auto_resize``: normalize the rendered image dimensions on the client
    so they all match the smallest image in the group. With
-   ``vertical: true`` all widths are matched to the smallest natural
+   ``horizontal: false`` all widths are matched to the smallest natural
    width; otherwise all heights are matched to the smallest natural
    height (optional, boolean: ``true`` or ``false``, default is
    ``false``).
@@ -389,7 +389,6 @@ thumbnail; the participant's selection is stored as the chosen image's
            "questiontype": "picture_select",
            "id": "favorite_picture",
            "instructions": "Pick whichever you'd rather look at.",
-           "vertical": false,
            "auto_resize": true,
            "required": true,
            "images": [
@@ -415,7 +414,7 @@ browser sized the image. A click on a 1000×800 image always lands within
 **Properties**
 
 -  ``id``: unique id for this question (required, string)
--  ``image_src``: URL of the image to display (required, string), e.g.
+-  ``src``: URL of the image to display (required, string), e.g.
    ``/static/map.png``
 -  ``instructions``: text shown above the image (optional, string)
 -  ``required``: when ``true``, the *Continue* button is disabled until the
@@ -430,9 +429,9 @@ browser sized the image. A click on a 1000×800 image always lands within
       full, a new click drops the oldest marker.
    -  ``0``: unlimited clicks.
 
--  ``image_max_width``: CSS ``max-width`` for the displayed image (optional,
-   string), e.g. ``"800px"`` or ``"100%"``. Coordinates remain in natural
-   pixels regardless.
+-  ``width``: maximum displayed width of the image, in pixels (optional,
+   positive integer). The image is scaled down to fit while preserving
+   aspect ratio. Coordinates remain in natural pixels regardless.
 -  ``marker_color``: CSS colour of the crosshair (optional, string, default
    ``"#ff0000"``)
 -  ``marker_size``: pixel size of the crosshair (optional, integer, default
@@ -460,7 +459,7 @@ the corresponding columns receive their default zero / empty value.
            "questiontype": "image_click",
            "id": "target_location",
            "instructions": "Click on the location you think is correct.",
-           "image_src": "/static/map.png",
+           "src": "/static/map.png",
            "required": true
        }
 
@@ -472,7 +471,7 @@ the corresponding columns receive their default zero / empty value.
            "questiontype": "image_click",
            "id": "all_errors",
            "instructions": "Click on every part of the diagram that looks wrong.",
-           "image_src": "/static/diagram.png",
+           "src": "/static/diagram.png",
            "max_clicks": 0,
            "marker_color": "#0066ff"
        }
@@ -639,11 +638,22 @@ The ``show_sub_labels`` property controls how the group reads:
   the group reads as a visually-grouped cluster of separately-labelled
   fields.
 
+A group has two layered headings:
+
+- ``instructions``: the bold heading rendered at the top, like the
+  ``instructions`` field on every other question type.
+- ``text``: an optional non-bold sub-heading rendered inside the group's
+  fieldset, between the bold heading and the sub-questions.
+
 **Properties**
 
--  ``id``: structural id for the group; not stored as a database column
-   (required, string)
--  ``text``: header text shown above the sub-questions (optional, string)
+-  ``id``: optional structural id for the group's HTML wrapper; not stored
+   as a database column (optional, string). Sub-questions carry their own
+   IDs, which is what populates the database.
+-  ``instructions``: bold heading shown above the group (optional, string).
+   Same as the common ``instructions`` attribute on other question types.
+-  ``text``: optional non-bold sub-heading shown inside the group, between
+   the bold ``instructions`` and the sub-questions (optional, string)
 -  ``questions``: list of sub-question objects of any non-``group`` type
    (required, list)
 -  ``show_sub_labels``: whether each sub-question keeps its own
@@ -662,7 +672,8 @@ The ``show_sub_labels`` property controls how the group reads:
        {
            "questiontype": "group",
            "id": "demographics",
-           "text": "About you",
+           "instructions": "About you",
+           "text": "These details help us interpret your responses.",
            "show_sub_labels": true,
            "questions": [
                {

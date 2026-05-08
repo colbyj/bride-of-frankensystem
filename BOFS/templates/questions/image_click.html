@@ -2,7 +2,7 @@
    pixel coordinates of one or more clicks.
 
    JSON fields:
-     image_src    (required) URL of the image to display (e.g. "/static/map.png").
+     src          (required) URL of the image to display (e.g. "/static/map.png").
      max_clicks   (optional, default 1) When 1, each click moves a single
                   marker; storage is two FLOAT columns "{id}_x" and "{id}_y".
                   When >1, up to that many markers can be placed (oldest is
@@ -11,7 +11,9 @@
                   {"x":..,"y":..} objects in click order.
      marker_color (optional, default "#ff0000") CSS colour of the crosshair.
      marker_size  (optional, default 14) Pixel size of the crosshair.
-     image_max_width  (optional) CSS max-width for the displayed image.
+     width        (optional) Maximum displayed width of the image, in pixels.
+                  When set, the image is scaled down to fit while preserving
+                  aspect ratio.
      required     (optional, default false) When true, btnNext is disabled
                   until the participant places at least one click.
 
@@ -33,8 +35,8 @@
      {% if required %}data-image-click-required="true"{% endif %}
      style="position: relative; display: inline-block; user-select: none; -webkit-user-select: none;">
     <img class="bofs-image-click-img"
-         src="{{ question.image_src }}"
-         {% if question.image_max_width %}style="max-width: {{ question.image_max_width }}; height: auto; display: block;"{% else %}style="display: block;"{% endif %}
+         src="{{ question.src }}"
+         {% if question.width %}style="max-width: {{ question.width }}px; height: auto; display: block;"{% else %}style="display: block;"{% endif %}
          draggable="false"
          alt="">
     {% if is_single %}

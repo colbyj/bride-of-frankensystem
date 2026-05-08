@@ -65,7 +65,7 @@
     {% do shuffle(question.images) %}
 {% endif %}
 
-<div class="bofs-picture-select-group {{ 'vertical' if question.vertical else 'horizontal' }}"
+<div class="bofs-picture-select-group {{ 'horizontal' if question.horizontal|default(true) else 'vertical' }}"
      id="bofs-picture-select-group-{{ question.id }}">
 {% for image in question.images %}
     <span class="bofs-picture-select-item">
@@ -96,7 +96,7 @@
     if (!group) return;
     var images = group.querySelectorAll('img');
     if (!images.length) return;
-    var isVertical = {{ 'true' if question.vertical else 'false' }};
+    var isVertical = {{ 'true' if not question.horizontal|default(true) else 'false' }};
     var loaded = 0;
     var total = images.length;
 

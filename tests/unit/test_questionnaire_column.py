@@ -358,7 +358,7 @@ def test_fetch_fields_image_click_single_expands_to_xy_floats(tmp_path):
     data = {
         "questions": [
             {"questiontype": "image_click", "id": "spot",
-             "image_src": "/static/m.png"},
+             "src": "/static/m.png"},
         ],
     }
     q = _write_questionnaire(tmp_path, "ic_single", data)
@@ -371,7 +371,7 @@ def test_fetch_fields_image_click_explicit_max_clicks_one_same_as_default(tmp_pa
     data = {
         "questions": [
             {"questiontype": "image_click", "id": "spot",
-             "image_src": "/static/m.png", "max_clicks": 1},
+             "src": "/static/m.png", "max_clicks": 1},
         ],
     }
     q = _write_questionnaire(tmp_path, "ic_single_explicit", data)
@@ -385,7 +385,7 @@ def test_fetch_fields_image_click_multi_uses_single_text_column(tmp_path):
     data = {
         "questions": [
             {"questiontype": "image_click", "id": "spots",
-             "image_src": "/static/m.png", "max_clicks": 3},
+             "src": "/static/m.png", "max_clicks": 3},
         ],
     }
     q = _write_questionnaire(tmp_path, "ic_multi", data)
@@ -399,7 +399,7 @@ def test_fetch_fields_image_click_unlimited_uses_single_text_column(tmp_path):
     data = {
         "questions": [
             {"questiontype": "image_click", "id": "spots",
-             "image_src": "/static/m.png", "max_clicks": 0},
+             "src": "/static/m.png", "max_clicks": 0},
         ],
     }
     q = _write_questionnaire(tmp_path, "ic_unlimited", data)
@@ -597,7 +597,7 @@ def test_fetch_fields_group_image_click_single_sub_expands_to_xy(tmp_path):
                     {
                         "questiontype": "image_click",
                         "id": "spot",
-                        "image_src": "/m.png",
+                        "src": "/m.png",
                     },
                 ],
             }

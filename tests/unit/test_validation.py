@@ -709,45 +709,45 @@ class TestValidateImageClick:
     def test_valid_single_click(self):
         data = {"questions": [{
             "questiontype": "image_click", "id": "spot",
-            "image_src": "/static/m.png",
+            "src": "/static/m.png",
         }]}
         assert validate_image_click(data, "test") == []
 
     def test_valid_multi_click(self):
         data = {"questions": [{
             "questiontype": "image_click", "id": "spots",
-            "image_src": "/static/m.png", "max_clicks": 5,
+            "src": "/static/m.png", "max_clicks": 5,
         }]}
         assert validate_image_click(data, "test") == []
 
     def test_valid_unlimited_clicks(self):
         data = {"questions": [{
             "questiontype": "image_click", "id": "spots",
-            "image_src": "/static/m.png", "max_clicks": 0,
+            "src": "/static/m.png", "max_clicks": 0,
         }]}
         assert validate_image_click(data, "test") == []
 
     def test_non_image_click_questions_ignored(self, sample_questionnaire_json):
         assert validate_image_click(sample_questionnaire_json, "test") == []
 
-    def test_missing_image_src(self):
+    def test_missing_src(self):
         data = {"questions": [{"questiontype": "image_click", "id": "spot"}]}
         errors = validate_image_click(data, "bad")
         assert len(errors) == 1
         assert errors[0].severity == "error"
-        assert "image_src" in errors[0].message
+        assert "'src'" in errors[0].message
 
-    def test_empty_image_src(self):
+    def test_empty_src(self):
         data = {"questions": [{
-            "questiontype": "image_click", "id": "spot", "image_src": "",
+            "questiontype": "image_click", "id": "spot", "src": "",
         }]}
         errors = validate_image_click(data, "bad")
-        assert any("image_src" in e.message for e in errors)
+        assert any("'src'" in e.message for e in errors)
 
     def test_max_clicks_string_rejected(self):
         data = {"questions": [{
             "questiontype": "image_click", "id": "spot",
-            "image_src": "/static/m.png", "max_clicks": "lots",
+            "src": "/static/m.png", "max_clicks": "lots",
         }]}
         errors = validate_image_click(data, "bad")
         assert any("max_clicks" in e.message for e in errors)
@@ -755,7 +755,7 @@ class TestValidateImageClick:
     def test_max_clicks_negative_rejected(self):
         data = {"questions": [{
             "questiontype": "image_click", "id": "spot",
-            "image_src": "/static/m.png", "max_clicks": -1,
+            "src": "/static/m.png", "max_clicks": -1,
         }]}
         errors = validate_image_click(data, "bad")
         assert any("max_clicks" in e.message for e in errors)
@@ -765,10 +765,41 @@ class TestValidateImageClick:
         # accept True/False as a click count.
         data = {"questions": [{
             "questiontype": "image_click", "id": "spot",
-            "image_src": "/static/m.png", "max_clicks": True,
+            "src": "/static/m.png", "max_clicks": True,
         }]}
         errors = validate_image_click(data, "bad")
         assert any("max_clicks" in e.message for e in errors)
+
+    def test_width_valid(self):
+        data = {"questions": [{
+            "questiontype": "image_click", "id": "spot",
+            "src": "/static/m.png", "width": 600,
+        }]}
+        assert validate_image_click(data, "test") == []
+
+    def test_width_string_rejected(self):
+        data = {"questions": [{
+            "questiontype": "image_click", "id": "spot",
+            "src": "/static/m.png", "width": "600px",
+        }]}
+        errors = validate_image_click(data, "bad")
+        assert any("width" in e.message for e in errors)
+
+    def test_width_zero_rejected(self):
+        data = {"questions": [{
+            "questiontype": "image_click", "id": "spot",
+            "src": "/static/m.png", "width": 0,
+        }]}
+        errors = validate_image_click(data, "bad")
+        assert any("width" in e.message for e in errors)
+
+    def test_width_bool_rejected(self):
+        data = {"questions": [{
+            "questiontype": "image_click", "id": "spot",
+            "src": "/static/m.png", "width": True,
+        }]}
+        errors = validate_image_click(data, "bad")
+        assert any("width" in e.message for e in errors)
 
 
 # ===========================================================================
