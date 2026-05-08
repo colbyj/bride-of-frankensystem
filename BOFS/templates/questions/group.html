@@ -14,16 +14,16 @@
    questionnaire macro uses with q_html. #}
 <fieldset class="bofs-group {% if not question.show_sub_labels %}bofs-group-compound{% endif %}"{% if question.id %} id="{{ question.id }}"{% endif %}>
     {% if question.text %}
-        <div class="bofs-group-header mt-2 mb-2">{{ question.text | safe }}</div>
+        <div class="bofs-group-header" style="">{{ question.text | safe }}</div>
     {% endif %}
-    <div class="d-flex flex-column gap-1">
+    <div class="bofs-question-inputs {{ "bofs-question-inputs-inline" if question.horizontal else "" }}">
         {% for sub in question.questions %}
             {% if sub.questiontype != 'group' %}
                 <div>
                     {% if question.show_sub_labels and sub.questiontype != 'textview' and sub.instructions %}
-                        <div class="question-instructions">{{ sub.instructions | safe }}</div>
+                        <div class="bofs-question-instructions">{{ sub.instructions | safe }}</div>
                     {% endif %}
-                    <div class="question-inputs">
+                    <div class="bofs-question-inputs">
                         {{ question._sub_html[loop.index0] | safe }}
                     </div>
                 </div>

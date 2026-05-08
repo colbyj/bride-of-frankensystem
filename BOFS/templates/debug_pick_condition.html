@@ -2,52 +2,52 @@
 
 {% block head %}
     <style>
-        .picker-row {
+        .bofs-picker-row {
             display: flex;
             align-items: center;
             gap: 16px;
         }
-        .picker-info {
+        .bofs-picker-info {
             flex: 1;
         }
-        .picker-label {
+        .bofs-picker-label {
             font-weight: bold;
         }
-        .picker-meta {
+        .bofs-picker-meta {
             color: #666;
             font-size: 0.9em;
         }
-        .picker-auto {
+        .bofs-picker-auto {
             color: #2c5fb3;
             font-weight: normal;
             font-style: italic;
             margin-left: 6px;
         }
-        .picker-lookup {
+        .bofs-picker-lookup {
             color: #1f7a1f;
             font-weight: normal;
             font-style: italic;
             margin-left: 6px;
         }
-        .picker-disabled {
+        .bofs-picker-disabled {
             color: #999;
         }
-        .lookup-banner {
+        .bofs-lookup-banner {
             margin-bottom: 16px;
             padding: 12px 16px;
             border-radius: 4px;
             border-left: 4px solid #1f7a1f;
             background: rgba(31, 122, 31, 0.08);
         }
-        .lookup-banner.lookup-banner-miss {
+        .bofs-lookup-banner.bofs-lookup-banner-miss {
             border-left-color: #b13030;
             background: rgba(177, 48, 48, 0.08);
         }
-        .lookup-banner.lookup-banner-pending {
+        .bofs-lookup-banner.bofs-lookup-banner-pending {
             border-left-color: #888;
             background: rgba(136, 136, 136, 0.08);
         }
-        .lookup-banner code {
+        .bofs-lookup-banner code {
             background: rgba(0, 0, 0, 0.06);
             padding: 1px 5px;
             border-radius: 3px;
@@ -60,7 +60,7 @@
 
     {% if lookup_configured %}
         {% if looked_up_condition %}
-            <div class="lookup-banner">
+            <div class="bofs-lookup-banner">
                 <b>Condition lookup hit.</b>
                 Configured source resolved external ID
                 <code>{{ external_id }}</code>
@@ -70,7 +70,7 @@
                 different value to override for debugging.
             </div>
         {% elif external_id %}
-            <div class="lookup-banner lookup-banner-miss">
+            <div class="bofs-lookup-banner bofs-lookup-banner-miss">
                 <b>Condition lookup miss.</b>
                 External ID
                 <code>{{ external_id }}</code>
@@ -80,7 +80,7 @@
                 anyway for debugging.
             </div>
         {% else %}
-            <div class="lookup-banner lookup-banner-pending">
+            <div class="bofs-lookup-banner bofs-lookup-banner-pending">
                 <b>Condition lookup configured but pending.</b>
                 The participant has not entered an external ID yet, so the
                 lookup cannot run. The balancer would normally pick the
@@ -90,28 +90,28 @@
     {% endif %}
 
     {% for row in rows %}
-        <div class="question">
-            <div class="padding">
-                <div class="picker-row">
-                    <div class="picker-info">
+        <div class="bofs-question">
+            <div class="bofs-padding">
+                <div class="bofs-picker-row">
+                    <div class="bofs-picker-info">
                         <div>
-                            <span class="picker-label {% if not row.enabled %}picker-disabled{% endif %}">
+                            <span class="bofs-picker-label {% if not row.enabled %}bofs-picker-disabled{% endif %}">
                                 {{ row.num }}. {{ row.label }}
                             </span>
                             {% if row.is_lookup %}
-                                <span class="picker-lookup">This is the condition the lookup resolved to.</span>
+                                <span class="bofs-picker-lookup">This is the condition the lookup resolved to.</span>
                             {% elif row.is_organic %}
-                                <span class="picker-auto">This condition would normally be automatically assigned.</span>
+                                <span class="bofs-picker-auto">This condition would normally be automatically assigned.</span>
                             {% endif %}
                         </div>
-                        <div class="picker-meta">
+                        <div class="bofs-picker-meta">
                             {{ row.count }} participant{{ '' if row.count == 1 else 's' }}
                             {% if not row.enabled %}&middot; <i>disabled</i>{% endif %}
                         </div>
                     </div>
                     <form method="post" style="margin: 0;">
                         <input type="hidden" name="condition" value="{{ row.num }}">
-                        <input class="btn {% if row.is_lookup %}btn-outline-success{% elif row.is_organic %}btn-outline-primary{% else %}btn-outline-secondary{% endif %}" style="width: 160px;"
+                        <input class="bofs-btn {% if row.is_lookup %}bofs-btn-outline-success{% elif row.is_organic %}bofs-btn-outline-primary{% else %}bofs-btn-outline-secondary{% endif %}" style="width: 160px;"
                                type="submit" value="Pick"
                                {% if not row.enabled %}disabled{% endif %}>
                     </form>

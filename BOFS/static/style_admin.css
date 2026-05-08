@@ -1,5 +1,12 @@
+/* Shared questionnaire-rendering rules. Imported first so the :root
+   variables below override its defaults. */
+@import url("style_questionnaire.css");
+
+/* Admin previews use pt-based type sizing (the rest of the admin page is
+   styled by Bootstrap, which is loaded separately by template_admin_head).
+   Everything else about the questionnaire — card colors, borders, button
+   styles, etc. — comes from the shared file unchanged. */
 :root {
-    --contents-width: 967px;
     font-size: 11pt;
     --font-size-main: 12pt;
     --font-size-h1: 18pt;
@@ -11,114 +18,8 @@
 }
 
 @media only screen and (max-width: 768px) {
-    :root {
-        --contents-width: 100vw;
-    }
-
-    .content {
-        padding: 0 5px;
-    }
-
-    input[type=range] {
-        width: 90vw !important;
-    }
-
-    input, select, textarea, .slider-labels {
-        max-width: 90vw !important;
-    }
+    /* Admin renders inputs inside a Bootstrap container; force their max
+       width on small screens so the questionnaire layout doesn't overflow. */
+    input[type=range] { width: 90vw !important; }
+    input, select, textarea, .bofs-slider-labels { max-width: 90vw !important; }
 }
-
-.questions {
-    /*border: 1px solid #4e4e4e;*/
-}
-
-.question {
-    margin-top: 8px;
-    margin-bottom: 16px;
-    border: 1px solid #EEEEEE;
-    background-color: #F7F7F7;
-    border-radius: 8px;
-    /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
-}
-
-.question-title {
-    font-weight: bold;
-    font-size: var(--question-title-font-size);
-    margin-top: 0;
-}
-
-.question-instructions {
-    font-weight: bold;
-    font-size: var(--question-instructions-font-size);
-}
-
-.question-inputs {
-    margin-top: 4px;
-    margin-bottom: 4px;
-}
-
-.navigation {
-    margin-top: 15px;
-    border: 1px solid #ccc;
-    background-color: #ccc;
-    border-radius: 8px;
-    /*box-shadow: 0 0 3px 0 rgba(0,0,0,0.33);*/
-    margin-bottom: 30px;
-}
-
-.padding {
-    padding: 12px 16px;
-}
-
-#map img {
-    position: relative;
-}
-
-.title-bar {
-    background-color: var(--top-bar-color);
-    box-shadow: 0 5px 10px rgb(238, 238, 238);
-    color: white;
-    margin: 0;
-    padding: 5px;
-    text-shadow: 1px 1px #333333;
-}
-
-.title-text {
-    width: var(--contents-width);
-    margin-left: auto;
-    margin-right: auto;
-    font-size: var(--font-size-h1);
-    height: 42px;
-}
-
-.content {
-    width: var(--contents-width);
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.slider-labels {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-}
-
-.error-box {
-    padding: 1em;
-    margin: 5px;
-    border: 1px solid rgba(0, 0, 0, 0.33);
-    border-left-width: 3px;
-    background-color: rgba(255, 0, 0, 0.05);
-}
-
-.form-check { padding: 6px 22px; }
-.form-check input {  }
-
-ul li { padding-bottom: 4px;  }
-
-th { padding: 6px; position: sticky; top: 52px; background-color: #F7F7F7; border-bottom: 1px solid #EEEEEE; z-index: 1; }
-.evenRow { background-color: #EFEFEF; }
-.evenRow td { padding: 4px; }
-.oddRow td { padding: 4px; }
-.evenRow:hover { background-color: #F4F2DC; }
-.oddRow:hover { background-color: #FEFFE8; }

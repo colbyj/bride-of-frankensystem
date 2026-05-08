@@ -33,7 +33,7 @@
 
 {% block content %}
 
-    <form id="form" class="needs-validation" method="post" novalidate>
+    <form id="form" method="post" novalidate>
 
         <input type="hidden" id="dppx" name="dppx">
         <input type="hidden" id="screenWidth" name="screenWidth">
@@ -43,24 +43,30 @@
 
         <div id="instructions" style="font-style: italic;">Before proceeding, please read the following. You must give your consent to continue.</div>
 
-        <div class="question">
-            <div class="padding" id="consentDiv">
+        <div class="bofs-question">
+            <div class="bofs-padding" id="consentDiv">
 
             </div>
         </div>
 
-        <div class="question">
-            <div class="padding">
+        <div class="bofs-question">
+            <div class="bofs-padding">
                 <b>Do you give your consent?</b>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="consent" id="consentYes" value="1" required>
-                    <label class="form-check-label" for="consentYes">I give my consent</label>
+                <div class="bofs-question-inputs">
+                    <div class="bofs-form-check">
+                        <label class="bofs-form-check-label">
+                            <input class="bofs-form-check-input" type="radio" name="consent" id="consentYes" value="1" required>
+                            I give my consent
+                        </label>
+                    </div>
+                    <div class="bofs-form-check">
+                        <label class="bofs-form-check-label">
+                            <input class="bofs-form-check-input" type="radio" name="consent" id="consentNo" value="0" required>
+                            I do not give my consent
+                        </label>
+                    </div>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" name="consent" id="consentNo" value="0" required>
-                    <label class="form-check-label" for="consentNo">I do not give my consent</label>
-                </div>
-                <div class="invalid-feedback">
+                <div class="bofs-invalid-feedback">
                     You must provide your consent to continue.
                 </div>
                 <div class="hny">
@@ -86,7 +92,7 @@
 
                 form.addEventListener('submit', function (event) {
                     if (consentYes.checked !== true) {
-                        document.getElementsByClassName('invalid-feedback').item(0).style.display = 'block';
+                        document.getElementsByClassName('bofs-invalid-feedback').item(0).style.display = 'block';
                         event.preventDefault();
                         event.stopPropagation();
                     }

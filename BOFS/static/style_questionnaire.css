@@ -1,0 +1,375 @@
+/* ===========================================================================
+   style_questionnaire.css
+   ---------------------------------------------------------------------------
+   Shared questionnaire-rendering rules for both participant pages
+   (style.css) and admin previews (style_admin.css). Imported via @import
+   from each parent file.
+
+   Visual look is identical in both contexts. The only things expected to
+   differ are type sizing (admin uses pt-based, participant uses rem-based)
+   and the theme accent (HEADER_COLOR is only injected on participant pages).
+   Both are exposed as CSS variables — defaults are set here, parent files
+   override them as needed.
+   ========================================================================= */
+
+:root {
+    /* Theme accent (overridden by style.css with the BOFS green; admin keeps
+       this neutral default since HEADER_COLOR isn't set in admin previews). */
+    --bofs-accent: #8CB737;
+    --bofs-accent-strong: color-mix(in srgb, var(--bofs-accent) 80%, black);
+    --bofs-accent-soft:   color-mix(in srgb, var(--bofs-accent) 12%, white);
+    --bofs-accent-ring:   color-mix(in srgb, var(--bofs-accent) 35%, transparent);
+
+    /* Card surface — neutral white, tinted border that picks up the accent. */
+    --bofs-card-bg:     #ffffff;
+    --bofs-card-border: color-mix(in srgb, var(--bofs-accent) 20%, #e2e5e7);
+
+    --bofs-radius:    8px;
+    --bofs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+    /* Form-input border stays high-contrast for accessibility — do not soften. */
+    --bofs-input-border: #000;
+
+    /* Type sizing — parent files override with their own scale. */
+    --font-size-main: 1rem;
+    --question-title-font-size: 1.0625rem;
+    --question-instructions-font-size: 0.9375rem;
+}
+
+/* ---------- Question card surface ---------- */
+.bofs-question,
+.question {
+    margin-top: .5rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--bofs-card-border);
+    background-color: var(--bofs-card-bg);
+    border-radius: var(--bofs-radius);
+    box-shadow: var(--bofs-shadow-sm);
+    line-height: 1.5;
+}
+
+.bofs-question-title {
+    font-weight: bold;
+    font-size: var(--question-title-font-size);
+    margin-top: 1.5rem;
+}
+
+.bofs-question-instructions {
+    font-weight: bold;
+    font-size: var(--question-instructions-font-size);
+    margin-bottom: .75rem;
+}
+
+.bofs-question-inputs {
+    margin-top: .5rem;
+    margin-bottom: .5rem;
+    display: flex;
+    flex-direction: column;
+    align-content: flex-start;
+    flex-wrap: wrap;
+    gap: .25rem;
+}
+
+.bofs-question-inputs-inline {
+    flex-direction: row !important;
+    gap: 1.5rem !important;
+}
+
+.bofs-group .bofs-question-inputs {
+    margin: 0 !important;
+}
+
+.bofs-padding,
+.padding {
+    padding: 12px 16px;
+}
+
+/* Strip the default top margin from a leading heading so user-supplied
+   content (e.g. the consent HTML, which starts with <h1>) aligns with the
+   top of the card. Limited to headings so other first children that carry
+   intentional top margin (.bofs-question-inputs, etc.) aren't affected. */
+.bofs-padding > :is(h1, h2, h3, h4, h5, h6):first-child,
+.padding      > :is(h1, h2, h3, h4, h5, h6):first-child {
+    margin-top: 0;
+}
+
+.bofs-hidden {
+    display: none;
+}
+
+#instructions {
+    margin-bottom: 1rem;
+}
+
+/* Navigation card (Continue button wrapper). */
+.bofs-navigation,
+.navigation {
+    margin-top: 15px;
+    margin-bottom: 30px;
+    border: 1px solid var(--bofs-card-border);
+    background-color: var(--bofs-card-bg);
+    border-radius: var(--bofs-radius);
+    box-shadow: var(--bofs-shadow-sm);
+}
+
+/* ---------- Buttons ----------
+   `bofs-*` is canonical; the bare Bootstrap names are kept as aliases so
+   user-written custom templates that follow Bootstrap conventions still get
+   styled in pure-BOFS context. When Bootstrap is also loaded on the page,
+   Bootstrap's rules win for the bare names and BOFS's win for `bofs-*`. */
+.bofs-btn,
+.btn {
+    display: inline-block;
+    font-family: inherit;
+    font-size: var(--font-size-main);
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background-color 120ms, border-color 120ms, transform 80ms, box-shadow 120ms;
+}
+.bofs-btn:disabled, .bofs-btn[disabled],
+.btn:disabled,      .btn[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+.bofs-btn:focus-visible,
+.btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--bofs-accent-ring);
+}
+.bofs-btn-sm,
+.btn-sm {
+    padding: 3px 8px;
+    font-size: 0.8125rem;
+    border-radius: 4px;
+}
+
+.bofs-btn-light,
+.btn-light {
+    background-color: #f8f9fa;
+    border-color: #ced4da;
+    color: #212529;
+}
+.bofs-btn-light:hover:not(:disabled),
+.btn-light:hover:not(:disabled) {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.bofs-btn-outline-success,
+.btn-outline-success {
+    border-color: #1f7a1f;
+    color: #1f7a1f;
+    background-color: transparent;
+}
+.bofs-btn-outline-success:hover:not(:disabled),
+.btn-outline-success:hover:not(:disabled) {
+    background-color: #1f7a1f;
+    color: #fff;
+}
+.bofs-btn-outline-primary,
+.btn-outline-primary {
+    border-color: #2c5fb3;
+    color: #2c5fb3;
+    background-color: transparent;
+}
+.bofs-btn-outline-primary:hover:not(:disabled),
+.btn-outline-primary:hover:not(:disabled) {
+    background-color: #2c5fb3;
+    color: #fff;
+}
+.bofs-btn-outline-secondary,
+.btn-outline-secondary {
+    border-color: #6c757d;
+    color: #6c757d;
+    background-color: transparent;
+}
+.bofs-btn-outline-secondary:hover:not(:disabled),
+.btn-outline-secondary:hover:not(:disabled) {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+/* Themed primary button — uses the accent so HEADER_COLOR drives it. */
+.bofs-btn.bofs-btn-primary,
+.btn.btn-primary {
+    background-color: var(--bofs-accent);
+    border: 1px solid var(--bofs-accent);
+    color: #fff;
+    font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 6px;
+}
+.bofs-btn.bofs-btn-primary:hover, .bofs-btn.bofs-btn-primary:focus,
+.btn.btn-primary:hover,           .btn.btn-primary:focus {
+    background-color: var(--bofs-accent-strong);
+    border-color: var(--bofs-accent-strong);
+    color: #fff;
+}
+.bofs-btn.bofs-btn-primary:active,
+.btn.btn-primary:active {
+    transform: translateY(1px);
+}
+
+/* ---------- Form inputs ---------- */
+.bofs-form-control {
+    display: inline-block;
+    font-family: inherit;
+    font-size: var(--font-size-main);
+    line-height: 1.5;
+    color: #1f2937;
+    background-color: #fff;
+    border: 1px solid var(--bofs-input-border);
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+.bofs-form-control:focus-visible {
+    outline: none;
+    border-color: var(--bofs-accent);
+    box-shadow: 0 0 0 3px var(--bofs-accent-ring);
+}
+
+/* Radio/checkbox row layout. */
+.bofs-form-check {}
+
+.bofs-form-check label,
+.bofs-form-check-label {
+    cursor: pointer;
+    display: inline-flex;
+    gap: .4rem;
+    padding: .25rem 0;
+}
+
+.bofs-form-check-input {
+    cursor: pointer;
+    width: 1rem;
+    height: 1rem;
+    margin: 3px;
+}
+
+/* Group question — applied to a <fieldset>. Strip the default UA chrome
+   (border, padding, min-width: min-content) so it lays out like a plain block. */
+.bofs-group {
+    border: 0;
+    padding: 0;
+    min-width: 0;
+    margin: 0;
+}
+
+.bofs-group-header {
+    margin-top: .5rem;
+    margin-bottom: 1rem;
+}
+
+/* Slider question labels (left/right ends). */
+.bofs-slider-labels {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    color: #4b5563;
+}
+
+/* Inline form-error text revealed by JS when validation fails. */
+.bofs-invalid-feedback {
+    display: none;
+    margin-top: 4px;
+    color: #dc2626;
+    font-size: 0.875rem;
+}
+
+.bofs-error-box {
+    padding: 1em;
+    margin: 5px 0;
+    border: 1px solid color-mix(in srgb, #dc2626 20%, transparent);
+    border-left: 3px solid #dc2626;
+    background-color: color-mix(in srgb, #dc2626 5%, #fef2f2);
+    border-radius: var(--bofs-radius);
+    box-shadow: var(--bofs-shadow-sm);
+}
+
+/* radiogrid table */
+
+.bofs-radiogrid-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.bofs-radiogrid-table th:first-child,
+.bofs-radiogrid-table td:first-child {
+  width: var(--bofs-radiogrid-first-col-width, 30%);  /* Set within radiogrid.html if there's an override in the json */
+}
+
+.bofs-radiogrid-table td:not(:first-child) {
+    /* Drop the row-padding on radio cells so the wrapping label can fill
+       the cell and act as the click target. */
+    padding: 0;
+    text-align: center;
+    vertical-align: middle;
+}
+
+/* Wraps a single radio inside a radiogrid <td>. Fills the cell so clicking
+   anywhere in the cell (not just the 16px radio) selects the option. */
+.bofs-radiogrid-cell {
+    display: block;
+    cursor: pointer;
+    padding: 8px 0;
+}
+.bofs-radiogrid-cell .bofs-form-check-input {
+    vertical-align: middle;
+}
+
+/* ---------- Tables (radiogrid + admin previews) ---------- */
+
+table { border-spacing: 0; }
+th {
+    padding: 6px;
+    position: sticky;
+    top: 0;
+    background-color: var(--bofs-card-bg);
+    border-bottom: 1px solid var(--bofs-card-border);
+    z-index: 1;
+    font-weight: 600;
+}
+.bofs-row-even { background-color: color-mix(in srgb, var(--bofs-accent) 3%, #f9f9f9); }
+.bofs-row-even td, .bofs-row-odd td { padding: 4px; }
+.bofs-row-even:hover, .bofs-row-odd:hover { background-color: var(--bofs-accent-soft); }
+
+ul li { padding-bottom: 4px; }
+
+/* ---------- Mobile responsive: questionnaire content ---------- */
+@media only screen and (max-width: 768px) {
+    /* Radiogrids and other wide tables: scroll instead of crushing text. */
+    .bofs-question table,
+    .question table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* End-of-study completion-code card uses inline `width: 500px`; let it
+       shrink instead of overflowing the viewport. */
+    .bofs-question[style*="width: 500px"],
+    .question[style*="width: 500px"] {
+        width: 100% !important;
+        max-width: calc(100vw - 24px);
+        box-sizing: border-box;
+    }
+    .bofs-question[style*="width: 500px"] input[readonly][style*="width: 350px"],
+    .question[style*="width: 500px"]      input[readonly][style*="width: 350px"] {
+        width: 100% !important;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    input[type=range] { width: 90vw; }
+    input, select, textarea, .bofs-slider-labels { max-width: 90vw; }
+}

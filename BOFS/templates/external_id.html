@@ -8,11 +8,11 @@
 
             <i>Welcome! Please fill out the following information to begin.</i><br>
 
-            <div class="question" style="">
-                <div class="padding">
+            <div class="bofs-question" style="">
+                <div class="bofs-padding">
                     <h3>Please enter your {{ config['EXTERNAL_ID_LABEL'] }}.</h3>
                     <div>
-                        <input class="form-control"
+                        <input class="bofs-form-control"
                                type="text"
                                name="mTurkID"
                                id="mTurkID"
@@ -22,7 +22,7 @@
                                value="{{mTurkID}}"
                                {% endif %}
                                required />
-                        <div class="invalid-feedback">
+                        <div class="bofs-invalid-feedback">
                             {{ config['EXTERNAL_ID_PROMPT'] }}
                         </div>
                     </div>

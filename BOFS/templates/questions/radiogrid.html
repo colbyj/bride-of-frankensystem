@@ -1,7 +1,14 @@
 {% if question.shuffle %}
     {% do shuffle(question.q_text) %}
 {% endif %}
-<table width="100%">
+
+{% if question.question_width is undefined %}
+    {% set question_width = "30%" %}
+{% else %}
+    {% set question_width = question.question_width %}
+{% endif %}
+
+<table class="bofs-radiogrid-table" style="--bofs-radiogrid-first-col-width: {{ question_width }}">
     <thead>
         <tr>
             <th></th>
@@ -16,15 +23,14 @@
         {% else %}
             {% set questions = question.q_text %}
         {% endif %}
+
         {% for grid_question in questions %}
-        <tr class="{{ "oddRow" if loop.index % 2 == 0 else "evenRow" }}">
-            <td style="width: 30%">{{ grid_question.text | safe }}</td>
+        <tr class="{{ "bofs-row-odd" if loop.index % 2 == 0 else "bofs-row-even" }}">
+            <td>{{ grid_question.text | safe }}</td>
             {% for label in question.labels %}
-            <td style="text-align: center; width: {{ 70.0 / (question.labels | length) }}%">
-                <label style="padding: 0; width: 100%; margin:auto; height: 28px; text-align:center;" class="btn btn-lg btn-default">
-                    <div class="" style="display:inline;">
-                        <input class="form-check-input" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ loop.index }}" {{ "required" if question.required }} {% if grid_question.value == loop.index|string %}checked{% endif %}>
-                    </div>
+            <td>
+                <label class="bofs-radiogrid-cell">
+                    <input class="bofs-form-check-input" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ loop.index }}" {{ "required" if question.required }} {% if grid_question.value == loop.index|string %}checked{% endif %}>
                 </label>
             </td>
             {% endfor %}

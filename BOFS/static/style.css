@@ -1,16 +1,21 @@
+/* Shared questionnaire-rendering rules (.bofs-question*, .bofs-form-*,
+   buttons, table rows, etc.). Imported first so the :root variables and
+   rules below can override its defaults. */
+@import url("style_questionnaire.css");
+
+/* Admin/debug toolbar (fixed strip at the bottom of participant pages when
+   logged in as admin or DEBUG=true). Uses --bofs-accent-* from the shared
+   sheet, so it must come after that import. */
+@import url("style_admin_toolbar.css");
+
 :root {
     --contents-width: 967px;
 
-    /* Theme accent — overridable via HEADER_COLOR config (template.html line 9). */
+    /* Theme accent — overridable via HEADER_COLOR config (template.html line 9).
+       The shared questionnaire stylesheet uses this for borders, button color,
+       focus rings, and row hover. */
     --bofs-accent: #8CB737;
-    --bofs-accent-strong: color-mix(in srgb, var(--bofs-accent) 80%, black);
-    --bofs-accent-soft: color-mix(in srgb, var(--bofs-accent) 12%, white);
-    --bofs-accent-ring: color-mix(in srgb, var(--bofs-accent) 35%, transparent);
     --top-bar-color: var(--bofs-accent);
-
-    /* Card surfaces — neutral, no tint. Accent color stays on the title bar and button only. */
-    --bofs-card-bg: #ffffff;
-    --bofs-card-border: color-mix(in srgb, var(--bofs-accent) 20%, #e2e5e7);
 
     /* Type scale — rem-based, anchored to html { font-size: 16px }. */
     --font-size-main: 1rem;            /* 16px */
@@ -20,18 +25,13 @@
     --font-size-h4: 0.9375rem;         /* 15px */
     --question-title-font-size: 1.0625rem;
     --question-instructions-font-size: 0.9375rem;
-
-    /* Form-input border stays high-contrast for accessibility — do not soften. */
-    --bs-border-color: #000;
-
-    --bofs-radius: 8px;
-    --bofs-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-    --bofs-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 html {
     font-size: 16px;
+    box-sizing: border-box;
 }
+*, *::before, *::after { box-sizing: inherit; }
 
 @media only screen and (max-width: 768px) {
     :root {
@@ -47,34 +47,6 @@ html {
 
     .content {
         padding: 0 12px;
-    }
-
-    /* Radiogrids, tables — let them scroll rather than collapsing text. */
-    .question table {
-        display: block;
-        max-width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /* End-of-study completion code card — override inline 500px width. */
-    .question[style*="width: 500px"] {
-        width: 100% !important;
-        max-width: calc(100vw - 24px);
-        box-sizing: border-box;
-    }
-    .question[style*="width: 500px"] input[readonly][style*="width: 350px"] {
-        width: 100% !important;
-        max-width: 100%;
-        box-sizing: border-box;
-    }
-
-    input[type=range] {
-        width: 90vw;
-    }
-
-    input, select, textarea, .slider-labels {
-        max-width: 90vw;
     }
 }
 
@@ -95,52 +67,6 @@ body {
    Fallback ensures content still clears the toolbar before JS runs. */
 .bofs-body {
     padding-bottom: 110px;
-}
-
-.question {
-    margin-top: 8px;
-    margin-bottom: 16px;
-    border: 1px solid var(--bofs-card-border);
-    background-color: var(--bofs-card-bg);
-    border-radius: var(--bofs-radius);
-    box-shadow: var(--bofs-shadow-sm);
-}
-
-.bofs-hidden {
-    display: none;
-}
-
-#instructions {
-    margin-bottom: 1rem;
-}
-
-.question-title {
-    font-weight: bold;
-    font-size: var(--question-title-font-size);
-    margin-top: 0;
-}
-
-.question-instructions {
-    font-weight: bold;
-    font-size: var(--question-instructions-font-size);
-}
-
-.question-inputs {
-    margin-top: 4px;
-    margin-bottom: 4px;
-}
-
-.navigation {
-    margin-top: 15px;
-    border: 1px solid var(--bofs-card-border);
-    background-color: var(--bofs-card-bg);
-    border-radius: var(--bofs-radius);
-    box-shadow: var(--bofs-shadow-sm);
-    margin-bottom: 30px;
-}
-
-.padding {
-    padding: 12px 16px;
 }
 
 #map img {
@@ -177,151 +103,4 @@ h4 { font-size: var(--font-size-h4); }
     margin-right: auto;
 }
 
-.slider-labels {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    color: #4b5563;
-}
-
-.error-box {
-    padding: 1em;
-    margin: 5px 0;
-    border: 1px solid color-mix(in srgb, #dc2626 20%, transparent);
-    border-left-width: 3px;
-    border-left-color: #dc2626;
-    background-color: color-mix(in srgb, #dc2626 5%, #fef2f2);
-    border-radius: var(--bofs-radius);
-    box-shadow: var(--bofs-shadow-sm);
-}
-
-/* Themed primary button — uses the accent so HEADER_COLOR drives it. */
-.btn.btn-bofs-primary {
-    background-color: var(--bofs-accent);
-    border: 1px solid var(--bofs-accent);
-    color: #fff;
-    font-weight: 600;
-    padding: 8px 18px;
-    border-radius: 6px;
-    transition: background-color 120ms, border-color 120ms, transform 80ms, box-shadow 120ms;
-}
-
-.btn.btn-bofs-primary:hover,
-.btn.btn-bofs-primary:focus {
-    background-color: var(--bofs-accent-strong);
-    border-color: var(--bofs-accent-strong);
-    color: #fff;
-}
-
-.btn.btn-bofs-primary:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px var(--bofs-accent-ring);
-}
-
-.btn.btn-bofs-primary:active {
-    transform: translateY(1px);
-}
-
-.debug-session pre {
-    display: block; margin: 0;
-}
-
-.debug-session ul {
-    padding: 0 0 0 12px; margin: 0; list-style-type: none;
-}
-
-.debug-session li {
-    padding-bottom: 2px;
-}
-
-.admin-toolbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 1030;
-    width: 100%;
-    padding: 6px 12px 8px 12px;
-    color: #fff;
-}
-
-.admin-toolbar .btn,
-.admin-toolbar .dropdown-item {
-    font-size: 0.8125rem;
-}
-
-.admin-toolbar-status {
-    font-size: 0.8125rem;
-    color: #cfd2d6;
-    padding: 2px 4px 6px 4px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 6px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.admin-toolbar-status .admin-status-key {
-    color: #8a8f96;
-    font-weight: 600;
-}
-
-.admin-toolbar-status .admin-status-sep {
-    color: #5a6068;
-}
-
-.admin-toolbar-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-}
-
-.admin-toolbar-actions .toolbar-left,
-.admin-toolbar-actions .toolbar-right {
-    flex: 0 0 auto;
-}
-
-.admin-toolbar-actions .toolbar-center {
-    flex: 1 1 auto;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.admin-toolbar-actions .dropup {
-    display: inline-block;
-}
-
-/* Skip-to-page dropdown can get long — let it scroll. */
-.admin-toolbar-actions .dropdown-menu {
-    max-height: 60vh;
-    overflow-y: auto;
-}
-
-table { border-spacing: 0; }
-th { padding: 6px; position: sticky; top: 0; background-color: var(--bofs-card-bg); border-bottom: 1px solid var(--bofs-card-border); z-index: 1; font-weight: 600; }
-.evenRow { background-color: color-mix(in srgb, var(--bofs-accent) 3%, #f9f9f9); }
-.evenRow td { padding: 4px; }
-.oddRow td { padding: 4px; }
-.evenRow:hover { background-color: var(--bofs-accent-soft); }
-.oddRow:hover { background-color: var(--bofs-accent-soft); }
-
-.form-check {
-    padding: 6px 22px;
-    display: grid;
-    grid-template-columns: auto 1fr;
-}
-
-.form-check-inline {
-    display: inline-grid;
-    vertical-align: top;
-}
-
-.form-check label { cursor: pointer; }
-
-ul li { padding-bottom: 4px; }
+/* (Admin/debug toolbar styles moved to style_admin_toolbar.css) */

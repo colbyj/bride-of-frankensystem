@@ -1,9 +1,9 @@
 {% macro btnContinue(includeDiv=true) -%}
     {% if includeDiv %}
-        <div class="navigation padding">
+        <div class="bofs-navigation bofs-padding">
             <div style="float: right">
     {% endif %}
-                <input class="btn btn-bofs-primary" style="width: 160px;" id="btnNext" type="submit" value="Continue">
+                <input class="bofs-btn bofs-btn-primary" style="width: 160px;" id="btnNext" type="submit" value="Continue">
     {% if includeDiv %}
             </div>
             <div style="clear: both"></div>
@@ -33,7 +33,7 @@
     {%- set condition = session.get('condition') -%}
     {%- set condition_label = conditionLabel(condition)|trim -%}
 
-    <div class="admin-toolbar bg-dark">
+    <div class="admin-toolbar">
         <div class="admin-toolbar-status">
             {% if pid %}
             <span class="admin-status-item"><span class="admin-status-key">PID</span> {{ pid }}</span>
@@ -62,11 +62,11 @@
         <div class="admin-toolbar-actions">
             <div class="toolbar-left">
                 {% if pid %}
-                <a href="/redirect_previous_page" class="btn btn-light btn-sm" role="button" title="Previous page">
+                <a href="/redirect_previous_page" class="bofs-btn bofs-btn-light bofs-btn-sm" role="button" title="Previous page">
                     <i class="fas fa-arrow-circle-left"></i>
                 </a>
                 {% else %}
-                <button type="button" class="btn btn-light btn-sm" disabled aria-disabled="true" title="{{ nav_disabled_reason }}">
+                <button type="button" class="bofs-btn bofs-btn-light bofs-btn-sm" disabled aria-disabled="true" title="{{ nav_disabled_reason }}">
                     <i class="fas fa-arrow-circle-left"></i>
                 </button>
                 {% endif %}
@@ -74,37 +74,37 @@
 
             <div class="toolbar-center">
                 <div class="dropup">
-                    <button class="btn btn-light btn-sm dropdown-toggle" {% if pid %}data-bs-toggle="dropdown"{% else %}disabled aria-disabled="true" title="{{ nav_disabled_reason }}"{% endif %} aria-expanded="false">
+                    <button class="bofs-btn bofs-btn-light bofs-btn-sm dropdown-toggle" {% if pid %}data-bs-toggle="dropdown"{% else %}disabled aria-disabled="true" title="{{ nav_disabled_reason }}"{% endif %} aria-expanded="false">
                         Skip to page <i class="fas fa-file"></i>
                     </button>
                     {% if pid %}
                     <div class="dropdown-menu">
                         {% for page in flat_page_list %}
                             {%- set is_current = (page['path'] == current_path) -%}
-                            <a class="dropdown-item{% if is_current %} active fw-bold{% endif %}" href="/redirect_to_page/{{ page['path'] }}">
-                                {{ loop.index }}. {{ page.get('name') or page['path'] }}{% if is_current %} <i class="fas fa-check ms-1"></i>{% endif %}
+                            <a class="dropdown-item{% if is_current %} bofs-active{% endif %}" href="/redirect_to_page/{{ page['path'] }}">
+                                {{ loop.index }}. {{ page.get('name') or page['path'] }}{% if is_current %} <i class="fas fa-check" style="margin-left: 4px;"></i>{% endif %}
                             </a>
                         {% endfor %}
                     </div>
                     {% endif %}
                 </div>
 
-                <a href="/restart" class="btn btn-light btn-sm" role="button" data-confirm-restart>
+                <a href="/restart" class="bofs-btn bofs-btn-light bofs-btn-sm" role="button" data-confirm-restart>
                     Restart <i class="fas fa-redo"></i>
                 </a>
 
                 {% if pid and config.get('USE_ADMIN', True) %}
-                <a href="{{ url_for('admin.route_participant_detail', pid=pid) }}" class="btn btn-light btn-sm" role="button">
+                <a href="{{ url_for('admin.route_participant_detail', pid=pid) }}" class="bofs-btn bofs-btn-light bofs-btn-sm" role="button">
                     My Data <i class="fas fa-table"></i>
                 </a>
                 {% endif %}
 
-                <a href="/admin" class="btn btn-light btn-sm" role="button">
+                <a href="/admin" class="bofs-btn bofs-btn-light bofs-btn-sm" role="button">
                     Admin Panel <i class="fas fa-tools"></i>
                 </a>
 
                 <div class="dropup">
-                    <button class="btn btn-light btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="bofs-btn bofs-btn-light bofs-btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
                         Vars <i class="fas fa-clipboard-list"></i>
                     </button>
                     <div class="dropdown-menu debug-session">
@@ -119,11 +119,11 @@
 
             <div class="toolbar-right">
                 {% if pid %}
-                <a href="/redirect_next_page" class="btn btn-light btn-sm" role="button" title="Next page">
+                <a href="/redirect_next_page" class="bofs-btn bofs-btn-light bofs-btn-sm" role="button" title="Next page">
                     <i class="fas fa-arrow-circle-right"></i>
                 </a>
                 {% else %}
-                <button type="button" class="btn btn-light btn-sm" disabled aria-disabled="true" title="{{ nav_disabled_reason }}">
+                <button type="button" class="bofs-btn bofs-btn-light bofs-btn-sm" disabled aria-disabled="true" title="{{ nav_disabled_reason }}">
                     <i class="fas fa-arrow-circle-right"></i>
                 </button>
                 {% endif %}

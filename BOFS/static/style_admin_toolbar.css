@@ -1,0 +1,169 @@
+/* ===========================================================================
+   style_admin_toolbar.css
+   ---------------------------------------------------------------------------
+   Fixed strip at the bottom of every participant page when logged in as admin
+   or DEBUG=true. Imported by style.css; not loaded on admin pages (the admin
+   panel has its own Bootstrap-based navbar).
+
+   Bootstrap's CSS no longer styles this; everything below is self-contained.
+   The dropdown markup still uses Bootstrap-JS class names (`dropdown-toggle`,
+   `dropdown-menu`, `dropup`, `dropdown-item`) because bootstrap.bundle.min.js
+   drives the show/hide; CSS rules below are scoped under `.admin-toolbar` so
+   they cannot leak into participant content.
+
+   Variables used (`--bofs-accent-soft`, `--bofs-accent-strong`) are defined
+   in style_questionnaire.css, which style.css imports before this file.
+   ========================================================================= */
+
+.admin-toolbar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    width: 100%;
+    padding: 6px 12px 8px 12px;
+    color: #fff;
+    background-color: #212529;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.admin-toolbar .bofs-btn,
+.admin-toolbar .dropdown-item {
+    font-size: 0.8125rem;
+}
+
+.admin-toolbar-status {
+    font-size: 0.8125rem;
+    color: #cfd2d6;
+    padding: 2px 4px 6px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.admin-toolbar-status .admin-status-key {
+    color: #8a8f96;
+    font-weight: 600;
+}
+
+.admin-toolbar-status .admin-status-sep {
+    color: #5a6068;
+}
+
+.admin-toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.admin-toolbar-actions .toolbar-left,
+.admin-toolbar-actions .toolbar-right {
+    flex: 0 0 auto;
+}
+
+.admin-toolbar-actions .toolbar-center {
+    flex: 1 1 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+/* `.dropup` is a positioning wrapper — Bootstrap JS uses it to flip the menu
+   above the toggle. We replicate the placement ourselves since Bootstrap CSS
+   is no longer loaded. */
+.admin-toolbar .dropup {
+    position: relative;
+    display: inline-block;
+}
+
+/* Caret on dropdown toggles (Bootstrap normally renders this via ::after). */
+.admin-toolbar .dropdown-toggle::after {
+    display: inline-block;
+    margin-left: 0.4em;
+    vertical-align: 0.15em;
+    content: "";
+    border-top: 0;
+    border-right: 0.3em solid transparent;
+    border-bottom: 0.3em solid;
+    border-left: 0.3em solid transparent;
+}
+
+/* Menu — hidden by default; Bootstrap JS adds `.show` when toggled.
+   Skip-to-page dropdown can get long, so allow it to scroll. */
+.admin-toolbar .dropdown-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    margin-bottom: 4px;
+    z-index: 1031;
+    display: none;
+    min-width: 12rem;
+    padding: 6px 0;
+    background-color: #fff;
+    color: #1f2937;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.18);
+    list-style: none;
+    text-align: left;
+    font-size: 0.8125rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+.admin-toolbar .dropdown-menu.show { display: block; }
+
+.admin-toolbar .dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 4px 16px;
+    clear: both;
+    font-weight: 400;
+    color: #1f2937;
+    text-decoration: none;
+    background-color: transparent;
+    border: 0;
+    white-space: nowrap;
+}
+.admin-toolbar .dropdown-item:hover,
+.admin-toolbar .dropdown-item:focus {
+    background-color: #f1f3f5;
+    color: #000;
+}
+.admin-toolbar .dropdown-item.bofs-active {
+    background-color: var(--bofs-accent-soft);
+    color: var(--bofs-accent-strong);
+    font-weight: 600;
+}
+
+/* Right-edge toggles need their menu aligned to the right edge so it doesn't
+   spill off-screen (Bootstrap normally gets this via .dropdown-menu-end). */
+.admin-toolbar .toolbar-right .dropdown-menu,
+.admin-toolbar .toolbar-center .dropup:last-child .dropdown-menu {
+    left: auto;
+    right: 0;
+}
+
+/* Session vars dropdown — pre-formatted data dump. */
+.admin-toolbar .debug-session pre {
+    display: block;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.admin-toolbar .debug-session ul {
+    padding: 0 0 0 12px;
+    margin: 0;
+    list-style-type: none;
+}
+.admin-toolbar .debug-session li {
+    padding-bottom: 2px;
+}

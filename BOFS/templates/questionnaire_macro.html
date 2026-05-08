@@ -123,13 +123,13 @@
                 {% else %}
                     {% if question and (not question.for_conditions or session['condition'] in question.for_conditions)%}
                     {% if question.title %}
-                        <div class="question-title">{{ question.title | safe }}</div>
+                        <div class="bofs-question-title">{{ question.title | safe }}</div>
                     {% endif %}
-                    <div class="question padding{% if question._show_if_ast %} bofs-conditional{% endif %}"{% if question._show_if_ast %} data-show-if='{{ question._show_if_ast | tojson }}'{% endif %}>
+                    <div class="bofs-question bofs-padding{% if question._show_if_ast %} bofs-conditional{% endif %}"{% if question._show_if_ast %} data-show-if='{{ question._show_if_ast | tojson }}'{% endif %}>
                         {% if question.instructions %}
-                            <div class="question-instructions">{% if print_ids and 'id' in question %}[{{ question.id }}] {% endif %}{{ question.instructions | safe }}</div>
+                            <div class="bofs-question-instructions">{% if print_ids and 'id' in question %}[{{ question.id }}] {% endif %}{{ question.instructions | safe }}</div>
                         {% endif %}
-                        <div class="question-inputs">
+                        <div class="bofs-question-inputs {{ "bofs-question-inputs-inline" if question.horizontal else "" }}">
                             {{ q_html[loop.index0] | safe }}
                         </div>
                     </div>

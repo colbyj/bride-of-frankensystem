@@ -41,6 +41,8 @@ Currently, the following types of input are supported:
    watch it before continuing
 -  ``audio`` - Embed an HTML5 audio clip, optionally requiring the participant
    to listen to it before continuing
+-  ``group`` - Render a header followed by several sub-questions of any other
+   type, optionally laid out side-by-side
 
 radiogrid
 ---------
@@ -612,4 +614,72 @@ because the scrubber doubles as the participant's only progress indicator.
            "src": "https://example.com/static/instructions.ogg",
            "force_listen": true,
            "completion_threshold": 0.95
+       }
+
+group
+-----
+
+``questiontype == 'group'``
+
+Renders a header followed by a list of sub-questions of any other type.These
+questions are all visually grouped within the same card. The group itself
+does not create a database column — only its sub-questions do — so the group
+'s ``id`` is purely structural. Groups cannot contain other groups.
+
+Sub-question ``id``\ s share the same namespace as top-level question ids,
+so each one must be unique within the questionnaire as a whole, not just
+within the group.
+
+The ``show_sub_labels`` property controls how the group reads:
+
+- When ``false`` (the default), the per-sub-question ``instructions`` labels
+  are hidden and the group reads as a single compound question — for
+  example, one "About you" header above height and weight inputs.
+- When ``true``, each sub-question keeps its own ``instructions`` label and
+  the group reads as a visually-grouped cluster of separately-labelled
+  fields.
+
+**Properties**
+
+-  ``id``: structural id for the group; not stored as a database column
+   (required, string)
+-  ``text``: header text shown above the sub-questions (optional, string)
+-  ``questions``: list of sub-question objects of any non-``group`` type
+   (required, list)
+-  ``show_sub_labels``: whether each sub-question keeps its own
+   ``instructions`` label (optional, boolean: ``true`` or ``false``,
+   default ``false``)
+-  ``horizontal``: lay the sub-questions out side-by-side instead of
+   stacked vertically (optional, boolean: ``true`` or ``false``, default
+   ``false``)
+-  ``show_if``: expression that conditionally shows or hides the entire
+   group (optional, string)
+
+**Example**
+
+.. code:: json
+
+       {
+           "questiontype": "group",
+           "id": "demographics",
+           "text": "About you",
+           "show_sub_labels": true,
+           "questions": [
+               {
+                   "questiontype": "field",
+                   "id": "first_name",
+                   "instructions": "First name"
+               },
+               {
+                   "questiontype": "num_field",
+                   "id": "age",
+                   "instructions": "Age (years)"
+               },
+               {
+                   "questiontype": "slider",
+                   "id": "experience",
+                   "instructions": "Experience level",
+                   "tick_count": 5
+               }
+           ]
        }
