@@ -1,25 +1,34 @@
-{# Image-click question type. Displays an image and captures the natural-image
-   pixel coordinates of one or more clicks.
-
-   JSON fields:
-     src          (required) URL of the image to display (e.g. "/static/map.png").
-     max_clicks   (optional, default 1) When 1, each click moves a single
-                  marker; storage is two FLOAT columns "{id}_x" and "{id}_y".
-                  When >1, up to that many markers can be placed (oldest is
-                  replaced once full); when 0, unlimited. Multi-click storage
-                  is one TEXT column "{id}" holding a JSON array of
-                  {"x":..,"y":..} objects in click order.
-     marker_color (optional, default "#ff0000") CSS colour of the crosshair.
-     marker_size  (optional, default 14) Pixel size of the crosshair.
-     width        (optional) Maximum displayed width of the image, in pixels.
-                  When set, the image is scaled down to fit while preserving
-                  aspect ratio.
-     required     (optional, default false) When true, btnNext is disabled
-                  until the participant places at least one click.
+{# Click on an image to record (x, y) positions in natural-image pixel space.
 
    Stored coordinates are in the natural pixel space of the source image
    (origin top-left, x to the right, y downward), not the displayed pixel
-   space, so they remain meaningful regardless of browser zoom or image scaling.
+   space, so they remain meaningful regardless of browser zoom or image
+   scaling.
+
+   Args:
+       src (str): URL of the image to display, e.g. "/static/map.png".
+       max_clicks (int, optional): Click cap. 1 means single-click and
+           storage is two FLOAT columns {id}_x and {id}_y. Any integer > 1
+           caps multi-click and storage is one TEXT column {id} holding a
+           JSON array of {"x":..,"y":..} objects in click order. 0 means
+           unlimited. Defaults to 1.
+       marker_color (str, optional): CSS colour of the crosshair.
+           Defaults to "#ff0000".
+       marker_size (int, optional): Pixel size of the crosshair. Defaults to 14.
+       width (int, optional): Maximum displayed width of the image, in
+           pixels. When set, the image is scaled down to fit while
+           preserving aspect ratio.
+
+   Example:
+       {
+           "questiontype": "image_click",
+           "id": "new_image_click",
+           "instructions": "",
+           "src": "/static/map.png",
+           "max_clicks": 1,
+           "marker_color": "#ff0000",
+           "marker_size": 14
+       }
 #}
 {% set max_clicks = question.max_clicks|default(1) %}
 {% set marker_color = question.marker_color|default('#ff0000') %}

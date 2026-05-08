@@ -1,3 +1,37 @@
+{# Pick one option from a set of selectable images.
+
+   Each image becomes a clickable thumbnail; the participant's selection is
+   stored as the chosen image's `value`. Only one image can be selected at
+   a time (radio behaviour). When every image's `value` is an integer (or
+   float), the database column is created with that numeric type
+   automatically.
+
+   Args:
+       images (list): Image entries (see Example for shape).
+       shuffle (bool, optional): Randomise the image order on each render.
+           Defaults to False.
+       horizontal (bool, optional): Wrap images in a centered row when true,
+           stack in a centered column when false. Defaults to True.
+       width (int, optional): Per-image pixel width. Ignored when
+           auto_resize is true.
+       auto_resize (bool, optional): Normalize rendered image dimensions on
+           the client so they all match the smallest image in the group.
+           With horizontal=false all widths are matched; otherwise all
+           heights are matched. Defaults to False.
+
+   Example:
+       {
+           "questiontype": "picture_select",
+           "id": "new_picture_select",
+           "instructions": "",
+           "horizontal": true,
+           "auto_resize": true,
+           "images": [
+               {"src": "/static/option_a.png", "value": "a", "label": "Option A"},
+               {"src": "/static/option_b.png", "value": "b", "label": "Option B"}
+           ]
+       }
+#}
 <style>
     .bofs-picture-select-group {
         display: flex;

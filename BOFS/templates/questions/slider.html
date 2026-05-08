@@ -1,3 +1,16 @@
+{# Horizontal slider for an integer-valued response on a 1..tick_count scale.
+
+   Args:
+       tick_count (int): Number of positions on the scale (the slider's
+           maximum value). Minimum is always 1.
+       left (str, optional): HTML label shown above the left end of the
+           slider.
+       right (str, optional): HTML label shown above the right end of the
+           slider.
+       default (int, optional): Initial slider position.
+       width (int, optional): Pixel width. Defaults to the project's
+           DEFAULT_FIELD_WIDTH config value.
+#}
 <div class="bofs-slider-labels" style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px;">
     <label for="{{ question.id }}">{{ question.left | safe }}</label>
     <label for="{{ question.id }}">{{ question.right | safe }}</label>

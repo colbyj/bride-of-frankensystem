@@ -1,3 +1,11 @@
+{# Single-line text input.
+
+   Args:
+       placeholder (str, optional): Greyed-out hint shown when the field is
+           empty.
+       width (int, optional): Pixel width of the input. Defaults to the
+           project's DEFAULT_FIELD_WIDTH config value.
+#}
 <input class="bofs-form-control"
        type="text"
        name="{{ question.id }}"

@@ -1,3 +1,29 @@
+{# Multi-select list of checkboxes. Each checkbox stores 1/0 in its own
+   column; checkboxes with `text_entry` instead store the entered string.
+
+   Args:
+       questions (list): Checkbox items. Each entry is an object with `id`
+           (becomes the database column name) and `text` (the label, HTML
+           allowed). Optional per-item fields:
+             text_entry (bool): When true, the row becomes a checkbox plus a
+               free-text input; the column stores the entered string.
+             text_entry_hides (bool): Hide the text input until the
+               checkbox is ticked.
+             text_entry_width (int): Pixel width of the text input.
+       shuffle (bool, optional): Randomise the item order on each render.
+           Defaults to False.
+
+   Example:
+       {
+           "questiontype": "checklist",
+           "instructions": "",
+           "questions": [
+               {"id": "item_1", "text": "Option 1"},
+               {"id": "item_2", "text": "Option 2"},
+               {"id": "item_3", "text": "Option 3"}
+           ]
+       }
+#}
 {% if question.shuffle %}
     {% do shuffle(question.questions) %}
 {% endif %}

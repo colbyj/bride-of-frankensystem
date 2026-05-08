@@ -1,1 +1,11 @@
+{# Display-only text or HTML content.
+
+   Textview questions render HTML (sanitised) and produce no database column.
+   Use them for instructions, stimuli, embedded media, or any read-only
+   block of content between input questions.
+
+   Args:
+       id (str, optional): Optional id; not stored as a database column.
+       text (str): HTML body to display.
+#}
 {{ question.text | safe }}

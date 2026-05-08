@@ -1,3 +1,12 @@
+{# Multi-line text input (textarea).
+
+   Args:
+       placeholder (str, optional): Greyed-out hint shown when the field is
+           empty.
+       width (int, optional): Pixel width. Defaults to the project's
+           DEFAULT_FIELD_WIDTH config value.
+       height (int, optional): Pixel height. Defaults to 80.
+#}
 <textarea class="bofs-form-control"
           placeholder="{{ question.placeholder }}"
           name="{{ question.id }}"

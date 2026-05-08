@@ -1,3 +1,32 @@
+{# Single-select list of radio buttons.
+
+   Args:
+       labels (list): Option labels, in display order. The participant's
+           selection is stored as the chosen label string.
+       label_html (list, optional): Per-option HTML strings. When provided,
+           replaces the rendered text for each option (the underlying value
+           is still drawn from `labels`).
+       shuffle (bool, optional): Randomise the option order on each render.
+           Defaults to False.
+       other_enabled (bool, optional): Add an "Other" option with a free-text
+           input. Defaults to False.
+       other_text_prompt (str, optional): Label shown next to the "Other"
+           radio button.
+       other_input_hides (bool, optional): Hide the "Other" text box until
+           the "Other" option is selected. Defaults to False.
+       other_input_width (int, optional): Pixel width of the "Other" text
+           input.
+       required_selection (str, optional): If set, the participant must pick
+           this specific option to submit; any other selection is rejected.
+
+   Example:
+       {
+           "questiontype": "radiolist",
+           "id": "new_radiolist",
+           "instructions": "",
+           "labels": ["Option A", "Option B", "Option C"]
+       }
+#}
 {% set labels = question.labels %}
 {% if question.shuffle %}
     {% do shuffle(question.labels) %}

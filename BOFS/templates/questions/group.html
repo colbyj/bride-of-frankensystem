@@ -1,17 +1,49 @@
-{# Group container — renders a shared header above N heterogeneous sub-questions.
+{# Visually group several sub-questions of any non-group type under one header.
 
-   Two presentation modes via question.show_sub_labels:
-     * false (default, "compound"): sub-question labels suppressed; reads as
-       one logical question with N inputs (e.g. height + weight, judgment +
-       confidence).
-     * true ("visual grouping"): each sub-question keeps its own label so
+   The group itself does not produce a database column — the group's `id` is
+   structural, used only as the HTML wrapper id. Only the sub-questions'
+   ids become database columns. Groups cannot contain other groups.
+
+   Two presentation modes via show_sub_labels:
+     - false (default, "compound"): sub-question labels are suppressed; the
+       group reads as one logical question with N inputs (e.g. height +
+       weight, judgment + confidence).
+     - true ("visual grouping"): each sub-question keeps its own label so
        the group is a labelled cluster of independent fields.
 
    Sub-questions are pre-rendered by render_unloaded_questionnaire (which
    calls render_questionnaire_question per sub) and stashed on
-   question._sub_html. We splice in those pre-rendered strings here, parallel
-   to question.questions by loop index — the same pattern the outer
-   questionnaire macro uses with q_html. #}
+   question._sub_html. We splice in those pre-rendered strings here,
+   parallel to question.questions by loop index — the same pattern the
+   outer questionnaire macro uses with q_html.
+
+   Args:
+       id (str, optional): HTML wrapper id; not stored as a database column.
+       text (str, optional): Non-bold sub-instruction shown inside the
+           group, between the bold heading and the sub-questions.
+       questions (list): Sub-question objects of any non-group type. Each
+           sub-question follows its own type's schema.
+       show_sub_labels (bool, optional): When true, each sub-question keeps
+           its own instructions label; when false, sub-question labels are
+           suppressed so the group reads as a single compound question.
+           Defaults to False.
+       horizontal (bool, optional): Lay sub-questions side-by-side instead
+           of stacked vertically. Defaults to False.
+
+   Example:
+       {
+           "questiontype": "group",
+           "id": "new_group",
+           "instructions": "Group heading",
+           "text": "Optional sub-instruction below the heading.",
+           "show_sub_labels": true,
+           "horizontal": false,
+           "questions": [
+               {"questiontype": "field", "id": "first_name", "instructions": "First name"},
+               {"questiontype": "num_field", "id": "age", "instructions": "Age (years)"}
+           ]
+       }
+#}
 <fieldset class="bofs-group {% if not question.show_sub_labels %}bofs-group-compound{% endif %}"{% if question.id %} id="{{ question.id }}"{% endif %}>
     {% if question.text %}
         <div class="bofs-group-header" style="">{{ question.text | safe }}</div>

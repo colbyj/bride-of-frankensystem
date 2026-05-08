@@ -1,3 +1,33 @@
+{# Matrix of radio buttons. One row per item; columns share a common scale.
+
+   The participant's selection per row is stored as the column index (1..N)
+   in a column named after the row's id. The grid as a whole has no id of
+   its own — only the row ids become database columns.
+
+   Args:
+       labels (list): Column headers, in display order. Each row offers one
+           radio button per column.
+       q_text (list): Rows. Each entry is an object with `id` (becomes the
+           column name) and `text` (the row label, HTML allowed).
+       questions (list, optional): Legacy alias for q_text, accepted for
+           backwards compatibility.
+       shuffle (bool, optional): Randomise the row order on each render.
+           Defaults to False.
+       question_width (str, optional): CSS width for the first column (the
+           row labels). Defaults to "30%".
+
+   Example:
+       {
+           "questiontype": "radiogrid",
+           "instructions": "",
+           "shuffle": false,
+           "labels": ["Strongly disagree", "", "Neutral", "", "Strongly agree"],
+           "q_text": [
+               {"id": "row_1", "text": "Item 1"},
+               {"id": "row_2", "text": "Item 2"}
+           ]
+       }
+#}
 {% if question.shuffle %}
     {% do shuffle(question.q_text) %}
 {% endif %}

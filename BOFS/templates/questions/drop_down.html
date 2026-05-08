@@ -1,3 +1,19 @@
+{# Single-select drop-down list.
+
+   Args:
+       items (list): Selectable values, in display order. Each entry is a
+           string. The participant's selection is stored verbatim.
+       width (int, optional): Pixel width of the select element. Defaults to
+           the project's DEFAULT_FIELD_WIDTH config value.
+
+   Example:
+       {
+           "questiontype": "drop_down",
+           "id": "new_drop_down",
+           "instructions": "",
+           "items": ["Option A", "Option B", "Option C"]
+       }
+#}
 <select class="bofs-form-control"
         name="{{ question.id }}"
         id="{{ question.id }}"

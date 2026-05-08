@@ -1,30 +1,39 @@
-{# Video question type. Renders an HTML5 <video> from an arbitrary URL.
-   Optionally enforces "watch to completion" before allowing the participant to
-   continue, and (when `id` is set) logs viewing telemetry to the database.
+{# Embedded HTML5 video, with optional force-watch gating and telemetry.
 
-   JSON fields:
-     src                   (required) URL of the video.
-     width, height         (optional) pixel dimensions for the video element.
-     autoplay              (optional, default false)
-     force_watch           (optional, default false) When true, btnNext is
-                           disabled until the participant watches at least
-                           `completion_threshold` of the video's duration.
-     completion_threshold  (optional, default 0.98) Fraction of duration that
-                           counts as "watched".
-     minimal_controls      (optional, default false) When true, hides the native
-                           controls and shows only a custom Play/Pause button.
-                           When false, native controls are shown; if force_watch
-                           is also true, a snap-back guard prevents seeking past
-                           the supposed playhead position.
-     id                    (optional) When set, three columns are written to the
-                           questionnaire table:
-                             {id}_started — epoch seconds when the participant
-                                            first pressed play (0 if never).
-                             {id}_ended   — epoch seconds at last observed
-                                            activity (play/timeupdate/pause).
-                             {id}_watched — accumulated forward play time
-                                            (seconds), excluding seeks and
-                                            background-tab playback.
+   When `id` is set, three telemetry columns are written to the database:
+   {id}_started (epoch seconds when first played, 0 if never), {id}_ended
+   (epoch seconds at last observed activity), and {id}_watched (accumulated
+   forward play time in seconds, excluding seeks and background-tab playback).
+
+   Args:
+       id (str, optional): When set, telemetry is recorded; when omitted,
+           the video is purely embedded and produces no database columns.
+       src (str): URL of the video file.
+       width (int, optional): Pixel width of the video element.
+       height (int, optional): Pixel height of the video element.
+       autoplay (bool, optional): Start playback as soon as the page loads.
+           Defaults to False.
+       force_watch (bool, optional): When true, the Continue button is
+           disabled until the participant has watched at least
+           completion_threshold of the video. Defaults to False.
+       completion_threshold (float, optional): Fraction of total duration
+           that counts as "watched". Defaults to 0.98.
+       minimal_controls (bool, optional): When true, hide native controls
+           and show only a custom Play/Pause button. When false, native
+           controls are shown; if force_watch is also true, a snap-back
+           guard prevents seeking past the supposed playhead position.
+           Defaults to False.
+
+   Example:
+       {
+           "questiontype": "video",
+           "id": "new_video",
+           "instructions": "",
+           "src": "/static/intro.mp4",
+           "force_watch": false,
+           "completion_threshold": 0.98,
+           "minimal_controls": false
+       }
 #}
 {% set fw = question.force_watch|default(false) %}
 {% set min_ctrl = question.minimal_controls|default(false) %}

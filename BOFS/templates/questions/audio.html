@@ -1,29 +1,36 @@
-{# Audio question type. Renders an HTML5 <audio> from an arbitrary URL.
-   Optionally enforces "listen to completion" before allowing the participant to
-   continue, and (when `id` is set) logs listening telemetry to the database.
+{# Embedded HTML5 audio, with optional force-listen gating and telemetry.
 
-   Audio always uses native controls - there is no equivalent to video's
-   `minimal_controls` because the scrubber is also the only progress indicator
-   the participant has, and play/pause is essential. When `force_listen` is on
-   a snap-back guard prevents seeking past the supposed playhead position.
+   Audio always uses native controls — there is no `minimal_controls` because
+   the scrubber doubles as the only progress indicator the participant has.
+   When `force_listen` is on, a snap-back guard prevents seeking past the
+   supposed playhead position.
 
-   JSON fields:
-     src                   (required) URL of the audio file.
-     autoplay              (optional, default false)
-     force_listen          (optional, default false) When true, btnNext is
-                           disabled until the participant listens to at least
-                           `completion_threshold` of the clip.
-     completion_threshold  (optional, default 0.98) Fraction of duration that
-                           counts as "listened".
-     id                    (optional) When set, three columns are written to
-                           the questionnaire table:
-                             {id}_started  — epoch seconds when the participant
-                                             first pressed play (0 if never).
-                             {id}_ended    — epoch seconds at last observed
-                                             activity (play/timeupdate/pause).
-                             {id}_listened — accumulated forward play time
-                                             (seconds), excluding seeks and
-                                             background-tab playback.
+   When `id` is set, three telemetry columns are written: {id}_started
+   (epoch seconds when first played, 0 if never), {id}_ended (epoch seconds
+   at last observed activity), and {id}_listened (accumulated forward play
+   time in seconds, excluding seeks and background-tab playback).
+
+   Args:
+       id (str, optional): When set, telemetry is recorded; when omitted,
+           the clip is purely embedded and produces no database columns.
+       src (str): URL of the audio file.
+       autoplay (bool, optional): Start playback as soon as the page loads.
+           Defaults to False.
+       force_listen (bool, optional): When true, the Continue button is
+           disabled until the participant has listened to at least
+           completion_threshold of the clip. Defaults to False.
+       completion_threshold (float, optional): Fraction of total duration
+           that counts as "listened". Defaults to 0.98.
+
+   Example:
+       {
+           "questiontype": "audio",
+           "id": "new_audio",
+           "instructions": "",
+           "src": "/static/clip.mp3",
+           "force_listen": false,
+           "completion_threshold": 0.98
+       }
 #}
 {% set fl = question.force_listen|default(false) %}
 {% set threshold = question.completion_threshold|default(0.98) %}
