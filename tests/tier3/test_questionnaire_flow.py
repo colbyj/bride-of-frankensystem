@@ -327,12 +327,18 @@ class TestShowIfRendering:
 
         html = client.get("/questionnaire/branched").data.decode("utf-8")
         # The age question wrapper should NOT carry data-show-if (only the
-        # guardian_name wrapper does). Find a window around the `name="age"`
-        # input and verify it has no data-show-if in that block.
+        # guardian_name wrapper does). Find the immediate `bofs-question`
+        # wrapper around the `name="age"` input and verify it has no
+        # data-show-if attribute in that block.
         import re
-        # Look for ".question padding" wrappers; each ends at `</div>` of inputs.
+        # Tempered-greedy: match a bofs-question wrapper opening tag, then
+        # any characters that don't start ANOTHER bofs-question wrapper, up
+        # to the age input. This prevents the regex from spanning across
+        # the preceding/following sibling question's wrapper.
         wrappers = re.findall(
-            r'<div class="question padding[^"]*"(?:[^>]*)>.*?<input[^>]*name="age"',
+            r'<div class="[^"]*bofs-question[^"]*"[^>]*>'
+            r'(?:(?!<div class="[^"]*bofs-question).)*?'
+            r'<input[^>]*name="age"',
             html, re.DOTALL
         )
         assert wrappers, "Age question wrapper not found in HTML"
