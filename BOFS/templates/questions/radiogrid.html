@@ -1,8 +1,9 @@
 {# Matrix of radio buttons. One row per item; columns share a common scale.
 
-   The participant's selection per row is stored as the column index (1..N)
-   in a column named after the row's id. The grid as a whole has no id of
-   its own — only the row ids become database columns.
+   The participant's selection per row is stored in a column named after the
+   row's id. By default the stored value is the column index (1..N); set
+   `store_labels` to record the label string instead. The grid as a whole has
+   no id of its own — only the row ids become database columns.
 
    Args:
        labels (list): Column headers, in display order. Each row offers one
@@ -15,6 +16,15 @@
            Defaults to False.
        question_width (str, optional): CSS width for the first column (the
            row labels). Defaults to "30%".
+       na_column (bool, optional): Add an extra "not applicable" column at
+           the right of the grid. Selecting it satisfies `required` but
+           records the row's value as null. Defaults to False.
+       na_label (str, optional): Header text for the N/A column. Defaults
+           to "N/A".
+       store_labels (bool, optional): Store the chosen column's label
+           string instead of its 1-based index. Calculated fields that
+           reference rows in this grid are rejected at load time, since
+           label values are not numeric. Defaults to False.
 
    Example:
        {
@@ -38,6 +48,7 @@
     {% set question_width = question.question_width %}
 {% endif %}
 
+{% set na_label = question.na_label if question.na_label else "N/A" %}
 <table class="bofs-radiogrid-table" style="--bofs-radiogrid-first-col-width: {{ question_width }}">
     <thead>
         <tr>
@@ -45,6 +56,9 @@
             {% for label in question.labels %}
             <th scope="col" style="text-align:center;">{{ label }}</th>
             {% endfor %}
+            {% if question.na_column %}
+            <th scope="col" style="text-align:center;">{{ na_label }}</th>
+            {% endif %}
         </tr>
     </thead>
     <tbody>
@@ -58,12 +72,20 @@
         <tr class="{{ "bofs-row-odd" if loop.index % 2 == 0 else "bofs-row-even" }}">
             <td>{{ grid_question.text | safe }}</td>
             {% for label in question.labels %}
+            {% set radio_value = label if question.store_labels else loop.index|string %}
             <td>
                 <label class="bofs-radiogrid-cell">
-                    <input class="bofs-form-check-input" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ loop.index }}" {{ "required" if question.required }} {% if grid_question.value == loop.index|string %}checked{% endif %}>
+                    <input class="bofs-form-check-input" title="{{ label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}{{ loop.index }}" value="{{ radio_value }}" {{ "required" if question.required }} {% if grid_question.has_value and grid_question.value == radio_value %}checked{% endif %}>
                 </label>
             </td>
             {% endfor %}
+            {% if question.na_column %}
+            <td>
+                <label class="bofs-radiogrid-cell">
+                    <input class="bofs-form-check-input" title="{{ na_label }}" type="radio" name="{{ grid_question.id }}" id="{{ grid_question.id }}_na" value="" {{ "required" if question.required }} {% if grid_question.has_value and grid_question.value is none %}checked{% endif %}>
+                </label>
+            </td>
+            {% endif %}
         </tr>
         {% endfor %}
     </tbody>

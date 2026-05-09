@@ -251,6 +251,176 @@ class TestCreateDBClass:
         q = write_questionnaire_file(bofs_app, "survey", SIMPLE_QUESTIONNAIRE)
         assert q.get_calculated_fields() == []
 
+    def test_radiogrid_columns_are_nullable(self, bofs_app):
+        # Required so the optional N/A column can record NULL. Unconditional
+        # so column generation doesn't depend on per-grid options.
+        q = write_questionnaire_file(bofs_app, "grid_null", RADIOGRID_QUESTIONNAIRE)
+        for row_id in ("g_q1", "g_q2"):
+            col = q.db_class.__table__.c[row_id]
+            assert col.nullable is True, (
+                f"radiogrid row column {row_id!r} should be nullable"
+            )
+
+    def test_store_labels_calc_reference_rejected_at_load(self, bofs_app):
+        # store_labels grids hold non-numeric strings, so referencing them
+        # from a calculated field is a configuration error — surface it at
+        # load time rather than producing a calc that always errors.
+        bad = {
+            "title": "Label calc",
+            "instructions": "",
+            "questions": [
+                {
+                    "questiontype": "radiogrid",
+                    "id": "grid",
+                    "store_labels": True,
+                    "labels": ["Low", "High"],
+                    "q_text": [
+                        {"id": "row_1", "text": "Item one"},
+                        {"id": "row_2", "text": "Item two"},
+                    ],
+                }
+            ],
+            "participant_calculations": {
+                "total": "row_1 + row_2",
+            },
+        }
+        with pytest.raises(Exception, match="store_labels"):
+            write_questionnaire_file(bofs_app, "label_calc", bad)
+
+
+# ===========================================================================
+# TestRadiogridSubmission — N/A column and store_labels behaviour
+# ===========================================================================
+
+class TestRadiogridSubmission:
+    @staticmethod
+    def _create_participant(app):
+        p = app.db.Participant()
+        p.timeStarted = datetime(2024, 1, 1, 12, 0, 0)
+        p.ipAddress = "127.0.0.1"
+        p.userAgent = "test"
+        p.condition = 1
+        p.finished = False
+        app.db.session.add(p)
+        app.db.session.commit()
+        return p.participantID
+
+    def test_na_submission_stores_null(self, bofs_app):
+        na_grid = {
+            "title": "N/A grid",
+            "instructions": "",
+            "questions": [
+                {
+                    "questiontype": "radiogrid",
+                    "id": "grid",
+                    "na_column": True,
+                    "labels": ["1", "2", "3"],
+                    "q_text": [
+                        {"id": "row_1", "text": "Item one"},
+                        {"id": "row_2", "text": "Item two"},
+                    ],
+                }
+            ],
+        }
+        q = write_questionnaire_file(bofs_app, "na_grid", na_grid)
+        pid = self._create_participant(bofs_app)
+
+        with bofs_app.test_request_context(
+            "/questionnaire/na_grid",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "row_1": "2",
+                "row_2": "",  # N/A — empty value from the N/A radio
+                "questionnaireInteractions": "",
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        results = q.fetch_all_data()
+        assert len(results) == 1
+        assert results[0].row_1 == "2"
+        assert results[0].row_2 is None
+
+    def test_na_submission_calc_returns_none(self, bofs_app):
+        # A calc that references an N/A row should short-circuit to None
+        # rather than crashing the export.
+        na_calc = {
+            "title": "N/A calc",
+            "instructions": "",
+            "questions": [
+                {
+                    "questiontype": "radiogrid",
+                    "id": "grid",
+                    "na_column": True,
+                    "labels": ["1", "2", "3"],
+                    "q_text": [
+                        {"id": "row_1", "text": "Item one"},
+                        {"id": "row_2", "text": "Item two"},
+                    ],
+                }
+            ],
+            "participant_calculations": {
+                "total": "row_1 + row_2",
+            },
+        }
+        q = write_questionnaire_file(bofs_app, "na_calc", na_calc)
+        pid = self._create_participant(bofs_app)
+
+        with bofs_app.test_request_context(
+            "/questionnaire/na_calc",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "row_1": "2",
+                "row_2": "",
+                "questionnaireInteractions": "",
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        results = q.fetch_all_data()
+        assert results[0].total() is None
+
+    def test_store_labels_submission_records_label_string(self, bofs_app):
+        label_grid = {
+            "title": "Label grid",
+            "instructions": "",
+            "questions": [
+                {
+                    "questiontype": "radiogrid",
+                    "id": "grid",
+                    "store_labels": True,
+                    "labels": ["Strongly disagree", "Neutral", "Strongly agree"],
+                    "q_text": [
+                        {"id": "row_1", "text": "Item one"},
+                    ],
+                }
+            ],
+        }
+        q = write_questionnaire_file(bofs_app, "label_grid", label_grid)
+        pid = self._create_participant(bofs_app)
+
+        with bofs_app.test_request_context(
+            "/questionnaire/label_grid",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "row_1": "Strongly agree",
+                "questionnaireInteractions": "",
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        results = q.fetch_all_data()
+        assert results[0].row_1 == "Strongly agree"
+
 
 # ===========================================================================
 # TestShowIfCompilation — show_if predicates parse at create_db_class time

@@ -52,7 +52,6 @@ radiogrid
 -  contains one or more horizontal rows of radio buttons.
 -  This input supports n-columns, and allows the researcher to provide a
    column header for each column.
--  A selection by the user is always required
 
 **Properties**
 
@@ -69,6 +68,25 @@ radiogrid
 
    -  ``id``: unique id of the row of radio buttons (string)
    -  ``text``: question text (string)
+
+-  ``na_column``: add an extra column at the right of the grid for an
+   "N/A" option. Selecting it satisfies ``required`` but stores the
+   row's value as ``NULL``. (optional, boolean, default ``false``)
+-  ``na_label``: header text for the N/A column. (optional, string,
+   default ``"N/A"``)
+-  ``store_labels``: store the chosen column's label string (e.g.
+   ``"Strongly agree"``) instead of its 1-based index. Calculated fields
+   that reference rows in this grid are rejected at questionnaire load
+   time, since label values are not numeric. (optional, boolean,
+   default ``false``)
+
+.. note::
+
+   Radiogrid row columns are nullable so the ``na_column`` option can
+   record ``NULL``. Tables created before this option existed have
+   non-null columns; to use ``na_column`` on a previously deployed
+   questionnaire, drop or alter the existing table so it can be
+   recreated with the new schema.
 
 **Example**
 

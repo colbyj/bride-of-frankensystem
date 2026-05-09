@@ -246,6 +246,7 @@ class JSONQuestionnaireColumn(object):
         self.id = definition['id']
         self.data_type = "string"
         self.default = ""
+        self.nullable = False
 
         if question_type is None:
             if 'questiontype' in definition:
@@ -264,6 +265,14 @@ class JSONQuestionnaireColumn(object):
                 self.data_type = "integer"
             elif values and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in values):
                 self.data_type = "float"
+
+        # Radiogrid row columns are nullable so the optional N/A column can
+        # store the row's value as NULL. Researchers who never enable
+        # ``na_column`` see no behavioural difference: regular selections
+        # still write a non-null string.
+        if question_type.lower() == "radiogrid":
+            self.nullable = True
+            self.default = None
 
         if 'datatype' in definition:
             self.data_type = definition['datatype']
@@ -285,15 +294,15 @@ class JSONQuestionnaireColumn(object):
 
     def generate_db_column(self):
         if self.data_type == "integer":
-            return db.Column(db.Integer, nullable=False, default=self.default)
+            return db.Column(db.Integer, nullable=self.nullable, default=self.default)
         elif self.data_type == "float":
-            return db.Column(db.Float, nullable=False, default=self.default)
+            return db.Column(db.Float, nullable=self.nullable, default=self.default)
         elif self.data_type == "datetime":
-            return db.Column(db.DateTime, nullable=False, default=self.default)
+            return db.Column(db.DateTime, nullable=self.nullable, default=self.default)
         elif self.data_type == "boolean":
-            return db.Column(db.Boolean, nullable=False, default=self.default)
+            return db.Column(db.Boolean, nullable=self.nullable, default=self.default)
         else:
-            return db.Column(db.Text, nullable=False, default=self.default)
+            return db.Column(db.Text, nullable=self.nullable, default=self.default)
 
 
 class JSONQuestionnaire(object):
@@ -331,6 +340,31 @@ class JSONQuestionnaire(object):
 
     def get_table_name(self):
         return self.db_class.__tablename__
+
+    def _collect_label_stored_row_ids(self) -> set:
+        """Return the set of row ids that belong to a radiogrid with
+        ``store_labels: true``. These rows hold label strings, so calc
+        fields can't coerce them to numbers; ``create_db_class`` uses this
+        to reject calcs that reference them."""
+        ids: set = set()
+
+        def _scan(question_list):
+            for q in question_list or []:
+                if not isinstance(q, dict):
+                    continue
+                if q.get('questiontype') == 'group':
+                    _scan(q.get('questions') or [])
+                    continue
+                if q.get('questiontype') != 'radiogrid' or not q.get('store_labels'):
+                    continue
+                rows = q.get('q_text') or q.get('questions') or []
+                for row in rows:
+                    if isinstance(row, dict) and 'id' in row:
+                        ids.add(row['id'])
+
+        if isinstance(self.json_data, dict):
+            _scan(self.json_data.get('questions') or [])
+        return ids
 
     def get_calculated_fields(self) -> list[str]:
         return self.__calc_fields
@@ -481,6 +515,7 @@ class JSONQuestionnaire(object):
         if "participant_calculations" in self.json_data:
             field_ids = [f.id for f in self.__fields]
             funcs = default_functions()
+            label_stored_row_ids = self._collect_label_stored_row_ids()
 
             def make_calc_method(calc_name, ast_node):
                 referenced = referenced_fields(ast_node)
@@ -529,6 +564,21 @@ class JSONQuestionnaire(object):
                         f"Unable to parse calculated field `{field_name}` on "
                         f"questionnaire `{table_name}`. Expression: "
                         f"`{calculation}`. {e}"
+                    )
+                # Calc fields coerce referenced values to float; rows from
+                # ``store_labels: true`` grids hold label strings that can't
+                # be coerced, so reject the configuration up front instead
+                # of producing a calc that always errors at row time.
+                offending = sorted(set(referenced_fields(ast_node)) & label_stored_row_ids)
+                if offending:
+                    raise Exception(
+                        f"Calculated field `{field_name}` on questionnaire "
+                        f"`{table_name}` references row(s) "
+                        f"{', '.join(repr(r) for r in offending)} from a "
+                        f"radiogrid with `store_labels: true`. Calc fields "
+                        f"require numeric (index) storage; remove "
+                        f"`store_labels` from that grid or drop the "
+                        f"reference from the calc."
                     )
                 table_attr[field_name] = make_calc_method(field_name, ast_node)
 

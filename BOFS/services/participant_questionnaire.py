@@ -60,11 +60,20 @@ class ParticipantQuestionnaireService:
         for field in fields:
             try:
                 value = request.form.get(field.id, None)
-                if value is not None:
+                attr = getattr(questionnaire.db_class, field.id)
+                # An empty string from a nullable column means the
+                # participant explicitly chose a "no value" option (e.g. a
+                # radiogrid N/A column) — store NULL rather than "" so
+                # consumers can distinguish missing-by-design from a real
+                # empty answer.
+                if value == "" and attr.expression.nullable:
+                    value = None
+                    setattr(new_object, field.id, value)
+                elif value is not None:
                     setattr(new_object, field.id, value)
                 else:
-                    attr = getattr(questionnaire.db_class, field.id)
-                    default = attr.expression.default.arg
+                    column_default = attr.expression.default
+                    default = column_default.arg if column_default is not None else None
                     setattr(new_object, field.id, default)
             except:
                 print("Could not write field " + str(field.id))
