@@ -753,6 +753,233 @@ def test_question_type_alias_matches_canonical_is_dropped(tmp_path):
     q.fetch_fields()
     assert "question_type" not in q.json_data["questions"][0]
     assert q.json_data["questions"][0]["questiontype"] == "slider"
+
+
+def test_string_encoded_int_attribute_is_coerced(tmp_path):
+    """Numeric attributes declared as int (e.g. slider tick_count, default)
+    accept stringly-typed JSON values."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "slider",
+                "id": "rating",
+                "tick_count": "7",
+                "default": "3",
+                "width": "200",
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "string_int", data)
+    q.fetch_fields()
+    qd = q.json_data["questions"][0]
+    assert qd["tick_count"] == 7 and isinstance(qd["tick_count"], int)
+    assert qd["default"] == 3 and isinstance(qd["default"], int)
+    assert qd["width"] == 200 and isinstance(qd["width"], int)
+
+
+def test_string_encoded_float_attribute_is_coerced(tmp_path):
+    data = {
+        "questions": [
+            {
+                "questiontype": "audio",
+                "id": "clip",
+                "src": "/static/clip.mp3",
+                "completion_threshold": "0.75",
+            },
+            {
+                "questiontype": "num_field",
+                "id": "score",
+                "min": "0",
+                "max": "100.5",
+            },
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "string_float", data)
+    q.fetch_fields()
+    audio = q.json_data["questions"][0]
+    nf = q.json_data["questions"][1]
+    assert audio["completion_threshold"] == 0.75
+    assert isinstance(audio["completion_threshold"], float)
+    assert nf["min"] == 0.0 and isinstance(nf["min"], float)
+    assert nf["max"] == 100.5 and isinstance(nf["max"], float)
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("true", True), ("True", True), ("TRUE", True), ("  true  ", True),
+    ("false", False), ("False", False), ("FALSE", False),
+])
+def test_string_encoded_bool_attribute_is_coerced(tmp_path, raw, expected):
+    data = {
+        "questions": [
+            {
+                "questiontype": "audio",
+                "id": "clip",
+                "src": "/static/clip.mp3",
+                "autoplay": raw,
+                "force_listen": raw,
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, f"string_bool_{raw.strip()}", data)
+    q.fetch_fields()
+    qd = q.json_data["questions"][0]
+    assert qd["autoplay"] is expected
+    assert qd["force_listen"] is expected
+
+
+def test_invalid_string_for_int_raises(tmp_path):
+    data = {
+        "questions": [
+            {"questiontype": "slider", "id": "s", "tick_count": "abc"},
+        ],
+    }
+    path = tmp_path / "bad_int.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(SyntaxError, match="tick_count"):
+        JSONQuestionnaire(str(tmp_path), "bad_int", True)
+
+
+def test_invalid_string_for_bool_raises(tmp_path):
+    data = {
+        "questions": [
+            {
+                "questiontype": "audio", "id": "a",
+                "src": "/static/clip.mp3", "autoplay": "maybe",
+            },
+        ],
+    }
+    path = tmp_path / "bad_bool.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(SyntaxError, match="autoplay"):
+        JSONQuestionnaire(str(tmp_path), "bad_bool", True)
+
+
+@pytest.mark.parametrize("raw,expected", [
+    ("1", True), ("yes", True), ("YES", True), ("on", True),
+    ("0", False), ("no", False), ("NO", False), ("off", False), ("", False),
+])
+def test_extended_bool_strings_match_jsontable_rules(tmp_path, raw, expected):
+    data = {
+        "questions": [
+            {
+                "questiontype": "audio", "id": "clip",
+                "src": "/static/clip.mp3", "autoplay": raw,
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, f"ext_bool_{raw or 'empty'}", data)
+    q.fetch_fields()
+    assert q.json_data["questions"][0]["autoplay"] is expected
+
+
+def test_native_typed_values_unchanged(tmp_path):
+    """Coercion is a no-op when values already arrive as the right type."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "slider", "id": "s",
+                "tick_count": 5, "default": 2,
+            },
+            {
+                "questiontype": "audio", "id": "a",
+                "src": "/static/clip.mp3",
+                "autoplay": True, "completion_threshold": 0.9,
+            },
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "native_typed", data)
+    q.fetch_fields()
+    s, a = q.json_data["questions"]
+    assert s["tick_count"] == 5 and a["autoplay"] is True
+    assert a["completion_threshold"] == 0.9
+
+
+def test_coercion_recurses_into_group_subquestions(tmp_path):
+    data = {
+        "questions": [
+            {
+                "questiontype": "group", "id": "g",
+                "horizontal": "true",
+                "questions": [
+                    {
+                        "questiontype": "slider", "id": "s",
+                        "tick_count": "5",
+                    },
+                    {
+                        "questiontype": "audio", "id": "a",
+                        "src": "/static/clip.mp3",
+                        "autoplay": "TRUE",
+                    },
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "group_coerce", data)
+    q.fetch_fields()
+    g = q.json_data["questions"][0]
+    assert g["horizontal"] is True
+    assert g["questions"][0]["tick_count"] == 5
+    assert g["questions"][1]["autoplay"] is True
+
+
+def test_coercion_handles_checklist_item_text_entry_flags(tmp_path):
+    data = {
+        "questions": [
+            {
+                "questiontype": "checklist", "id": "checks",
+                "questions": [
+                    {
+                        "id": "opt_a", "text": "A",
+                        "text_entry": "true",
+                        "text_entry_hides": "false",
+                        "text_entry_width": "120",
+                    },
+                    {"id": "opt_b", "text": "B"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "checklist_coerce", data)
+    q.fetch_fields()
+    items = q.json_data["questions"][0]["questions"]
+    assert items[0]["text_entry"] is True
+    assert items[0]["text_entry_hides"] is False
+    assert items[0]["text_entry_width"] == 120
+
+
+def test_picture_select_value_is_not_coerced(tmp_path):
+    """picture_select 'value' is intentionally polymorphic — the column
+    type is derived from it, so coercion would change observable schema."""
+    data = {
+        "questions": [
+            {
+                "questiontype": "picture_select", "id": "ps",
+                "images": [
+                    {"src": "/a.png", "value": "1", "label": "A"},
+                    {"src": "/b.png", "value": "2", "label": "B"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "ps_no_coerce", data)
+    fields = q.fetch_fields()
+    assert fields[0].data_type == "string"  # values stayed strings
+    images = q.json_data["questions"][0]["images"]
+    assert images[0]["value"] == "1" and isinstance(images[0]["value"], str)
+
+
+def test_question_type_alias_conflicts_with_canonical_raises(tmp_path):
+    data = {
+        "questions": [
+            {"questiontype": "slider", "question_type": "num_field", "id": "x"},
+        ],
+    }
+    path = tmp_path / "alias_conflict.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(SyntaxError, match="question_type"):
+        JSONQuestionnaire(str(tmp_path), "alias_conflict", True)
+
+
 # ===========================================================================
 # JSONQuestionnaire — get_field
 # ===========================================================================

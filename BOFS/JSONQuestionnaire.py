@@ -41,6 +41,167 @@ _JSON_TYPE_TO_NORMALIZED = {
 }
 
 
+# Per-question-type schemas for fields that live on nested items rather
+# than the question dict itself. The docstring schemas only describe
+# top-level question attributes; researcher-typed values inside lists
+# (e.g. checklist items) live here. Keep this list short — only fields
+# whose intended type is unambiguous belong here. Fields whose type is
+# intentionally polymorphic (picture_select image ``value``) are absent
+# on purpose so coercion doesn't change their type.
+_NESTED_ITEM_TYPES: dict = {
+    # checklist sub-items: parent's ``questions`` array
+    "checklist": {
+        "container": "questions",
+        "fields": {
+            "text_entry": "bool",
+            "text_entry_hides": "bool",
+            "text_entry_width": "int",
+        },
+    },
+}
+
+
+def _coerce_int(value, file_name: str, key_path: str):
+    # bool is a subclass of int — leave booleans alone so a stray ``true``
+    # in a numeric slot surfaces via validation instead of silently
+    # turning into 1.
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if value.is_integer():
+            return int(value)
+        raise SyntaxError(
+            "ERROR! Questionnaire `%s` field `%s` expects an integer, "
+            "got %r." % (file_name, key_path, value)
+        )
+    if isinstance(value, str):
+        s = value.strip()
+        if s != "":
+            try:
+                return int(s)
+            except ValueError:
+                try:
+                    f = float(s)
+                except ValueError:
+                    pass
+                else:
+                    if f.is_integer():
+                        return int(f)
+        raise SyntaxError(
+            "ERROR! Questionnaire `%s` field `%s` expects an integer, "
+            "got %r." % (file_name, key_path, value)
+        )
+    return value
+
+
+def _coerce_float(value, file_name: str, key_path: str):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        s = value.strip()
+        if s != "":
+            try:
+                return float(s)
+            except ValueError:
+                pass
+        raise SyntaxError(
+            "ERROR! Questionnaire `%s` field `%s` expects a number, "
+            "got %r." % (file_name, key_path, value)
+        )
+    return value
+
+
+def _coerce_bool(value, file_name: str, key_path: str):
+    # Mirrors the accepted-string set used by ``BOFS.JSONTable._coerce_bool``
+    # for participant POST data, so researchers see consistent truthy/falsy
+    # rules across the framework.
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("true", "1", "yes", "on"):
+            return True
+        if s in ("false", "0", "no", "off", ""):
+            return False
+        raise SyntaxError(
+            "ERROR! Questionnaire `%s` field `%s` expects a boolean "
+            "(true/false), got %r." % (file_name, key_path, value)
+        )
+    return value
+
+
+def _coerce_value(value, type_name: str, file_name: str, key_path: str):
+    type_name = (type_name or "").strip().lower().split(",")[0].strip()
+    if type_name in ("int", "integer"):
+        return _coerce_int(value, file_name, key_path)
+    if type_name in ("float", "number"):
+        return _coerce_float(value, file_name, key_path)
+    if type_name in ("bool", "boolean"):
+        return _coerce_bool(value, file_name, key_path)
+    return value
+
+
+def _coerce_question(q: dict, file_name: str, key_path: str) -> None:
+    """Coerce string-encoded numbers/bools to their declared types on a
+    single question dict, then descend into group sub-questions and nested
+    items for which we know the per-field types."""
+    from . import question_schemas  # local import to avoid a startup cycle
+
+    if not isinstance(q, dict):
+        return
+    qtype = q.get("questiontype")
+    if not isinstance(qtype, str):
+        return
+
+    schema = question_schemas.get_schema(qtype)
+    if schema is not None:
+        for attr in schema.attributes:
+            if attr.name in q:
+                q[attr.name] = _coerce_value(
+                    q[attr.name], attr.type, file_name,
+                    f"{key_path}.{attr.name}",
+                )
+
+    # Group sub-questions follow their own type's schema.
+    if qtype == "group":
+        for j, sub in enumerate(q.get("questions") or []):
+            _coerce_question(sub, file_name, f"{key_path}.questions[{j}]")
+
+    # Per-type nested-item fields (e.g. checklist row text_entry flags).
+    nested = _NESTED_ITEM_TYPES.get(qtype)
+    if nested:
+        for j, item in enumerate(q.get(nested["container"]) or []):
+            if not isinstance(item, dict):
+                continue
+            for field_name, field_type in nested["fields"].items():
+                if field_name in item:
+                    item[field_name] = _coerce_value(
+                        item[field_name], field_type, file_name,
+                        f"{key_path}.{nested['container']}[{j}]"
+                        f".{field_name}",
+                    )
+
+
+def _coerce_questionnaire_types(json_data, file_name: str) -> None:
+    """Walk a parsed questionnaire and coerce numeric/boolean fields whose
+    declared schema type is int/float/bool but whose JSON value arrived as
+    a string. The questionnaire JSON file format is hand-edited, so loose
+    values like ``"true"`` or ``"5"`` are common; coercing once at load
+    time means no downstream consumer (templates, validation, the page
+    renderer) has to be type-tolerant."""
+    if not isinstance(json_data, dict):
+        return
+    questions = json_data.get("questions")
+    if not isinstance(questions, list):
+        return
+    for i, q in enumerate(questions):
+        _coerce_question(q, file_name, f"questions[{i}]")
+
+
 def _normalize_question_type_keys(node, file_name: str) -> None:
     """Walk a parsed questionnaire structure in-place and rename the
     ``question_type`` alias to the canonical ``questiontype`` key.
@@ -147,6 +308,16 @@ class JSONQuestionnaire(object):
         except ValueError as error:
             raise SyntaxError("ERROR! Unable to parse `%s` questionnaire. Please check that the file contains valid JSON syntax. "
                   "Python reports the following error: `%s`" % (file_name, error))
+
+        # Collapse the ``question_type`` alias to the canonical
+        # ``questiontype`` before any downstream code reads it.
+        _normalize_question_type_keys(self.json_data, file_name)
+
+        # Coerce string-encoded numbers and booleans to their declared
+        # types (so ``"5"``, ``"true"``, ``"FALSE"`` work in hand-edited
+        # JSON). Runs after the alias collapse so schema lookups can use
+        # the canonical questiontype.
+        _coerce_questionnaire_types(self.json_data, file_name)
 
         # Strip disallowed HTML from researcher-authored text fields up front
         # so every consumer (template render, admin preview, exports) sees the
