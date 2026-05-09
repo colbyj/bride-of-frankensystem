@@ -92,7 +92,7 @@
     </div>
     {% set loop_index = question.labels.index(question.required_selection) + 1 %}
     <script>
-        // Example starter JavaScript for disabling form submissions if there are invalid fields
+        // Block submission unless the participant picked the value named in `required_selection`.
         (function () {
             'use strict';
             window.addEventListener('load', function () {

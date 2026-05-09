@@ -704,6 +704,56 @@ def test_fetch_fields_top_level_and_group_share_flat_namespace(tmp_path):
 
 
 # ===========================================================================
+# JSONQuestionnaire — question_type alias for questiontype
+# ===========================================================================
+
+def test_question_type_alias_top_level(tmp_path):
+    data = {
+        "questions": [
+            {"question_type": "slider", "id": "s1"},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "alias_top", data)
+    fields = q.fetch_fields()
+    assert [f.id for f in fields] == ["s1"]
+    assert fields[0].data_type == "integer"
+    # Alias is collapsed to the canonical key so downstream readers (templates,
+    # validation, expression substitution) see only ``questiontype``.
+    assert q.json_data["questions"][0]["questiontype"] == "slider"
+    assert "question_type" not in q.json_data["questions"][0]
+
+
+def test_question_type_alias_in_group_sub_questions(tmp_path):
+    data = {
+        "questions": [
+            {
+                "questiontype": "group",
+                "id": "demographics",
+                "questions": [
+                    {"question_type": "field", "id": "first_name"},
+                    {"question_type": "num_field", "id": "age"},
+                ],
+            }
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "alias_group", data)
+    field_ids = [f.id for f in q.fetch_fields()]
+    assert field_ids == ["first_name", "age"]
+    age_field = q.get_field("age")
+    assert age_field.data_type == "integer"
+
+
+def test_question_type_alias_matches_canonical_is_dropped(tmp_path):
+    data = {
+        "questions": [
+            {"questiontype": "slider", "question_type": "slider", "id": "s1"},
+        ],
+    }
+    q = _write_questionnaire(tmp_path, "alias_dup_match", data)
+    q.fetch_fields()
+    assert "question_type" not in q.json_data["questions"][0]
+    assert q.json_data["questions"][0]["questiontype"] == "slider"
+# ===========================================================================
 # JSONQuestionnaire — get_field
 # ===========================================================================
 

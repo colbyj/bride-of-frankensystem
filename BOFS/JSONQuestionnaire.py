@@ -41,6 +41,38 @@ _JSON_TYPE_TO_NORMALIZED = {
 }
 
 
+def _normalize_question_type_keys(node, file_name: str) -> None:
+    """Walk a parsed questionnaire structure in-place and rename the
+    ``question_type`` alias to the canonical ``questiontype`` key.
+
+    Researchers may write either form; everything downstream (validation,
+    column emission, templates, expression substitution) reads
+    ``questiontype``, so the alias is collapsed once at load time. If both
+    keys are present on the same dict, equal values are tolerated and the
+    alias is dropped; differing values raise a SyntaxError because the
+    intent is ambiguous.
+    """
+    if isinstance(node, dict):
+        if 'question_type' in node:
+            alias_value = node['question_type']
+            if 'questiontype' in node:
+                if node['questiontype'] != alias_value:
+                    raise SyntaxError(
+                        "ERROR! Questionnaire `%s` has both `questiontype` "
+                        "and `question_type` set to different values "
+                        "(%r vs %r). Use one." %
+                        (file_name, node['questiontype'], alias_value)
+                    )
+            else:
+                node['questiontype'] = alias_value
+            del node['question_type']
+        for value in node.values():
+            _normalize_question_type_keys(value, file_name)
+    elif isinstance(node, list):
+        for item in node:
+            _normalize_question_type_keys(item, file_name)
+
+
 def _types_compatible(db_type, json_data_type: str) -> bool:
     """Check if a reflected DB column type is compatible with a JSON field's data_type."""
     db_normalized = _normalize_type_name(db_type)
