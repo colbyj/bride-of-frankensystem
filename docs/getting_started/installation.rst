@@ -14,6 +14,10 @@ That's the whole installation. The rest of this page walks through virtual-envir
 
 BOFS runs on Windows, Mac, and Linux.
 
+.. note::
+   To install the latest development release (which may be unstable), install the ``bride-of-frankensystem-dev`` package instead.
+
+
 Step 1: Install Python
 ----------------------
 

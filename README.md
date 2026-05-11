@@ -3,47 +3,44 @@ Bride of Frankensystem
 Bride of Frankensystem (BOFS) is an open-source framework for building online behavioral experiments and surveys.
 You describe your study in plain-text files: a TOML config for settings and page flow, JSON files for questionnaires, 
 and HTML files for custom pages. BOFS handles participant routing, condition assignment, consent forms, data storage, 
-and provides an admin panel for monitoring and export.
+and provides an admin panel for monitoring and export. 
 
-BOFS is built on [Flask](https://flask.palletsprojects.com/). When the patterns built into BOFS aren't enough, custom
+Use BOFS when the capabilities of online survey platforms like Qualtrics or SurveyMonkey fall short of letting you 
+embed custom tasks, assign participants to different conditions, add custom logic, etc. BOFS was originally built with 
+the goal of making it easy to embed Unity WebGL games within a sequence of questionnaires, but supports hosting any kind 
+of JavaScript task (e.g., jsPsych, lab.js, PsychoPy, P5.js, and more) or custom HTML. 
+
+BOFS is built on [Flask](https://flask.palletsprojects.com/). When the patterns built into BOFS aren't enough, custom 
 Flask routes can be added to the same project.
+
+BOFS is installed as a Python package and is managed separately from your own projects. New releases of BOFS are 
+generally backwards compatible with experiments implemented using older releases - projects created in the first version
+of BOFS (from 2015) work on the latest with only minor changes.
+
+Citations
+---------
 
 If you use BOFS for your research, please cite it!
 [![DOI](https://zenodo.org/badge/220541237.svg)](https://zenodo.org/badge/latestdoi/220541237)
 
-
-Where BOFS fits
-===============
-If you've used other tools for online studies, here's where BOFS sits relative to them:
-
-* Survey platforms like Qualtrics, SurveyMonkey, and Google Forms handle questionnaires through a point-and-click
-  editor on hosted infrastructure. They can't embed a custom JavaScript task or open the data layer for custom logic.
-* jsPsych and lab.js handle in-browser trial logic (precise timing, key capture, randomization), but don't host the
-  surrounding study — consent, condition assignment, sessions, admin panel. A jsPsych or lab.js task can run inside a
-  BOFS custom page.
-* Building from scratch in Flask, Django, or Express works too, but every piece of the surrounding study is yours to
-  write.
-
-BOFS lands in the middle: the surrounding scaffolding is provided for you, and the boundary is open enough to drop in
-JavaScript, custom HTML, or Python where you need it.
+To see papers that have used BOFS to enable online data collection, see the [publications list](https://frankensystem.net/publications.html).
 
 
 Documentation & Examples
-========================
-* [Documentation (HTML)](https://bride-of-frankensystem.readthedocs.io/en/latest/)
-* [Documentation (PDF)](https://bride-of-frankensystem.readthedocs.io/_/downloads/en/latest/pdf/)
+------------------------
+* [Documentation](https://bride-of-frankensystem.readthedocs.io/en/latest/)
 * [Example Projects](https://github.com/colbyj/bride-of-frankensystem-examples)
 * [Migrating to BOF 2.0](https://github.com/colbyj/bride-of-frankensystem/wiki/Migrating-to-BOFS-2.0)
 
 
 Features
-========
+--------
 * Built-in consent page. Edit the wording in an HTML file at the project root.
 * Random assignment to conditions, with balancing as participants enroll.
 * Experiment flow defined as a list of pages in your config file.
 * Questionnaires defined in JSON: item-order shuffling, conditional questions and pages, and computed scores at
   submission time.
-* Reuse earlier answers — for instance, embed a participant's prior rating into the wording of a later question.
+* Reuse earlier answers - for instance, embed a participant's prior rating into the wording of a later question.
 * Repeated measurements, either within a session (pre/post) or across days and weeks via an external ID that resumes
   the participant's condition.
 * Custom JSON-defined database tables for trial-by-trial events, task scores, mouse movement, or anything else your
@@ -56,8 +53,16 @@ Features
   and data export.
 
 
+Installing and Running BOFS
+===========================
+Refer to the [installation instructions](https://docs.frankensystem.net/en/latest/getting_started/installation.html) in
+the documentation.
+
+Once installed, run `BOFS init` to generate a new project.
+
+
 Dependencies
-============
+------------
 BOFS requires Python 3.9+, along with the following Python packages:
 
 * `flask` - the web framework BOFS is built on.
@@ -71,11 +76,3 @@ BOFS requires Python 3.9+, along with the following Python packages:
 * `pandas` - data export and the admin results preview.
 * `questionary` - interactive prompts in the `BOFS init` wizard.
 * `bleach` - HTML sanitization for user-supplied content.
-
-
-Installing and Running BOFS
-===========================
-Refer to the [installation instructions](https://docs.frankensystem.net/en/latest/getting_started/installation.html) in
-the documentation.
-
-Once installed, run `BOFS init` to generate a new project.

@@ -11,11 +11,15 @@ Changes from 2.0 to 2.1
 
 * Added a "video" question type for embedding video stimuli.
 * Added a "picture_select" question type for choosing one option from a set of images. Supports horizontal (default) or vertical centered layouts, a per-question `width`, and an `auto_resize` flag that normalizes images to the smallest natural dimension in the group. The stored column's data type is auto-detected (integer/float/string) from the image values, and the `images` list is validated at startup.
+* Added a "image_click" question type for selecting coordinates on an image.
+* Added a "group" question type for visually grouping a set of questions together; respects the `horizontal` layout flag.
 * Checklist now supports options with associated text fields.
 * Radiolist now supports an "other" option with a free-text field, and can require a specific option to be chosen to continue.
-* Radiogrid can now be made optional, supports `questions` as an alias for `q_text`, and gives clearer validation feedback.
+* Radiogrid can now be made optional, supports `questions` as an alias for `q_text`, supports an optional "not applicable" column, and gives clearer validation feedback.
 * Questions can define a `title` attribute that displays above the question box.
 * Questions can be configured to show only for specific conditions.
+* Questionnaire JSON accepts `question_type` as an alias for `questiontype`.
+* The questionnaire parser now coerces submitted values to each column's declared type. (Previously this worked implicitly only for types whose value was rendered back through an HTML template.)
 * Questionnaire questions are now loaded server-side instead of via htmx.
 * Questionnaire validation issues are reported on the console, and the user is directed to a friendlier error page.
 * If a participant returns to a prior questionnaire (supported internally, not exposed in the UI), their previously-entered values are reloaded into the form.
@@ -46,9 +50,11 @@ Changes from 2.0 to 2.1
 
 * Activity polling is now injected via `after_request`, so participants on long-running tasks with fully custom HTML are no longer falsely marked as abandoned. Pages are also marked "submitted" when the session's current URL is updated.
 * Participant progress tracking moved out of `@verify_correct_page` into a `before_request_` handler, so custom routes that omit the decorator still track progress properly.
-* Template's header colour can be set from the config file.
+* Template's header colour can be set from the config file, and is now also subtly applied to questionnaire form elements.
 * Alternative `style.css` files can be loaded via configuration.
 * `APPLICATION_ROOT` can now be omitted from the config.
+* Removed the Bootstrap CSS dependency from the main template; all built-in CSS classes were renamed to no longer collide with Bootstrap. Questionnaire-related styling is now isolated in `style_questionnaire.css`.
+* Reworked checklist, radiolist, and radiogrid markup so the clickable area is more consistent across them, and moved handling of the `horizontal` layout flag into the questionnaire macro so it applies to the new group question type as well.
 
 **Expression Engine and Show-If**
 
@@ -79,6 +85,7 @@ Changes from 2.0 to 2.1
 
 * Introduced a service layer consolidating previously scattered logic: `ParticipantService`, `SessionRecoveryService`, `ParticipantRoutingService`, `ParticipantQuestionnaireService`, and `AdminStatsService`.
 * `Results` class moved to `services/data_export.py`; fixed an export-flags issue discovered during the move.
+* Each question type now has a machine-readable schema generated from a parsable Google-style docstring (`BOFS/question_schemas.py`), giving a single source of truth for the properties each question type accepts.
 * Added unit tests covering JSON tables, built-in model classes, results calculations, session management, page routing, participant management, and questionnaire handling.
 
 **Bug Fixes**
@@ -88,6 +95,7 @@ Changes from 2.0 to 2.1
 * Fixed debug condition picker showing on projects with no conditions.
 * Fixed slider default size not applying to the right label.
 * Fixed page-list composition issue in the admin progress route.
+* Fixed the export page ignoring the "show unfinished" and "show excluded" checkboxes.
 * Fallback source for standard deviation/variance now uses the population method.
 
 
