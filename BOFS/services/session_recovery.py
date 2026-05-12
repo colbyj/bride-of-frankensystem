@@ -57,14 +57,22 @@ class SessionRecoveryService:
             )
 
             if past_participants and len(past_participants) > 0:
-                dict_data = SessionRecoveryService._merge_into_session(session_rows[0].data)
+                # Deserialise without writing to the live session yet — if the
+                # recovered ``currentUrl`` would land on a page that just
+                # blocked the participant, merging it in first would clobber
+                # the existing ``session['currentUrl']`` and verify_correct_page
+                # would redirect them straight back to the blocked URL.
+                dict_data = BOFSSessionInterface.serializer.loads(session_rows[0].data)
+                recovered_url = dict_data.get('currentUrl')
+                if recovered_url and recovered_url in SessionRecoveryService._LOOP_BLOCKED_PATHS:
+                    return None
 
+                SessionRecoveryService._apply_session_dict(dict_data)
                 ParticipantService.clear_condition(p)
-
                 SessionRecoveryService._restore_condition(past_participants)
 
-                if 'currentUrl' in dict_data and session['currentUrl'] not in SessionRecoveryService._LOOP_BLOCKED_PATHS:
-                    return session['currentUrl']
+                if recovered_url:
+                    return recovered_url
 
         return None
 
@@ -101,14 +109,14 @@ class SessionRecoveryService:
         return query.all()
 
     @staticmethod
-    def _merge_into_session(session_blob: str) -> dict:
-        """Deserialize the SessionStore.data blob, write keys into the Flask session,
-        and return the deserialized dict for the caller's inspection.
-        """
-        dict_data = BOFSSessionInterface.serializer.loads(session_blob)
+    def _apply_session_dict(dict_data: dict) -> None:
+        """Write each key from a pre-deserialised SessionStore.data dict into
+        the live Flask session. Callers that need to make decisions based on
+        the recovered URL should inspect ``dict_data`` themselves before
+        invoking this — once it runs, ``session['currentUrl']`` reflects the
+        recovered value."""
         for key in dict_data.keys():
             session[key] = dict_data[key]
-        return dict_data
 
     @staticmethod
     def _restore_condition(past_participants) -> None:
