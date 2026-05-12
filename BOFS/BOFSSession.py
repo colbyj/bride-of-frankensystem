@@ -1,6 +1,7 @@
 import hashlib
-from flask import Request
+from flask import Request, current_app, has_app_context
 from flask.sessions import SessionInterface, SessionMixin, TaggedJSONSerializer
+from itsdangerous import BadData, BadSignature
 from werkzeug.datastructures import CallbackDict
 from uuid import uuid4
 from datetime import timedelta
@@ -58,18 +59,29 @@ class BOFSSessionInterface(SessionInterface):
 
         # The session has been expired, so let's clear out the DB and give a blank session
         if storedSession.expired:
-            print("Session expired; deleting it.")
+            if has_app_context():
+                current_app.logger.info(
+                    "Session expired; deleting sessionID=%s.", sessionID,
+                )
             app.db.session.delete(storedSession)
             app.db.session.commit()
             return BOFSSession(None, sessionID=sessionID, new=True)
 
-        # Try to load the data from the DB into the session dict
+        # Try to load the data from the DB into the session dict. A bad
+        # signature / corrupt blob / missing data is recoverable — just hand
+        # the client a fresh blank session. Log at warning (not exception)
+        # because this fires on every tampered or post-key-rotation cookie
+        # and would otherwise spam the log on benign traffic.
         try:
             val = storedSession.data
             data = self.serializer.loads(val)
             return BOFSSession(data, sessionID=sessionID)  # All is well.
-        except:
-            # Nope. Something bad happened; send them a blank session
+        except (BadSignature, BadData, ValueError, TypeError) as e:
+            if has_app_context():
+                current_app.logger.warning(
+                    "Session deserialise failed for sessionID=%s (%s); issuing blank session.",
+                    sessionID, type(e).__name__,
+                )
             return BOFSSession(None, sessionID=sessionID, new=True)
 
     def regenerate(self, app: "BOFSFlask", session) -> None:

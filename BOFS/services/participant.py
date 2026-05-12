@@ -105,8 +105,11 @@ class ParticipantService:
                     condition = 0
                 return int(condition)
             return 0
-        except:
-            return None  # This is almost definitely a "Working outside of request context" error
+        except RuntimeError:
+            # "Working outside of request context" — caller invoked us from
+            # a CLI or background thread. Return None so the caller can
+            # detect "no participant context available".
+            return None
 
     @staticmethod
     def condition_count() -> int:

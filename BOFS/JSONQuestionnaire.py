@@ -2,7 +2,9 @@ import os
 import json
 from typing import Union
 from datetime import datetime
+from flask import current_app, has_app_context
 from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.exc import NoSuchTableError, OperationalError, SQLAlchemyError
 from .globals import db
 from .expressions import (
     ExpressionError,
@@ -610,8 +612,15 @@ class JSONQuestionnaire(object):
                                 'db_type': _normalize_type_name(db_col['type']),
                                 'json_type': field.data_type,
                             })
-        except Exception:
-            pass  # Skip if reflection fails (e.g., new database, table doesn't exist yet)
+        except (NoSuchTableError, OperationalError, SQLAlchemyError):
+            # Reflection failure here is non-fatal — the model still gets
+            # built below — but a real connectivity / permission / migration
+            # error should be visible, not silently swallowed.
+            if has_app_context():
+                current_app.logger.exception(
+                    "Schema reflection failed for table %r; skipping mismatch check.",
+                    table_name,
+                )
 
         self.db_class = type(self.file_name, (db.Model,), table_attr)
 
