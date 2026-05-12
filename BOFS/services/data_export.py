@@ -386,8 +386,16 @@ class Results(object):
         participants. Used by the admin /results and /results_boxplot routes.
         """
         from BOFS.admin.SummaryStats import SummaryStats  # avoid circular at module load
+        # Match fetch_progress_summary: legacy rows can have NULL excludeFromCount,
+        # which ``== False`` filters out. ``or_`` keeps them in the results.
         results = Results(
-            db.and_(db.Participant.finished == True, db.Participant.excludeFromCount == False),
+            db.and_(
+                db.Participant.finished == True,
+                db.or_(
+                    db.Participant.excludeFromCount == False,
+                    db.Participant.excludeFromCount == None,  # noqa: E711
+                ),
+            ),
             cache_path,
         )
         df = results.build_data_frame()
