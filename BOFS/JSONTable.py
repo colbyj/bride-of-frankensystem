@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from .globals import db
 from .util import utcnow_naive
-from flask import current_app, request, session, config, jsonify, abort
+from flask import current_app, has_app_context, request, session, config, jsonify, abort
 
 
 def _coerce_bool(value):
@@ -96,8 +96,18 @@ class JSONTable(object):
             with open(fullPath) as f:
                 self.json_data = json.load(f)
         except ValueError as error:
-            print("ERROR! Unable to parse `%s` table definition. Please check that the file contains valid JSON syntax. "
-                  "Python reports the following error: `%s`" % (file_name, error))
+            msg = (
+                "ERROR! Unable to parse `%s` table definition. Please check "
+                "that the file contains valid JSON syntax. Python reports "
+                "the following error: `%s`"
+            )
+            if has_app_context():
+                current_app.logger.error(msg, file_name, error)
+            else:
+                # __init__ is called at app construction before the app
+                # context is pushed — fall back to stderr so the message
+                # isn't lost.
+                print(msg % (file_name, error))
             self.json_data = None
 
         self.db_class = None

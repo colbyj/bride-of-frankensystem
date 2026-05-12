@@ -447,10 +447,10 @@ def create(db):
                     db.session.add(self)
                     db.session.commit()
 
-            printText = "Total conditions: {}, Counts: ".format(numConditions)
-            printText += ", ".join(str(c) for c in pCount)
-            printText += ". User put in condition {}.".format(self.condition)
-            print(printText)
+            current_app.logger.info(
+                "assign_condition: total_conditions=%d counts=%s chose=%d",
+                numConditions, pCount, self.condition,
+            )
 
         @hybrid_property
         def duration(self) -> int:
