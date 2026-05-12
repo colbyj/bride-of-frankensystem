@@ -15,8 +15,30 @@ from datetime import datetime, timezone
 from typing import Union
 
 from BOFS.util import utcnow_naive
+from BOFS.validation import is_sql_expression_safe
 
 MAX_CACHE_SECONDS = 60 * 2
+
+
+def _safe_sql_text(expr: str, source: str):
+    """Wrap a researcher-authored expression in db.text after validating it.
+
+    Raises ValueError if the expression isn't allow-list-clean. Validation
+    also runs at table load time (see validation.validate_table); this is
+    defence in depth so a hand-built export definition or a config path that
+    bypasses validation can't reach raw db.text().
+    """
+    ok, why = is_sql_expression_safe(expr)
+    if not ok:
+        raise ValueError(f"Unsafe SQL expression in {source}: {why}")
+    return db.text(expr)
+
+
+def _safe_literal_column(expr: str, source: str):
+    ok, why = is_sql_expression_safe(expr)
+    if not ok:
+        raise ValueError(f"Unsafe SQL expression in {source}: {why}")
+    return db.literal_column(expr)
 
 
 class Results(object):
@@ -195,8 +217,14 @@ class Results(object):
         orderBy = None
         having = None
 
+        export_label = (
+            f"EXPORT[table={export_definition.get('table')!r}]"
+        )
+
         if 'filter' in export_definition and export_definition['filter'] != '':
-            filter = db.text(export_definition['filter'])
+            filter = _safe_sql_text(
+                export_definition['filter'], f"{export_label} filter"
+            )
 
         if 'order_by' in export_definition and export_definition['order_by'] != '':
             orderBy = getattr(table, export_definition['order_by'])
@@ -204,7 +232,9 @@ class Results(object):
         # Determine how many columns to add to the export. If group_by is not used, then it's just one column
         if 'group_by' in export_definition and export_definition['group_by'] != '':
             if 'having' in export_definition and export_definition['having'] != '':  # Having can only work if group_by is used.
-                having = db.text(export_definition['having'])
+                having = _safe_sql_text(
+                    export_definition['having'], f"{export_label} having"
+                )
 
             levelsQ = db.session.query()
 
@@ -253,7 +283,12 @@ class Results(object):
             if hasattr(table, field) and callable(getattr(table, field)):
                 continue  # We can't include this python property as part of the query
             fields.append(field)
-            baseQuery = baseQuery.add_columns(db.literal_column(export_definition['fields'][field]).label(field))
+            baseQuery = baseQuery.add_columns(
+                _safe_literal_column(
+                    export_definition['fields'][field],
+                    f"{export_label} fields[{field!r}]",
+                ).label(field)
+            )
 
         return levels, fields, baseQuery
 

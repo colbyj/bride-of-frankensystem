@@ -5,6 +5,7 @@ import pytest
 from BOFS.validation import (
     ValidationResult,
     is_sql_safe,
+    is_sql_expression_safe,
     is_python_attribute_safe,
     validate_structure,
     validate_question_types,
@@ -576,6 +577,142 @@ class TestValidateTable:
         }
         errors = validate_table(data, "trials")
         assert any(e.severity == "error" for e in errors)
+
+    def test_rejects_field_expression_with_semicolon(self):
+        data = {
+            "columns": {"score": {"type": "integer"}},
+            "exports": [
+                {"fields": {"total": "0; DROP TABLE participant; --"}}
+            ],
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "invalid SQL expression" in e.message
+            for e in errors
+        )
+
+    def test_rejects_filter_with_union(self):
+        data = {
+            "columns": {"score": {"type": "integer"}},
+            "exports": [
+                {
+                    "filter": "1=1 UNION SELECT password FROM app_meta",
+                    "fields": {"total": "sum(score)"},
+                }
+            ],
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "'filter' clause" in e.message
+            for e in errors
+        )
+
+    def test_rejects_having_with_pragma(self):
+        data = {
+            "columns": {"score": {"type": "integer"}},
+            "exports": [
+                {
+                    "group_by": "score",
+                    "having": "pragma synchronous",
+                    "fields": {"total": "sum(score)"},
+                }
+            ],
+        }
+        errors = validate_table(data, "trials")
+        assert any(
+            e.severity == "error" and "'having' clause" in e.message
+            for e in errors
+        )
+
+    def test_real_world_expressions_accepted(self):
+        data = {
+            "columns": {
+                "trial_index": {"type": "integer"},
+                "correct": {"type": "boolean"},
+                "rt": {"type": "float"},
+                "phase": {"type": "string"},
+            },
+            "exports": [
+                {
+                    "filter": "phase = 'learning'",
+                    "fields": {
+                        "accuracy": "avg(case when correct then 1.0 else 0.0 end)",
+                        "n_trials": "count(trial_index)",
+                        "mean_rt": "avg(rt)",
+                    },
+                }
+            ],
+        }
+        errors = validate_table(data, "trials")
+        fatal = [e for e in errors if e.severity == "error"]
+        assert fatal == []
+
+
+# ===========================================================================
+# is_sql_expression_safe
+# ===========================================================================
+
+class TestIsSqlExpressionSafe:
+    @pytest.mark.parametrize("expr", [
+        "score",
+        "count(trial_index)",
+        "count(*)",
+        "avg(correct)",
+        "sum(score)",
+        "max(score)",
+        "min(score)",
+        "avg(case when correct then 1.0 else 0.0 end)",
+        "avg(case when correct = 1 then 1.0 else 0.0 end)",
+        "phase = 'learning'",
+        "COUNT(trial_index)",  # case-insensitive
+        "avg(rt) + 1.5",
+        "coalesce(score, 0)",
+        "round(avg(rt), 2)",
+    ])
+    def test_accepts_real_expressions(self, expr):
+        ok, why = is_sql_expression_safe(expr)
+        assert ok, f"rejected {expr!r}: {why}"
+
+    @pytest.mark.parametrize("expr", [
+        "0; DROP TABLE participant",
+        "1=1) UNION SELECT password FROM app_meta",
+        "count(*) /* x */",
+        "select * from app_meta",
+        "load_extension('evil.so')",
+        'phase = "learning"',
+        "phase = `learning`",
+        "score -- comment",
+        r"sum(score)\x00",
+        "attach database x as y",
+        "pragma synchronous",
+        "phase = 'a' OR phase = 'b'; SELECT 1",
+        "exec('rm -rf /')",
+        # Unknown function rejected
+        "random_func(score)",
+        # Empty / non-string
+        "",
+        "   ",
+    ])
+    def test_rejects_attacks(self, expr):
+        ok, _ = is_sql_expression_safe(expr)
+        assert not ok, f"accepted dangerous expression: {expr!r}"
+
+    def test_rejects_non_string(self):
+        ok, _ = is_sql_expression_safe(123)
+        assert not ok
+
+    def test_rejects_overlong(self):
+        ok, _ = is_sql_expression_safe("x" * 2000)
+        assert not ok
+
+    def test_escaped_quote_in_string_literal(self):
+        # SQL standard double-quote escape inside a string is allowed.
+        ok, _ = is_sql_expression_safe("phase = 'it''s fine'")
+        assert ok
+
+    def test_unterminated_string_rejected(self):
+        ok, _ = is_sql_expression_safe("phase = 'oops")
+        assert not ok
 
     def test_calculations_not_dict(self):
         data = {

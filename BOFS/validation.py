@@ -93,6 +93,178 @@ RESERVED_EXPRESSION_NAMES = frozenset({
 # Regex for SQL-safe identifiers: letter or underscore, then alphanumeric/underscore
 _SQL_SAFE_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
+# Identifiers allowed inside JSONTable export expressions ('fields', 'filter',
+# 'having'). Researcher-authored expressions are wrapped in
+# ``db.literal_column`` / ``db.text`` which interpolate them as raw SQL — the
+# allow-list below is the only thing standing between the JSON file and
+# arbitrary SQL execution. Lowercase; identifier matching is case-insensitive.
+_SQL_EXPR_KEYWORDS = frozenset({
+    "and", "or", "not", "is", "null", "in", "between", "like", "ilike",
+    "case", "when", "then", "else", "end", "distinct",
+    "true", "false",
+    "asc", "desc", "as",
+})
+
+# Aggregate / scalar functions known to be side-effect-free on SQLite and
+# Postgres. Researchers reach for these in practice (``count``, ``avg``, etc.).
+# Anything outside this set is rejected, which blocks ``load_extension``,
+# ``randomblob``, and other SQLite footguns alongside genuinely dangerous
+# functions in other dialects.
+_SQL_EXPR_FUNCTIONS = frozenset({
+    "count", "sum", "avg", "min", "max", "total",
+    "abs", "round", "ceil", "ceiling", "floor",
+    "coalesce", "ifnull", "nullif",
+    "length", "lower", "upper", "trim", "ltrim", "rtrim",
+    "cast",  # cast(x as integer) — note 'as' is in keywords
+})
+
+# Identifiers that are never allowed in a researcher-authored expression even
+# when the rest of the syntax looks tame. Anything containing these tokens is
+# rejected outright.
+_SQL_EXPR_FORBIDDEN_KEYWORDS = frozenset({
+    "select", "from", "where", "join", "union", "intersect", "except",
+    "insert", "update", "delete", "drop", "alter", "create", "truncate",
+    "exec", "execute", "attach", "detach", "pragma", "vacuum", "analyze",
+    "grant", "revoke", "replace", "into", "values", "merge",
+    "load_extension", "load", "savepoint", "release", "rollback",
+    "commit", "begin", "transaction",
+})
+
+# Single-char operator/punctuation chars permitted in expressions.
+_SQL_EXPR_OPERATOR_CHARS = frozenset("=<>!+-*/(),.")
+
+
+def is_sql_expression_safe(expr: str) -> tuple:
+    """Validate a researcher-authored SQL fragment used in JSONTable export
+    ``fields`` values, ``filter``, or ``having`` clauses.
+
+    These fragments are wrapped in ``db.literal_column`` / ``db.text`` and
+    interpolated verbatim into SELECT/WHERE/HAVING. The validator enforces
+    an allow-list of tokens that covers the patterns researchers actually
+    write (``count(trial_index)``, ``avg(case when correct = 1 then 1.0
+    else 0.0 end)``, ``phase = 'learning'``) and rejects the SQL-injection
+    primitives (``;``, ``--``, ``/* ... */``, quoted identifiers, dangerous
+    keywords).
+
+    Returns ``(True, "")`` if safe, ``(False, reason)`` otherwise.
+    """
+    if not isinstance(expr, str):
+        return False, f"expression must be a string, got {type(expr).__name__}"
+    if not expr.strip():
+        return False, "expression is empty"
+    if len(expr) > 1024:
+        return False, "expression exceeds 1024 characters"
+
+    i = 0
+    n = len(expr)
+    found_identifiers: list = []
+
+    while i < n:
+        ch = expr[i]
+
+        # Whitespace
+        if ch.isspace():
+            i += 1
+            continue
+
+        # Identifier or keyword (case-insensitive)
+        if ch.isalpha() or ch == "_":
+            j = i
+            while j < n and (expr[j].isalnum() or expr[j] == "_"):
+                j += 1
+            token = expr[i:j].lower()
+            if token in _SQL_EXPR_FORBIDDEN_KEYWORDS:
+                return False, f"forbidden keyword: {token!r}"
+            found_identifiers.append((token, i))
+            i = j
+            continue
+
+        # Number (integer or float, including leading dot)
+        if ch.isdigit() or (ch == "." and i + 1 < n and expr[i + 1].isdigit()):
+            j = i
+            saw_dot = False
+            while j < n and (expr[j].isdigit() or (expr[j] == "." and not saw_dot)):
+                if expr[j] == ".":
+                    saw_dot = True
+                j += 1
+            i = j
+            continue
+
+        # Single-quoted string literal. SQL doubles the quote to escape it
+        # ('it''s'); we accept that but nothing else (no backslash escapes).
+        if ch == "'":
+            j = i + 1
+            while j < n:
+                if expr[j] == "'":
+                    if j + 1 < n and expr[j + 1] == "'":
+                        j += 2  # escaped quote
+                        continue
+                    j += 1  # closing quote
+                    break
+                if expr[j] == "\\":
+                    return False, "backslash escapes are not allowed in string literals"
+                j += 1
+            else:
+                return False, "unterminated string literal"
+            i = j
+            continue
+
+        # Comment start sequences must be checked before the single-char
+        # operator branch — both `-` and `/` are otherwise valid operators.
+        if i + 1 < n:
+            two = expr[i:i + 2]
+            if two == "--":
+                return False, "SQL line comments (--) are not allowed"
+            if two == "/*":
+                return False, "SQL block comments (/* */) are not allowed"
+
+        # Two-char operators that need to be recognised before falling back
+        # to the single-char check (so we don't accidentally reject `!=` and
+        # `<>` by treating `!` or `>` as standalone).
+        if i + 1 < n and expr[i:i + 2] in ("!=", "<>", "<=", ">=", "||"):
+            i += 2
+            continue
+
+        # Single-char operator / punctuation
+        if ch in _SQL_EXPR_OPERATOR_CHARS:
+            i += 1
+            continue
+
+        # Anything else (including `;`, `"`, backtick, `--`, `/*`, `\`) is
+        # rejected. Calling out the common SQL-injection primitives gives a
+        # better error message than a generic "unexpected character".
+        if ch == ";":
+            return False, "semicolons are not allowed"
+        if ch == "\\":
+            return False, "backslashes are not allowed"
+        if ch in ('"', "`"):
+            return False, "quoted identifiers (\" or `) are not allowed"
+        if ch == "-" and i + 1 < n and expr[i + 1] == "-":
+            return False, "SQL line comments (--) are not allowed"
+        if ch == "/" and i + 1 < n and expr[i + 1] == "*":
+            return False, "SQL block comments (/* */) are not allowed"
+        return False, f"unexpected character {ch!r} at position {i}"
+
+    # Identifiers used as function calls (next non-space char is '(') must be
+    # in the function allow-list. Other identifiers are treated as column
+    # names — SQLAlchemy will fail loudly at query time if they're unknown.
+    for idx, (tok, pos) in enumerate(found_identifiers):
+        if tok in _SQL_EXPR_KEYWORDS:
+            continue
+        # Look ahead in the original string for an opening paren.
+        # The next non-space character determines whether this is a call.
+        scan = pos + len(tok)
+        while scan < n and expr[scan].isspace():
+            scan += 1
+        if scan < n and expr[scan] == "(":
+            if tok not in _SQL_EXPR_FUNCTIONS:
+                return False, (
+                    f"function {tok!r} is not in the allow-list. "
+                    f"Allowed: {', '.join(sorted(_SQL_EXPR_FUNCTIONS))}"
+                )
+
+    return True, ""
+
 
 class ValidationResult:
     """A single validation finding (error or warning) with context for helpful messages."""
@@ -872,7 +1044,7 @@ def validate_table(json_data: dict, filename: str) -> list[ValidationResult]:
         fields = export.get("fields") or {}
         if not isinstance(fields, dict):
             continue
-        for field_name in fields:
+        for field_name, field_expr in fields.items():
             if not isinstance(field_name, str):
                 continue
             if not is_sql_safe(field_name):
@@ -904,6 +1076,36 @@ def validate_table(json_data: dict, filename: str) -> list[ValidationResult]:
                     f"participant.table('{filename}').{field_name} would "
                     f"resolve to the export aggregate and shadow the raw "
                     f"column. Rename either the column or the export."
+                ))
+                continue
+            # Validate the SQL expression — wrapped in db.literal_column at
+            # query-build time, so a string like "0; DROP TABLE x; --" would
+            # interpolate verbatim into the SELECT list.
+            ok, why = is_sql_expression_safe(field_expr)
+            if not ok:
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Export field '{field_name}' (exports[{i}]) has an "
+                    f"invalid SQL expression: {why}.",
+                    "Expressions may use column names, numbers, single-quoted "
+                    "strings, comparison/arithmetic operators, and the "
+                    "functions: "
+                    + ", ".join(sorted(_SQL_EXPR_FUNCTIONS))
+                    + ". Example: \"avg(case when correct then 1.0 else 0.0 end)\"."
+                ))
+
+        for clause in ("filter", "having"):
+            expr = export.get(clause)
+            if expr in (None, ""):
+                continue
+            ok, why = is_sql_expression_safe(expr)
+            if not ok:
+                results.append(ValidationResult(
+                    "error", filename,
+                    f"Export '{clause}' clause (exports[{i}]) is invalid: {why}.",
+                    f"The {clause} expression must use only column names, "
+                    f"literals, and the allow-listed operators/functions. "
+                    f"Example: \"phase = 'learning'\"."
                 ))
 
     return results

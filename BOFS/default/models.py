@@ -85,12 +85,34 @@ class TableAccessor:
         For ``group_by`` exports: returns a dict mapping each group value
         (or tuple of values for multi-column group_by) to its aggregate.
         Returns an empty dict if the participant has no matching rows.
+
+        Researcher-authored ``fields`` / ``filter`` / ``having`` strings
+        are run through ``is_sql_expression_safe`` before being wrapped
+        in ``db.literal_column`` / ``db.text``. Tables loaded via the
+        normal startup path already validate at load time; this guard is
+        defence in depth for tables built outside that path (custom
+        blueprints, hand-edited config, tests).
         """
         from BOFS.globals import db as _db
+        from BOFS.validation import is_sql_expression_safe
+
+        def _safe_text(expr, source):
+            ok, why = is_sql_expression_safe(expr)
+            if not ok:
+                raise ValueError(f"Unsafe SQL expression in {source}: {why}")
+            return _db.text(expr)
+
+        def _safe_literal_column(expr, source):
+            ok, why = is_sql_expression_safe(expr)
+            if not ok:
+                raise ValueError(f"Unsafe SQL expression in {source}: {why}")
+            return _db.literal_column(expr)
+
         table_class = table.db_class
         pid_col = getattr(table_class, "participantID")
         field_expr = export["fields"][field_name]
         group_by = export.get("group_by")
+        src = f"table {self._name!r} export field {field_name!r}"
 
         if group_by:
             if isinstance(group_by, list):
@@ -103,14 +125,14 @@ class TableAccessor:
                 .select_from(table_class)
                 .filter(pid_col == self._participant.participantID)
                 .group_by(pid_col, *group_cols)
-                .add_columns(_db.literal_column(field_expr).label(field_name))
+                .add_columns(_safe_literal_column(field_expr, src).label(field_name))
             )
             filter_expr = export.get("filter")
             if filter_expr:
-                query = query.filter(_db.text(filter_expr))
+                query = query.filter(_safe_text(filter_expr, f"{src} filter"))
             having_expr = export.get("having")
             if having_expr:
-                query = query.having(_db.text(having_expr))
+                query = query.having(_safe_text(having_expr, f"{src} having"))
 
             result = {}
             for row in query.all():
@@ -125,11 +147,11 @@ class TableAccessor:
             _db.session.query(table_class)
             .filter(pid_col == self._participant.participantID)
             .group_by(pid_col)
-            .add_columns(_db.literal_column(field_expr).label(field_name))
+            .add_columns(_safe_literal_column(field_expr, src).label(field_name))
         )
         filter_expr = export.get("filter")
         if filter_expr:
-            query = query.filter(_db.text(filter_expr))
+            query = query.filter(_safe_text(filter_expr, f"{src} filter"))
         result = query.first()
         if result is None:
             return None
