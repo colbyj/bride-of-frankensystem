@@ -1,10 +1,20 @@
 import functools
+import threading
 
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import column_property
 from sqlalchemy.ext.declarative import declared_attr
 from BOFS.util import display_time, utcnow_naive
 from flask import current_app
+
+
+# Serializes the read-counts → pick-condition → commit sequence in
+# Participant.assign_condition so two concurrent consents can't both see the
+# same pre-commit counts and pick the same condition. Effective for single-
+# process deployments (the BOFW per-project container model). Multi-worker
+# gunicorn deployments need a DB-level lock as well — see the note in
+# Participant.assign_condition.
+_ASSIGN_CONDITION_LOCK = threading.Lock()
 
 
 @functools.lru_cache(maxsize=128)
@@ -361,6 +371,19 @@ def create(db):
             return counts
 
         @classmethod
+        def _pick_organic_from_counts(cls, pCount):
+            """Return the condition integer (1-based) the balancer would pick
+            given a snapshot of per-condition counts, or ``None`` if no
+            enabled condition can be selected.
+            """
+            for count in sorted(pCount):
+                idx = pCount.index(count)
+                conditionMeta = current_app.config['CONDITIONS'][idx]
+                if 'enabled' not in conditionMeta or conditionMeta['enabled'] == True:
+                    return idx + 1
+            return None
+
+        @classmethod
         def compute_organic_condition(cls):
             """
             Returns the condition integer the balancer would pick right now,
@@ -370,16 +393,30 @@ def create(db):
             numConditions = len(current_app.config['CONDITIONS'])
             if numConditions == 0:
                 return None
-
-            pCount = cls.balancer_counts()
-            for count in sorted(pCount):
-                idx = pCount.index(count)
-                conditionMeta = current_app.config['CONDITIONS'][idx]
-                if 'enabled' not in conditionMeta or conditionMeta['enabled'] == True:
-                    return idx + 1
-            return None
+            return cls._pick_organic_from_counts(cls.balancer_counts())
 
         def assign_condition(self) -> None:
+            """Pick a condition for this participant and write it to
+            ``self.condition``.
+
+            Concurrency: the read-counts → pick → persist sequence is
+            wrapped in a process-wide lock and the participant is committed
+            inside the lock so a sibling request session calling
+            ``balancer_counts`` next will see this row. Without the in-lock
+            commit, the next thread's ``balancer_counts`` runs in a separate
+            request session that wouldn't yet see this uncommitted row, and
+            both threads would land on the same condition.
+
+            This solves the single-process deployment case (the BOFW
+            per-project container model). Multi-worker gunicorn deployments
+            still need a database-level guard (per-row lock, advisory lock,
+            or balancer counter row); flagged in the audit doc.
+
+            The participant is added to the session here if it isn't already.
+            Callers that previously did ``db.session.add(p); db.session.commit()``
+            after ``assign_condition`` may continue to do so — the duplicate
+            add is a no-op and the commit will be a no-op for this row.
+            """
             if self.check_useragent_for_crawler():
                 return  # This seems to be a crawler; don't assign a condition
 
@@ -403,8 +440,12 @@ def create(db):
                     return
                 raise ConditionLookupMiss(self.mTurkID)
 
-            pCount = type(self).balancer_counts()
-            self.condition = type(self).compute_organic_condition()
+            with _ASSIGN_CONDITION_LOCK:
+                pCount = type(self).balancer_counts()
+                self.condition = type(self)._pick_organic_from_counts(pCount)
+                if self.condition is not None:
+                    db.session.add(self)
+                    db.session.commit()
 
             printText = "Total conditions: {}, Counts: ".format(numConditions)
             printText += ", ".join(str(c) for c in pCount)

@@ -108,6 +108,62 @@ class TestAssignCondition:
 
         assert new_p.condition is None
 
+    def test_commits_inside_lock(self, bofs_app):
+        """assign_condition must commit the participant row before returning.
+
+        The race-condition fix relies on the in-lock commit: a sibling request
+        session calling balancer_counts next must see this row. Without the
+        commit (or with only a flush), the next call wouldn't see it and
+        both consents would pick the same condition.
+        """
+        bofs_app.config["CONDITIONS"] = [
+            {"label": "A", "enabled": True},
+            {"label": "B", "enabled": True},
+        ]
+        bofs_app.config["COUNTS_INCLUDE_ABANDONED"] = True
+
+        new_p = bofs_app.db.Participant()
+        new_p.ipAddress = "127.0.0.1"
+        new_p.userAgent = "test-agent"
+        new_p.assign_condition()
+
+        # Row must already be persisted (autoincrement PK populated).
+        assert new_p.participantID is not None, (
+            "assign_condition did not commit the participant inside the lock"
+        )
+
+        # And visible via a separate query.
+        found = bofs_app.db.session.query(bofs_app.db.Participant).filter_by(
+            participantID=new_p.participantID
+        ).first()
+        assert found is not None
+        assert found.condition in (1, 2)
+
+    def test_serial_calls_pick_distinct_conditions(self, bofs_app):
+        """Two consecutive consents — with the in-lock commit, the second call
+        sees the first one in balancer_counts and picks the other condition.
+        """
+        bofs_app.config["CONDITIONS"] = [
+            {"label": "A", "enabled": True},
+            {"label": "B", "enabled": True},
+        ]
+        bofs_app.config["COUNTS_INCLUDE_ABANDONED"] = True
+
+        p1 = bofs_app.db.Participant()
+        p1.ipAddress = "127.0.0.1"
+        p1.userAgent = "ua"
+        p1.assign_condition()
+
+        p2 = bofs_app.db.Participant()
+        p2.ipAddress = "127.0.0.1"
+        p2.userAgent = "ua"
+        p2.assign_condition()
+
+        assert {p1.condition, p2.condition} == {1, 2}, (
+            f"second consent did not see first one's row "
+            f"(got {p1.condition!r} / {p2.condition!r})"
+        )
+
 
 # ===========================================================================
 # TestParticipantDuration
