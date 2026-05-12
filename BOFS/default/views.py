@@ -423,9 +423,13 @@ def route_restart():
 
     Clears all participant/progress session state and redirects to the start
     of the experiment. Admin login state (``loggedIn``) is preserved so the
-    admin does not need to re-authenticate after restarting a session.
+    admin does not need to re-authenticate after restarting a session. The
+    bound admin IP must be preserved alongside ``loggedIn`` — otherwise
+    ``verify_admin`` sees the next request as a session-theft attempt and
+    clears the login silently.
     """
     was_logged_in = session.get('loggedIn', False)
+    prior_admin_ip = session.get('adminIp')
 
     # save_session only assigns the FK columns when their keys exist in the
     # session dict; it never clears them. Null them out explicitly so the row
@@ -445,6 +449,8 @@ def route_restart():
     session.clear()
     if was_logged_in:
         session['loggedIn'] = True
+        if prior_admin_ip is not None:
+            session['adminIp'] = prior_admin_ip
 
     return redirect("/")
 
