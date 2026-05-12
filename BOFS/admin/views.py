@@ -1,7 +1,9 @@
 import hmac
 import os
+import re
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file, abort
 from flask_wtf.csrf import generate_csrf, validate_csrf
+from werkzeug.routing import BuildError
 from wtforms.validators import ValidationError
 from .. import BOFSFlask
 from ..globals import db, questionnaires, page_list
@@ -22,6 +24,12 @@ admin = Blueprint('admin', __name__, template_folder='templates', static_folder=
 
 
 _CSRF_PROTECTED_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
+
+# ``?r=`` on /admin/login is only ever set by verify_admin, which passes the
+# wrapped view's ``__name__`` (a Python identifier). Restricting r to the
+# identifier shape blocks attempts to smuggle URL syntax or path traversal
+# through ``url_for("admin." + r)`` even before werkzeug's BuildError check.
+_REDIRECT_ENDPOINT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 @admin.before_request
@@ -117,8 +125,11 @@ def admin_logout():
 
 
 @admin.route("/logged_in")
+@verify_admin
 def admin_logged_in():
-    return str(not ('loggedIn' not in session or not session['loggedIn']))
+    """Polled by template_admin.html every 5s to detect session expiry.
+    """
+    return "True"
 
 
 @admin.route("/login", methods=['GET', 'POST'])
@@ -151,11 +162,13 @@ def admin_login():
 
         redirect_to = url_for("admin.route_progress")
 
-        try:
-            if request.args.get('r') is not None:
-                redirect_to = url_for("admin." + request.args.get('r'))
-        except:  # Is there a better method here?
-            pass
+        r = request.args.get('r')
+        if r and _REDIRECT_ENDPOINT_RE.match(r):
+            try:
+                redirect_to = url_for("admin." + r)
+            except BuildError:
+                # Unknown endpoint — fall back to the default landing page.
+                pass
 
         return redirect(redirect_to)
     else:

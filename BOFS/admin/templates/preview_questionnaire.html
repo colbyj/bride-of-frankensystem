@@ -55,7 +55,16 @@
 
         <ul>
             <li><b>Reference:</b> {{ q.reference if q.reference }}</li>
-            <li><b>DOI: </b> {{ ('<a href="{0}">{0}</a>'.format(q.doi) | safe if q.doi.startswith("http") else '<a href="https://doi.org/{0}">https://doi.org/{0}</a>'.format(q.doi) | safe) if q.doi }}</li>
+            {% if q.doi %}
+            <li>
+                <b>DOI: </b>
+                {% if q.doi.startswith("http://") or q.doi.startswith("https://") %}
+                    <a href="{{ q.doi }}">{{ q.doi }}</a>
+                {% else %}
+                    <a href="https://doi.org/{{ q.doi }}">https://doi.org/{{ q.doi }}</a>
+                {% endif %}
+            </li>
+            {% endif %}
         </ul>
     </div>
     {% if q.participant_calculations %}
