@@ -122,6 +122,10 @@ def admin_login():
             return render_template("login_admin.html", message="The password you entered is incorrect.")
         else:
             brute_force.record_success_admin(ip)
+            # Rotate the session ID before flipping loggedIn so an attacker
+            # who planted a known session cookie pre-auth can't ride the
+            # post-auth session (classic session fixation).
+            current_app.session_interface.regenerate(current_app, session)
             session['loggedIn'] = True
             session['adminIp'] = ip
             session.modified = True

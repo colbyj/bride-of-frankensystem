@@ -123,6 +123,56 @@ class TestAdminSessionIpBinding:
 
 
 # ---------------------------------------------------------------------------
+# Admin login session fixation protection
+# ---------------------------------------------------------------------------
+
+class TestAdminLoginSessionRotation:
+    def _cookie_name(self, app):
+        return app.session_interface.get_cookie_name(app)
+
+    def _extract_cookie(self, response, name):
+        """Return the cookie value from a Set-Cookie header, or None."""
+        # Werkzeug's test client exposes headers via .headers.get_all
+        for header, value in response.headers.items():
+            if header.lower() != 'set-cookie':
+                continue
+            if value.startswith(name + '='):
+                # 'name=value; Path=/; ...'
+                return value.split(';', 1)[0].split('=', 1)[1]
+        return None
+
+    def test_login_rotates_session_id(self, bofs_app_with_admin):
+        """A session cookie planted before login must not survive login —
+        the post-auth session must be served under a fresh ID."""
+        app = bofs_app_with_admin
+        client = app.test_client()
+        cookie_name = self._cookie_name(app)
+
+        # Step 1: GET /admin/login to plant a pre-auth session cookie.
+        get_resp = client.get('/admin/login',
+                              environ_base={'REMOTE_ADDR': '10.0.0.1'})
+        pre_auth_id = self._extract_cookie(get_resp, cookie_name)
+        assert pre_auth_id is not None, "expected a pre-auth session cookie"
+
+        # Step 2: POST credentials. Login must respond with a fresh cookie.
+        post_resp = client.post('/admin/login',
+                                data={'password': 'test'},
+                                environ_base={'REMOTE_ADDR': '10.0.0.1'},
+                                follow_redirects=False)
+        post_auth_id = self._extract_cookie(post_resp, cookie_name)
+        assert post_auth_id is not None, "login did not Set-Cookie"
+        assert post_auth_id != pre_auth_id, (
+            "session ID was not rotated on login — vulnerable to session fixation"
+        )
+
+        # Step 3: the old session row is gone, and the new one is loggedIn=True.
+        old_row = app.db.session.get(app.db.SessionStore, pre_auth_id)
+        assert old_row is None, "pre-auth session row was not deleted"
+        new_row = app.db.session.get(app.db.SessionStore, post_auth_id)
+        assert new_row is not None
+
+
+# ---------------------------------------------------------------------------
 # Participant session IP binding
 # ---------------------------------------------------------------------------
 #

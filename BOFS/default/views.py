@@ -429,8 +429,12 @@ def route_restart():
 
     # save_session only assigns the FK columns when their keys exist in the
     # session dict; it never clears them. Null them out explicitly so the row
-    # doesn't keep pointing at the previous participant.
-    sessionID = request.cookies.get("session", None)
+    # doesn't keep pointing at the previous participant. The cookie name is
+    # the per-project ``bofs_<hash>`` produced by BOFSSessionInterface, not
+    # the Flask default "session" — read it through the interface.
+    sessionID = request.cookies.get(
+        current_app.session_interface.get_cookie_name(current_app)
+    )
     if sessionID:
         ss = db.session.get(db.SessionStore, sessionID)
         if ss:

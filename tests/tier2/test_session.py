@@ -157,3 +157,41 @@ class TestSaveSession:
 
         stored = bofs_app.db.session.get(bofs_app.db.SessionStore, session_id)
         assert stored.participantID == 99
+
+
+# ===========================================================================
+# TestRegenerate
+# ===========================================================================
+
+class TestRegenerate:
+    def test_rotates_session_id(self, bofs_app):
+        interface = bofs_app.session_interface
+
+        old_id = "pre-auth-session"
+        old_row = interface.create_db_object(bofs_app, old_id)
+        old_row.participantID = 42
+        old_row.mTurkID = "abc"
+        bofs_app.db.session.commit()
+
+        s = BOFSSession({"participantID": 42}, sessionID=old_id, new=False)
+        interface.regenerate(bofs_app, s)
+
+        assert s.sessionID != old_id, "session ID was not rotated"
+        # Old row gone, new row present with the carried-over FKs
+        assert bofs_app.db.session.get(bofs_app.db.SessionStore, old_id) is None
+        new_row = bofs_app.db.session.get(bofs_app.db.SessionStore, s.sessionID)
+        assert new_row is not None
+        assert new_row.participantID == 42
+        assert new_row.mTurkID == "abc"
+
+    def test_marks_session_new_so_cookie_is_resent(self, bofs_app):
+        interface = bofs_app.session_interface
+        old_id = "rotate-cookie-flag"
+        interface.create_db_object(bofs_app, old_id)
+
+        s = BOFSSession({}, sessionID=old_id, new=False)
+        interface.regenerate(bofs_app, s)
+
+        # save_session only emits Set-Cookie when session.new is True.
+        assert s.new is True
+        assert s.modified is True

@@ -222,3 +222,37 @@ class TestProgress:
 
         assert progress is not None
         assert progress.submittedOn is not None
+
+
+# ===========================================================================
+# /restart
+# ===========================================================================
+
+class TestRestart:
+    def test_clears_session_store_fk_columns(self, bofs_app_with_questionnaires):
+        """/restart must null out SessionStore.participantID / .mTurkID so the
+        row doesn't keep pointing at the previous participant after a restart.
+        Regression: the route used to read request.cookies['session'], but the
+        cookie is named per-project (bofs_<hash>), so the lookup was always
+        None and the FK columns were never cleared."""
+        app = bofs_app_with_questionnaires
+        client = app.test_client()
+        pid = create_participant_via_consent(client, app)
+
+        # Sanity: SessionStore row exists and points to our participant.
+        cookie_name = app.session_interface.get_cookie_name(app)
+        client_cookie = client.get_cookie(cookie_name)
+        assert client_cookie is not None, "expected the per-project session cookie"
+        ss_before = app.db.session.get(app.db.SessionStore, client_cookie.value)
+        assert ss_before is not None
+        assert ss_before.participantID == pid
+
+        # /restart must clear the FK columns.
+        client.get("/restart", follow_redirects=False)
+
+        # Re-fetch (the row was mutated, not deleted).
+        ss_after = app.db.session.get(app.db.SessionStore, client_cookie.value)
+        assert ss_after is not None, "SessionStore row should not be deleted"
+        assert ss_after.participantID is None, (
+            "/restart did not clear SessionStore.participantID — cookie-name lookup is broken"
+        )

@@ -72,6 +72,33 @@ class BOFSSessionInterface(SessionInterface):
             # Nope. Something bad happened; send them a blank session
             return BOFSSession(None, sessionID=sessionID, new=True)
 
+    def regenerate(self, app: "BOFSFlask", session) -> None:
+        """Rotate the session ID, copying the session row to a fresh ID and
+        deleting the old one. Call this on any privilege transition (most
+        importantly admin login) so a session cookie that was visible to the
+        client before authentication can't ride the post-auth session.
+
+        Marks the session as ``new`` so :meth:`save_session` emits a fresh
+        ``Set-Cookie`` header on the response.
+        """
+        old_id = session.sessionID
+        new_id = str(uuid4())
+
+        old_row = app.db.session.get(app.db.SessionStore, old_id) if old_id else None
+        new_row = app.db.SessionStore()
+        new_row.sessionID = new_id
+        new_row.expiry = utcnow_naive() + timedelta(days=21)
+        if old_row is not None:
+            new_row.participantID = old_row.participantID
+            new_row.mTurkID = old_row.mTurkID
+            app.db.session.delete(old_row)
+        app.db.session.add(new_row)
+        app.db.session.commit()
+
+        session.sessionID = new_id
+        session.new = True
+        session.modified = True
+
     def save_session(self, app: "BOFSFlask", session, response):
         domain = self.get_cookie_domain(app)
         #path = self.get_cookie_path(app)
