@@ -681,11 +681,8 @@ def route_preview_questionnaire(questionnaireName):
     json_data = None
 
     try:
-        f = open(current_app.get_questionnaire_path(questionnaireName), 'r')
-        json_data = f.read()
-        json_data = json.loads(json_data)
-        f.close()
-
+        with open(current_app.get_questionnaire_path(questionnaireName), 'r') as f:
+            json_data = json.loads(f.read())
     except Exception as e:
         errors = list(e.args)
 
@@ -699,10 +696,8 @@ def route_questionnaire_html(questionnaireName):
     json_data = None
 
     try:
-        f = open(current_app.get_questionnaire_path(questionnaireName), 'r')
-        json_data = f.read()
-        json_data = json.loads(json_data)
-        f.close()
+        with open(current_app.get_questionnaire_path(questionnaireName), 'r') as f:
+            json_data = json.loads(f.read())
     except Exception as e:
         errors = list(e.args)
 
