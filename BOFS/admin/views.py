@@ -32,6 +32,30 @@ _CSRF_PROTECTED_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
 _REDIRECT_ENDPOINT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
+_NO_STORE_PATH_PREFIXES = (
+    '/admin/export',
+    '/admin/results',
+    '/admin/table_view',
+    '/admin/table_ajax',
+    '/admin/table_csv',
+    '/admin/database_download',
+    '/admin/export_item_timing',
+)
+
+
+@admin.after_request
+def _admin_no_store(response):
+    """Tell browsers and intermediate proxies not to cache responses that
+    carry participant data — exports, the SQLite download, table dumps.
+    Without this, a researcher viewing the export then walking away from
+    their machine leaves the rendered data sitting in the browser cache."""
+    path = request.path or ''
+    if any(path.startswith(p) for p in _NO_STORE_PATH_PREFIXES):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Pragma'] = 'no-cache'
+    return response
+
+
 @admin.before_request
 def _verify_admin_csrf():
     """Block cross-site state-changing requests against the admin blueprint.

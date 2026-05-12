@@ -200,6 +200,18 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     if 'SESSION_BIND_TO_IP_PARTICIPANT' not in app.config:
         app.config['SESSION_BIND_TO_IP_PARTICIPANT'] = True
 
+    if 'SESSION_COOKIE_SAMESITE' not in app.config:
+        # Lax keeps cookies on top-level navigations (so the MTurk/Prolific
+        # post-completion redirect still carries them) but blocks cross-site
+        # POSTs from arbitrary origins to participant routes.
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+    if 'MAX_CONTENT_LENGTH' not in app.config:
+        # Cap request bodies so a single hostile participant can't tie up a
+        # waitress thread with an unbounded POST. 8 MB easily covers
+        # questionnaire submissions and base64 image uploads.
+        app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
+
     if 'TRUSTED_IPS' not in app.config:
         app.config['TRUSTED_IPS'] = []
 
