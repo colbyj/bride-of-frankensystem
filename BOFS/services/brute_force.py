@@ -13,6 +13,7 @@ from datetime import timedelta
 from typing import Optional
 
 from flask import current_app, request
+from sqlalchemy.exc import SQLAlchemyError
 
 from BOFS.globals import db
 from BOFS.util import utcnow_naive
@@ -126,37 +127,47 @@ def record_failure(ip: str) -> None:
 
     now = utcnow_naive()
 
-    attempt = db.LoginAttempt()
-    attempt.ipAddress = ip
-    attempt.attemptedAt = now
-    db.session.add(attempt)
-    db.session.flush()
+    try:
+        attempt = db.LoginAttempt()
+        attempt.ipAddress = ip
+        attempt.attemptedAt = now
+        db.session.add(attempt)
+        db.session.flush()
 
-    window = current_app.config.get('BRUTE_FORCE_WINDOW_MINUTES', 15)
-    threshold = current_app.config.get('BRUTE_FORCE_MAX_ATTEMPTS', 5)
-    window_start = now - timedelta(minutes=window)
+        window = current_app.config.get('BRUTE_FORCE_WINDOW_MINUTES', 15)
+        threshold = current_app.config.get('BRUTE_FORCE_MAX_ATTEMPTS', 5)
+        window_start = now - timedelta(minutes=window)
 
-    count = db.session.query(db.LoginAttempt).filter(
-        db.LoginAttempt.ipAddress == ip,
-        db.LoginAttempt.attemptedAt >= window_start,
-    ).count()
+        count = db.session.query(db.LoginAttempt).filter(
+            db.LoginAttempt.ipAddress == ip,
+            db.LoginAttempt.attemptedAt >= window_start,
+        ).count()
 
-    if count >= threshold:
-        minutes = _ban_minutes_for(ip)
-        ban = db.BannedIp()
-        ban.ipAddress = ip
-        ban.bannedAt = now
-        ban.expiresAt = now + timedelta(minutes=minutes)
-        ban.reason = "admin_login"
-        ban.failCount = count
-        db.session.add(ban)
+        if count >= threshold:
+            minutes = _ban_minutes_for(ip)
+            ban = db.BannedIp()
+            ban.ipAddress = ip
+            ban.bannedAt = now
+            ban.expiresAt = now + timedelta(minutes=minutes)
+            ban.reason = "admin_login"
+            ban.failCount = count
+            db.session.add(ban)
 
-        db.session.query(db.LoginAttempt).filter(
-            db.LoginAttempt.ipAddress == ip
-        ).delete(synchronize_session=False)
+            db.session.query(db.LoginAttempt).filter(
+                db.LoginAttempt.ipAddress == ip
+            ).delete(synchronize_session=False)
 
-    _prune_login_attempts()
-    db.session.commit()
+        _prune_login_attempts()
+        db.session.commit()
+    except SQLAlchemyError:
+        # Without an explicit rollback the pending LoginAttempt insert (or
+        # ban write) bleeds into whatever the caller does next on the same
+        # request scope. The brute-force check is best-effort; log the
+        # failure and let the original request continue.
+        db.session.rollback()
+        current_app.logger.exception(
+            "Failed to record brute-force failure for ip=%s", ip,
+        )
 
 
 def record_success_admin(ip: str) -> None:
