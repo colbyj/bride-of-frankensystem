@@ -65,6 +65,15 @@ _UNARY_OPS = {
 }
 
 
+# Hard limits applied during parsing. Researcher-controlled today, but a
+# 50k-char ``1+1+1+…`` pasted into a questionnaire would CPU-burn every page
+# render that touches that expression. The defaults give plenty of room
+# for any plausible legitimate expression while preventing the pathological
+# accidental-paste case.
+MAX_EXPRESSION_LENGTH = 4096
+MAX_EXPRESSION_NODES = 512
+
+
 def parse(src):
     """
     Parse an expression string into a normalized JSON AST.
@@ -78,11 +87,21 @@ def parse(src):
     text = src.strip()
     if not text:
         raise ExpressionError("expression is empty")
+    if len(text) > MAX_EXPRESSION_LENGTH:
+        raise ExpressionError(
+            f"expression too long: {len(text)} chars (max {MAX_EXPRESSION_LENGTH})"
+        )
 
     try:
         tree = ast.parse(text, mode="eval")
     except SyntaxError as e:
         raise ExpressionError(f"syntax error: {e.msg}") from e
+
+    node_count = sum(1 for _ in ast.walk(tree))
+    if node_count > MAX_EXPRESSION_NODES:
+        raise ExpressionError(
+            f"expression too complex: {node_count} nodes (max {MAX_EXPRESSION_NODES})"
+        )
 
     return _convert(tree.body)
 
