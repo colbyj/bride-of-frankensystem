@@ -296,19 +296,26 @@ class Results(object):
         df = pd.read_json(self.cache_path)
         self.handle_participants_table()
 
-        if len(df) != len(self.export_data):
-            # The participant table gets read in just to see if the participant count has changed.
-            # If the counts differ, continue loading as normal.
+        # Compare participant identities, not just counts. A count check
+        # alone misses the case where one participant was added since the
+        # cache was written and another was excluded — the IDs differ but
+        # the totals match, then the per-ID lookup below raises IndexError
+        # on the missing-from-cache row.
+        cached_ids = set(df["participantID"].tolist()) if "participantID" in df.columns else set()
+        live_ids = set(self.export_data.keys())
+
+        if cached_ids != live_ids:
             self.handle_questionnaires()
             self.handle_custom_exports()
-        else:
-            self.df = df
-            self.column_list = self.df.columns.values.tolist()
+            return
 
-            for participantID in self.df["participantID"].values.tolist():
-                self.export_data[participantID] = {}
-                for column in self.column_list:
-                    self.export_data[participantID][column] = self.df[df["participantID"] == participantID][column].values.tolist()[0]
+        self.df = df
+        self.column_list = self.df.columns.values.tolist()
+
+        for participantID in self.df["participantID"].values.tolist():
+            self.export_data[participantID] = {}
+            for column in self.column_list:
+                self.export_data[participantID][column] = self.df[df["participantID"] == participantID][column].values.tolist()[0]
 
     def build_data_frame(self) -> "pd.DataFrame":
         if self.df is not None:
