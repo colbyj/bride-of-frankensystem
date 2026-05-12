@@ -1,3 +1,4 @@
+import re
 from flask import Blueprint, render_template, current_app, request, make_response, abort
 from urllib.parse import urlsplit
 import traceback
@@ -314,6 +315,9 @@ def route_questionnaire(questionnaireName, tag=""):
     return service.render_questionnaire(q, 'questionnaire.html', tag)
 
 
+_QUESTION_TYPE_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
+
 @default.route("/questionnaire_question/<question_type>", methods=['POST'])
 def route_questionnaire_question(question_type: str):
     """
@@ -322,6 +326,13 @@ def route_questionnaire_question(question_type: str):
     Render a specific question type for the questionnaire. Only accepts POST requests.
     Data posted to this route must be a JSON object of the question data.
     """
+    # The downstream render_template call interpolates question_type into a
+    # template path. Jinja's loader blocks ``..`` and the URL converter
+    # blocks ``/``, but reject anything that wouldn't be a plausible
+    # template stem here so we hit a clean 400 instead of falling through
+    # to the loader-not-found error page.
+    if not _QUESTION_TYPE_RE.match(question_type):
+        abort(400, description="Invalid question type.")
     return ParticipantQuestionnaireService.render_questionnaire_question(question_type, request.json)
 
 
