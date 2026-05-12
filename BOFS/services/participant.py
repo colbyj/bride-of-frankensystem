@@ -1,7 +1,7 @@
 from flask import session, request, current_app
 from BOFS.globals import db
 from BOFS.services.brute_force import get_client_ip
-from BOFS.util import utcnow_naive
+from BOFS.util import utcnow_naive, float_or_0, int_or_0
 import uuid
 
 
@@ -43,13 +43,18 @@ class ParticipantService:
         session['condition'] = p.condition
 
         if log_display_size:
+            # Display columns are typed (Float for dppx, Integer for the
+            # pixel dimensions). request.form returns raw strings, so coerce
+            # explicitly; a missing/blank value becomes 0 rather than
+            # exploding on commit (which would leave an orphan Participant
+            # with no Display row).
             entry = db.Display()
             entry.participantID = session['participantID']
-            entry.dppx = request.form['dppx']
-            entry.screenWidth = request.form['screenWidth']
-            entry.screenHeight = request.form['screenHeight']
-            entry.innerWidth = request.form['innerWidth']
-            entry.innerHeight = request.form['innerHeight']
+            entry.dppx         = float_or_0(request.form.get('dppx'))
+            entry.screenWidth  = int_or_0(request.form.get('screenWidth'))
+            entry.screenHeight = int_or_0(request.form.get('screenHeight'))
+            entry.innerWidth   = int_or_0(request.form.get('innerWidth'))
+            entry.innerHeight  = int_or_0(request.form.get('innerHeight'))
 
             db.session.add(entry)
             db.session.commit()
