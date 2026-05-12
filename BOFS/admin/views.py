@@ -567,7 +567,7 @@ def route_export_item_timing():
     if request.path.endswith("/download"):
         return Response(data, mimetype="text/csv", headers={
             "Content-disposition":
-                f"attachment; filename=interaction_timing_{datetime.utcnow().strftime('%Y-%m-%d')}.csv"
+                f"attachment; filename=interaction_timing_{utcnow_naive().strftime('%Y-%m-%d')}.csv"
         })
     return render_template("export_csv.html", data=data)
 
