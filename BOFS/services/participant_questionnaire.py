@@ -98,8 +98,14 @@ class ParticipantQuestionnaireService:
                     column_default = attr.expression.default
                     default = column_default.arg if column_default is not None else None
                     setattr(new_object, field.id, default)
-            except:
-                print("Could not write field " + str(field.id))
+            except (AttributeError, TypeError, ValueError, KeyError):
+                # Don't roll back the whole submission for one bad field —
+                # the rest of the row is still useful — but make the failure
+                # visible so the researcher can spot a schema/JSON mismatch.
+                current_app.logger.exception(
+                    "Failed to write field id=%r for participant=%s questionnaire=%s",
+                    field.id, self.participant_id, questionnaire.file_name,
+                )
 
         setattr(new_object, 'participantID', self.participant_id)
         setattr(new_object, 'timeStarted', timeStarted)
