@@ -213,6 +213,11 @@ class JSONTable(object):
                 setattr(entry, column, value)
 
     def handle_post(self):
+        # Without a participantID we can't attribute the row to anyone —
+        # reject early rather than KeyError mid-loop.
+        if 'participantID' not in session:
+            abort(401)
+
         # Prefer JSON when the body parses; fall back to form data otherwise.
         # silent=True returns None instead of raising on parse error or when
         # the Content-Type isn't application/json.
@@ -245,6 +250,9 @@ class JSONTable(object):
         return "", 204
 
     def handle_get(self):
+        if 'participantID' not in session:
+            abort(401)
+
         q = db.session.query(self.db_class).\
             filter(self.db_class.participantID == session['participantID'])
 

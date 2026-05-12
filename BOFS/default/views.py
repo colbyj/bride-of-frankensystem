@@ -258,6 +258,7 @@ def route_external_id():
 
 
 @default.route("/table/<tableName>", methods=['POST', 'GET'])
+@verify_session_valid
 def route_table(tableName):
     """
     ``/table/<tableName>``
@@ -267,6 +268,8 @@ def route_table(tableName):
     :param tableName: The name of the table, as it is in /app/tables (without the .json)
     :return: the return value is either ``JSONTable.handle_post()`` or ``JSONTable.handle_get()`` depending on the request type.
     """
+    if tableName not in tables:
+        abort(404)
     t: "JSONTable" = tables[tableName]
 
     if request.method == 'POST':
