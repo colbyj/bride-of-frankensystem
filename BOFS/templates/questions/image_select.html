@@ -21,8 +21,8 @@
 
    Example:
        {
-           "questiontype": "picture_select",
-           "id": "new_picture_select",
+           "questiontype": "image_select",
+           "id": "new_image_select",
            "instructions": "",
            "horizontal": true,
            "auto_resize": true,
@@ -33,26 +33,26 @@
        }
 #}
 <style>
-    .bofs-picture-select-group {
+    .bofs-image-select-group {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
     }
-    .bofs-picture-select-group.horizontal {
+    .bofs-image-select-group.horizontal {
         flex-direction: row;
         justify-content: center;
         align-items: flex-start;
     }
-    .bofs-picture-select-group.vertical {
+    .bofs-image-select-group.vertical {
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
     }
-    .bofs-picture-select-item {
+    .bofs-image-select-item {
         position: relative;
         display: inline-block;
     }
-    .bofs-picture-select-input {
+    .bofs-image-select-input {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -63,31 +63,31 @@
         white-space: nowrap;
         border: 0;
     }
-    .bofs-picture-select-option {
+    .bofs-image-select-option {
         display: inline-flex;
         flex-direction: column;
         align-items: center;
         cursor: pointer;
     }
-    .bofs-picture-select-option img {
+    .bofs-image-select-option img {
         display: block;
         border: 3px solid transparent;
         border-radius: 4px;
         transition: border-color 0.15s ease-in-out;
         max-width: 100%;
     }
-    .bofs-picture-select-option:hover img {
+    .bofs-image-select-option:hover img {
         border-color: #9ec5fe;
     }
-    .bofs-picture-select-input:checked + .bofs-picture-select-option img {
+    .bofs-image-select-input:checked + .bofs-image-select-option img {
         border-color: #0d6efd;
         box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
     }
-    .bofs-picture-select-input:focus-visible + .bofs-picture-select-option img {
+    .bofs-image-select-input:focus-visible + .bofs-image-select-option img {
         outline: 2px solid #0d6efd;
         outline-offset: 2px;
     }
-    .bofs-picture-select-caption {
+    .bofs-image-select-caption {
         margin-top: 4px;
         font-size: 0.875em;
         text-align: center;
@@ -99,24 +99,24 @@
     {% do shuffle(question.images) %}
 {% endif %}
 
-<div class="bofs-picture-select-group {{ 'horizontal' if question.horizontal|default(true) else 'vertical' }}"
-     id="bofs-picture-select-group-{{ question.id }}">
+<div class="bofs-image-select-group {{ 'horizontal' if question.horizontal|default(true) else 'vertical' }}"
+     id="bofs-image-select-group-{{ question.id }}">
 {% for image in question.images %}
-    <span class="bofs-picture-select-item">
-        <input class="bofs-picture-select-input"
+    <span class="bofs-image-select-item">
+        <input class="bofs-image-select-input"
                type="radio"
                name="{{ question.id }}"
                id="{{ question.id }}{{ loop.index }}"
                value="{{ image.value }}"
                {{ "required" if question.required }}
                {% if question.value is not none and question.value|string == image.value|string %}checked{% endif %}>
-        <label class="bofs-picture-select-option"
+        <label class="bofs-image-select-option"
                for="{{ question.id }}{{ loop.index }}">
             <img src="{{ image.src }}"
                  alt="{{ image.alt if image.alt is defined else (image.label if image.label else '') }}"
                  {% if question.width and not question.auto_resize %}style="width: {{ question.width }}px;"{% endif %}>
             {% if image.label %}
-                <span class="bofs-picture-select-caption">{{ image.label }}</span>
+                <span class="bofs-image-select-caption">{{ image.label }}</span>
             {% endif %}
         </label>
     </span>
@@ -126,7 +126,7 @@
 {% if question.auto_resize %}
 <script>
 (function () {
-    var group = document.getElementById('bofs-picture-select-group-{{ question.id }}');
+    var group = document.getElementById('bofs-image-select-group-{{ question.id }}');
     if (!group) return;
     var images = group.querySelectorAll('img');
     if (!images.length) return;

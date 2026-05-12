@@ -248,7 +248,7 @@ BOFS infers the SQLAlchemy column type from the question type:
    * - ``slider``, ``num_field``, ``checklist``
      - ``INTEGER``
      -
-   * - ``picture_select``
+   * - ``image_select``
      - ``INTEGER`` or ``FLOAT``
      - Inferred from the ``value`` fields in the ``images`` list; falls back to ``TEXT`` when values are mixed or non-numeric.
    * - Everything else

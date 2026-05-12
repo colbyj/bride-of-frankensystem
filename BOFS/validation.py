@@ -654,22 +654,22 @@ def validate_field_ids(json_data: dict, filename: str) -> list[ValidationResult]
     return results
 
 
-def validate_picture_select(json_data: dict, filename: str) -> list[ValidationResult]:
-    """Check that picture_select questions have a well-formed `images` list."""
+def validate_image_select(json_data: dict, filename: str) -> list[ValidationResult]:
+    """Check that image_select questions have a well-formed `images` list."""
     results = []
     questions = json_data.get("questions", [])
     if not isinstance(questions, list):
         return results
 
     for i, q in enumerate(questions):
-        if not isinstance(q, dict) or q.get("questiontype") != "picture_select":
+        if not isinstance(q, dict) or q.get("questiontype") != "image_select":
             continue
 
         images = q.get("images")
         if images is None:
             results.append(ValidationResult(
                 "error", filename,
-                f"Question #{i+1} ('picture_select') is missing the required 'images' field.",
+                f"Question #{i+1} ('image_select') is missing the required 'images' field.",
                 'Add an "images" array, e.g. '
                 '[{"src": "/static/foo.png", "value": "a", "label": "Option A"}, ...]'
             ))
@@ -678,7 +678,7 @@ def validate_picture_select(json_data: dict, filename: str) -> list[ValidationRe
         if not isinstance(images, list):
             results.append(ValidationResult(
                 "error", filename,
-                f"Question #{i+1} ('picture_select'): 'images' must be a list, "
+                f"Question #{i+1} ('image_select'): 'images' must be a list, "
                 f"got {type(images).__name__}."
             ))
             continue
@@ -686,7 +686,7 @@ def validate_picture_select(json_data: dict, filename: str) -> list[ValidationRe
         if len(images) == 0:
             results.append(ValidationResult(
                 "error", filename,
-                f"Question #{i+1} ('picture_select'): 'images' is empty.",
+                f"Question #{i+1} ('image_select'): 'images' is empty.",
                 "Add at least one image entry."
             ))
             continue
@@ -696,7 +696,7 @@ def validate_picture_select(json_data: dict, filename: str) -> list[ValidationRe
             if not isinstance(img, dict):
                 results.append(ValidationResult(
                     "error", filename,
-                    f"Question #{i+1} ('picture_select'), image #{j+1} is not an object "
+                    f"Question #{i+1} ('image_select'), image #{j+1} is not an object "
                     f"(got {type(img).__name__})."
                 ))
                 continue
@@ -705,14 +705,14 @@ def validate_picture_select(json_data: dict, filename: str) -> list[ValidationRe
             if not isinstance(src, str) or not src:
                 results.append(ValidationResult(
                     "error", filename,
-                    f"Question #{i+1} ('picture_select'), image #{j+1} is missing a 'src' string.",
+                    f"Question #{i+1} ('image_select'), image #{j+1} is missing a 'src' string.",
                     "Each image needs a 'src' URL (e.g., '/static/foo.png')."
                 ))
 
             if "value" not in img:
                 results.append(ValidationResult(
                     "error", filename,
-                    f"Question #{i+1} ('picture_select'), image #{j+1} is missing a 'value'.",
+                    f"Question #{i+1} ('image_select'), image #{j+1} is missing a 'value'.",
                     "Each image needs a 'value' that will be stored when this option is selected."
                 ))
             else:
@@ -721,7 +721,7 @@ def validate_picture_select(json_data: dict, filename: str) -> list[ValidationRe
                     if v in seen_values:
                         results.append(ValidationResult(
                             "warning", filename,
-                            f"Question #{i+1} ('picture_select'): image #{j+1} reuses "
+                            f"Question #{i+1} ('image_select'): image #{j+1} reuses "
                             f"value {v!r} (first seen in image #{seen_values[v]+1}). "
                             f"Submitted responses won't be distinguishable between these options."
                         ))
@@ -931,7 +931,7 @@ def validate_questionnaire(json_data: dict, filename: str,
     results.extend(validate_question_types(json_data, filename, valid_types))
     results.extend(validate_question_ids(json_data, filename))
     results.extend(validate_field_ids(json_data, filename))
-    results.extend(validate_picture_select(json_data, filename))
+    results.extend(validate_image_select(json_data, filename))
     results.extend(validate_image_click(json_data, filename))
     results.extend(validate_calculations(json_data, filename))
     results.extend(validate_show_if(json_data, filename))

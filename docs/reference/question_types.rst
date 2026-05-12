@@ -33,7 +33,7 @@ Currently, the following types of input are supported:
 -  ``num_field`` - Input a single number
 -  ``multi_field`` - Multi-line text entry
 -  ``drop_down`` - Select one option from a drop-down list
--  ``picture_select`` - Select one option from a set of images
+-  ``image_select`` - Select one option from a set of images
 -  ``image_click`` - Click on an image to record one or more (x, y)
    positions in the image's natural pixel space
 -  ``textview`` - Display plain text (HTML syntax is supported)
@@ -356,10 +356,10 @@ drop_down
            ]
        }
 
-picture_select
---------------
+image_select
+------------
 
-``questiontype == 'picture_select'``
+``questiontype == 'image_select'``
 
 Select one option out of a set of images. Each image becomes a clickable
 thumbnail; the participant's selection is stored as the chosen image's
@@ -404,7 +404,7 @@ thumbnail; the participant's selection is stored as the chosen image's
 .. code:: json
 
        {
-           "questiontype": "picture_select",
+           "questiontype": "image_select",
            "id": "favorite_picture",
            "instructions": "Pick whichever you'd rather look at.",
            "auto_resize": true,

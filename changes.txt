@@ -10,8 +10,8 @@ Changes from 2.0 to 2.1
 **New Question Types and Questionnaire Features**
 
 * Added a "video" question type for embedding video stimuli.
-* Added a "picture_select" question type for choosing one option from a set of images. Supports horizontal (default) or vertical centered layouts, a per-question `width`, and an `auto_resize` flag that normalizes images to the smallest natural dimension in the group. The stored column's data type is auto-detected (integer/float/string) from the image values, and the `images` list is validated at startup.
-* Added a "image_click" question type for selecting coordinates on an image.
+* Added an "image_select" question type for choosing one option from a set of images. Supports horizontal (default) or vertical centered layouts, a per-question `width`, and an `auto_resize` flag that normalizes images to the smallest natural dimension in the group. The stored column's data type is auto-detected (integer/float/string) from the image values, and the `images` list is validated at startup.
+* Added an "image_click" question type for selecting coordinates on an image.
 * Added a "group" question type for visually grouping a set of questions together; respects the `horizontal` layout flag.
 * Checklist now supports options with associated text fields.
 * Radiolist now supports an "other" option with a free-text field, and can require a specific option to be chosen to continue.

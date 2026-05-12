@@ -48,7 +48,7 @@ _JSON_TYPE_TO_NORMALIZED = {
 # top-level question attributes; researcher-typed values inside lists
 # (e.g. checklist items) live here. Keep this list short — only fields
 # whose intended type is unambiguous belong here. Fields whose type is
-# intentionally polymorphic (picture_select image ``value``) are absent
+# intentionally polymorphic (image_select image ``value``) are absent
 # on purpose so coercion doesn't change their type.
 _NESTED_ITEM_TYPES: dict = {
     # checklist sub-items: parent's ``questions`` array
@@ -259,7 +259,7 @@ class JSONQuestionnaireColumn(object):
         if question_type.lower() in ["slider", "num_field", "checklist"]:
             self.data_type = "integer"
 
-        if question_type.lower() == "picture_select":
+        if question_type.lower() == "image_select":
             images = definition.get('images', [])
             values = [img.get('value') for img in images
                       if isinstance(img, dict) and 'value' in img]

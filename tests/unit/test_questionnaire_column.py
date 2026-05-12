@@ -103,12 +103,12 @@ def test_slider_case_insensitive():
 
 
 # ===========================================================================
-# JSONQuestionnaireColumn — picture_select data type auto-detection
+# JSONQuestionnaireColumn — image_select data type auto-detection
 # ===========================================================================
 
-def test_picture_select_string_values_stay_string():
+def test_image_select_string_values_stay_string():
     defn = {
-        "id": "fav", "questiontype": "picture_select",
+        "id": "fav", "questiontype": "image_select",
         "images": [{"src": "/a.png", "value": "a"}, {"src": "/b.png", "value": "b"}],
     }
     col = JSONQuestionnaireColumn(defn)
@@ -116,9 +116,9 @@ def test_picture_select_string_values_stay_string():
     assert col.default == ""
 
 
-def test_picture_select_integer_values_become_integer():
+def test_image_select_integer_values_become_integer():
     defn = {
-        "id": "fav", "questiontype": "picture_select",
+        "id": "fav", "questiontype": "image_select",
         "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": 2}],
     }
     col = JSONQuestionnaireColumn(defn)
@@ -126,9 +126,9 @@ def test_picture_select_integer_values_become_integer():
     assert col.default == 0
 
 
-def test_picture_select_float_values_become_float():
+def test_image_select_float_values_become_float():
     defn = {
-        "id": "fav", "questiontype": "picture_select",
+        "id": "fav", "questiontype": "image_select",
         "images": [{"src": "/a.png", "value": 0.5}, {"src": "/b.png", "value": 1.5}],
     }
     col = JSONQuestionnaireColumn(defn)
@@ -136,43 +136,43 @@ def test_picture_select_float_values_become_float():
     assert col.default == 0
 
 
-def test_picture_select_mixed_int_float_becomes_float():
+def test_image_select_mixed_int_float_becomes_float():
     defn = {
-        "id": "fav", "questiontype": "picture_select",
+        "id": "fav", "questiontype": "image_select",
         "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": 1.5}],
     }
     col = JSONQuestionnaireColumn(defn)
     assert col.data_type == "float"
 
 
-def test_picture_select_mixed_int_string_stays_string():
+def test_image_select_mixed_int_string_stays_string():
     defn = {
-        "id": "fav", "questiontype": "picture_select",
+        "id": "fav", "questiontype": "image_select",
         "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": "two"}],
     }
     col = JSONQuestionnaireColumn(defn)
     assert col.data_type == "string"
 
 
-def test_picture_select_bool_values_stay_string():
+def test_image_select_bool_values_stay_string():
     """bool is a subclass of int in Python — make sure we don't pick it up as integer."""
     defn = {
-        "id": "fav", "questiontype": "picture_select",
+        "id": "fav", "questiontype": "image_select",
         "images": [{"src": "/a.png", "value": True}, {"src": "/b.png", "value": False}],
     }
     col = JSONQuestionnaireColumn(defn)
     assert col.data_type == "string"
 
 
-def test_picture_select_no_images_stays_string():
-    defn = {"id": "fav", "questiontype": "picture_select"}
+def test_image_select_no_images_stays_string():
+    defn = {"id": "fav", "questiontype": "image_select"}
     col = JSONQuestionnaireColumn(defn)
     assert col.data_type == "string"
 
 
-def test_picture_select_explicit_datatype_overrides_autodetect():
+def test_image_select_explicit_datatype_overrides_autodetect():
     defn = {
-        "id": "fav", "questiontype": "picture_select", "datatype": "string",
+        "id": "fav", "questiontype": "image_select", "datatype": "string",
         "images": [{"src": "/a.png", "value": 1}, {"src": "/b.png", "value": 2}],
     }
     col = JSONQuestionnaireColumn(defn)
@@ -947,13 +947,13 @@ def test_coercion_handles_checklist_item_text_entry_flags(tmp_path):
     assert items[0]["text_entry_width"] == 120
 
 
-def test_picture_select_value_is_not_coerced(tmp_path):
-    """picture_select 'value' is intentionally polymorphic — the column
+def test_image_select_value_is_not_coerced(tmp_path):
+    """image_select 'value' is intentionally polymorphic — the column
     type is derived from it, so coercion would change observable schema."""
     data = {
         "questions": [
             {
-                "questiontype": "picture_select", "id": "ps",
+                "questiontype": "image_select", "id": "ps",
                 "images": [
                     {"src": "/a.png", "value": "1", "label": "A"},
                     {"src": "/b.png", "value": "2", "label": "B"},
