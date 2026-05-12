@@ -552,6 +552,13 @@ class PageList(object):
         current_index = self.get_index(current_path)
         flat_page_list = self.flat_page_list()
 
+        # get_index returns None for a path that isn't in the page list.
+        # Without this guard the subtraction below blows up with TypeError;
+        # fall back to the first page so the participant lands somewhere
+        # valid instead of seeing a 500.
+        if current_index is None:
+            return flat_page_list[0]['path'] if flat_page_list else current_path
+
         if current_index == len(flat_page_list) - 1:
             return current_path
 
@@ -569,8 +576,14 @@ class PageList(object):
             current_path = current_path[1:]
 
         current_index = self.get_index(current_path)
+        flat_page_list = self.flat_page_list()
+
+        # Same None-guard as next_path — a path outside the configured list
+        # would otherwise hit ``flat_page_list[None - 1]`` and TypeError.
+        if current_index is None:
+            return flat_page_list[0]['path'] if flat_page_list else current_path
 
         if current_index == 0:
             return current_path
 
-        return self.flat_page_list()[current_index - 1]['path']
+        return flat_page_list[current_index - 1]['path']
