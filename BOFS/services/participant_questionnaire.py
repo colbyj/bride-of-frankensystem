@@ -35,10 +35,26 @@ class ParticipantQuestionnaireService:
         else:
             new_object = questionnaire.db_class()
 
-        try:
-            timeStarted = datetime.strptime(request.form['timeStarted'], "%Y-%m-%d %H:%M:%S.%f")
-        except:
-            timeStarted = datetime.strptime(request.form['timeStarted'], "%Y-%m-%d %H:%M:%S")
+        # ``timeStarted`` is normally posted in microsecond format by the
+        # client; a few legacy paths post the second-only format. Fall back
+        # gracefully through both, then to "now" if the field is missing or
+        # unparseable — better to record a slightly wrong timeStarted than
+        # to 500 a participant mid-experiment.
+        ts_str = request.form.get('timeStarted')
+        timeStarted = None
+        if ts_str:
+            for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S"):
+                try:
+                    timeStarted = datetime.strptime(ts_str, fmt)
+                    break
+                except ValueError:
+                    continue
+        if timeStarted is None:
+            current_app.logger.warning(
+                "Missing/unparseable timeStarted=%r for participant=%s questionnaire=%s",
+                ts_str, self.participant_id, questionnaire.file_name,
+            )
+            timeStarted = utcnow_naive()
 
         fields = questionnaire.fetch_fields()
 
