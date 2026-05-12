@@ -158,12 +158,11 @@ def admin_logged_in():
 
 @admin.route("/login", methods=['GET', 'POST'])
 def admin_login():
-    if 'participantID' not in session:
-        p = provide_consent(True)  # Ensure that the previewing user is a valid user
-        p.excludeFromCount = True
-        db.session.commit()
-
     if session.get('loggedIn', False):
+        # Already authenticated — mint the preview participant lazily so
+        # that admins who use preview routes still have one cached on the
+        # session, without creating a row for anonymous GETs.
+        _ensure_preview_participant()
         return redirect(url_for("admin.route_progress"))
 
     if request.method == 'POST':
@@ -183,6 +182,7 @@ def admin_login():
             session['loggedIn'] = True
             session['adminIp'] = ip
             session.modified = True
+            _ensure_preview_participant()
 
         redirect_to = url_for("admin.route_progress")
 
@@ -197,6 +197,18 @@ def admin_login():
         return redirect(redirect_to)
     else:
         return render_template("login_admin.html")
+
+
+def _ensure_preview_participant():
+    """Create the admin's preview participant row if one isn't already on the
+    session. Called only after authentication so anonymous probes can't mint
+    participants — that would let an attacker skew condition counts without
+    ever proving they hold the admin password."""
+    if 'participantID' in session:
+        return
+    p = provide_consent(True)
+    p.excludeFromCount = True
+    db.session.commit()
 
 
 @admin.route("/progress")
