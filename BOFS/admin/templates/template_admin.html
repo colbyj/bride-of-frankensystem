@@ -84,6 +84,10 @@
                     </li>
                     {% endif %}
                 </ul>
+                <form action="{{ url_for('admin.admin_logout') }}" method="post" class="d-flex">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-outline-light btn-sm">Log out</button>
+                </form>
             </div>
         </div>
     </nav>

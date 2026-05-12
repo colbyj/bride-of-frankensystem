@@ -97,6 +97,25 @@ def admin_index():
     return redirect(url_for("admin.admin_login"))
 
 
+@admin.route("/logout", methods=['POST'])
+@verify_admin
+def admin_logout():
+    """Fully log the admin out. POST-only (CSRF-protected by the blueprint
+    before_request hook). Clears the session dict, deletes the SessionStore
+    row, then redirects to the login page. ``save_session`` deletes the
+    cookie on the response because the session is now empty.
+    """
+    session_id = getattr(session, 'sessionID', None)
+    session.clear()
+    session.modified = True
+    if session_id:
+        store = db.session.get(db.SessionStore, session_id)
+        if store is not None:
+            db.session.delete(store)
+            db.session.commit()
+    return redirect(url_for('admin.admin_login'))
+
+
 @admin.route("/logged_in")
 def admin_logged_in():
     return str(not ('loggedIn' not in session or not session['loggedIn']))
