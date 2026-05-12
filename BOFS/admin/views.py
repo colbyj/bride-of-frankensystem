@@ -32,6 +32,14 @@ _CSRF_PROTECTED_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
 _REDIRECT_ENDPOINT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
+# Tables that hold framework state, not researcher data, and must not be
+# surfaced through the generic table viewer. ``app_meta`` carries the
+# SECRET_KEY (which was deliberately moved out of config.toml so it
+# wouldn't sit in researcher backups); ``session_store`` carries every
+# live session blob.
+_TABLE_VIEW_BLOCKED = frozenset({'app_meta', 'session_store'})
+
+
 _NO_STORE_PATH_PREFIXES = (
     '/admin/export',
     '/admin/results',
@@ -95,6 +103,8 @@ def inject_template_vars():
 
     tableNames = []
     for t in db.metadata.tables:
+        if t in _TABLE_VIEW_BLOCKED:
+            continue
         tableNames.append(t)
 
     questionnairesSystem = []
@@ -700,6 +710,8 @@ def route_questionnaire_html(questionnaireName):
 
 
 def table_data(tableName):
+    if tableName in _TABLE_VIEW_BLOCKED or tableName not in db.metadata.tables:
+        abort(404)
     rows = db.session.query(db.metadata.tables[tableName]).all()
 
     columns = []
