@@ -256,8 +256,14 @@ class JSONTable(object):
         q = db.session.query(self.db_class).\
             filter(self.db_class.participantID == session['participantID'])
 
-        # If there are any GET arguments (e.g., ?arg=value), then try to apply them as simple filters
+        # If there are any GET arguments (e.g., ?arg=value), apply them as
+        # simple filters. Allow-list against the researcher-declared columns
+        # so a probe like ``?_sa_instance_state=x`` hits a clean 400 instead
+        # of leaking a 500 with the internal attribute name.
+        allowed_columns = set(self.json_data.get('columns', {})) if self.json_data else set()
         for arg in request.args:
+            if arg not in allowed_columns:
+                abort(400, description=f"Unknown filter column: {arg!r}")
             column = getattr(self.db_class, arg)
             q = q.filter(db.cast(column, db.Text) == request.args[arg])
 
