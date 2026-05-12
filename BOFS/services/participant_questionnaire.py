@@ -116,11 +116,23 @@ class ParticipantQuestionnaireService:
         db.session.commit()
 
         if 'ENABLE_LOGGING' in current_app.config and current_app.config['ENABLE_LOGGING'] == True:
-            if not os.path.exists("logs"):
-                os.makedirs("logs")
-
-            with open("logs/" + questionnaire.file_name + ".txt", "a+") as f:
-                f.write("Time = " + str(timeStarted) + "; pID = " + str(self.participant_id) + ";\n" + pprint.pformat(request.form) + "\n\n")
+            log_dir = "logs"
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+            # file_name comes from researcher-authored JSON; basename strips
+            # any '/' or '..' that could escape the logs directory.
+            safe_name = os.path.basename(questionnaire.file_name)
+            formatted = pprint.pformat(request.form)
+            MAX_LOG_BYTES = 64 * 1024
+            if len(formatted) > MAX_LOG_BYTES:
+                formatted = (
+                    formatted[:MAX_LOG_BYTES]
+                    + f"\n... (truncated; original length {len(formatted)} bytes)"
+                )
+            with open(os.path.join(log_dir, safe_name + ".txt"), "a+", encoding="utf-8") as f:
+                f.write(
+                    f"Time = {timeStarted}; pID = {self.participant_id};\n{formatted}\n\n"
+                )
 
     def fetch_prior_values(self, questionnaire, tag: str = "") -> dict:
         """Return {field_id: stored_value} for this participant's prior submission of this
