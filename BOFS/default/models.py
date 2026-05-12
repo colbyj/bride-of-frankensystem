@@ -593,7 +593,13 @@ def create(db):
         def is_active(self) -> bool:
             if self.expiresAt is None:
                 return True
-            return self.expiresAt > utcnow_naive()
+            # Imported / restored backups can land with tz-aware datetimes
+            # in the column even though BOFS only writes naive UTC. Strip
+            # tzinfo before comparing to avoid TypeError on the mixed-tz case.
+            expiry = self.expiresAt
+            if expiry.tzinfo is not None:
+                expiry = expiry.replace(tzinfo=None)
+            return expiry > utcnow_naive()
 
 
     class LoginAttempt(db.Model):

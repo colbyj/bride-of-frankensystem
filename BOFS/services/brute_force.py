@@ -95,7 +95,12 @@ def seconds_until_unban(ip: str) -> int:
     ).order_by(db.BannedIp.expiresAt.desc()).first()
     if row is None:
         return 60
-    delta = (row.expiresAt - now).total_seconds()
+    # Normalise tz-aware expiry (from imported data) to naive so the
+    # subtraction below doesn't raise TypeError on mixed-tz inputs.
+    expiry = row.expiresAt
+    if expiry.tzinfo is not None:
+        expiry = expiry.replace(tzinfo=None)
+    delta = (expiry - now).total_seconds()
     return max(int(delta), 1)
 
 

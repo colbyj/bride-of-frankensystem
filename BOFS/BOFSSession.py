@@ -141,13 +141,23 @@ class BOFSSessionInterface(SessionInterface):
         if 'mTurkID' in session:
             storedSession.mTurkID = session['mTurkID']
 
-        # Only save if there's a reason to do so.
+        # Sliding expiry: every save extends the row's expiry by the
+        # configured session lifetime. Without this, long-running studies
+        # silently time out at the 21-day initial window even when
+        # participants are actively interacting with the app.
+        lifetime = app.permanent_session_lifetime or timedelta(days=21)
         if session.new or session.modified:
+            storedSession.expiry = utcnow_naive() + lifetime
             app.db.session.commit()
 
-        if session.new:
+        # ``expires=None`` would silently downgrade to a session cookie
+        # (cleared on browser close), which surprises returning
+        # participants. Fall back to a future expiry derived from the
+        # configured lifetime if the row somehow lost its value.
+        cookie_expires = storedSession.expiry or (utcnow_naive() + lifetime)
+        if session.new or session.modified:
             response.set_cookie(cookie_name, session.sessionID,
-                                expires=storedSession.expiry, httponly=httpOnly,
+                                expires=cookie_expires, httponly=httpOnly,
                                 domain=domain, path=path, secure=secure)
 
 
