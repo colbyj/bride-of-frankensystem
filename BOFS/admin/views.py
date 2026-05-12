@@ -771,20 +771,28 @@ def route_table_csv(tableName):
                     })
 
 
+def _resolve_sqlite_db_path():
+    """Return the absolute SQLite DB path if it resolves under the project root,
+    otherwise ``None``. ``SQLALCHEMY_DATABASE_URI`` comes from the project
+    config, but a hostile or mistakenly-configured URI like
+    ``sqlite:///../../etc/passwd`` should not be honored for backup/delete
+    operations."""
+    db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+    project_root = os.path.abspath(current_app.root_path)
+    resolved = os.path.abspath(os.path.join(project_root, db_uri))
+    if os.path.commonpath([resolved, project_root]) != project_root:
+        return None
+    return resolved
+
+
 @admin.route("/database_download")
 @verify_admin
 def route_database_download():
     if not current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///'):
         return "Not using a SQLite database."
 
-    db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-    # Resolve relative to the project root and confirm the file lives under it.
-    # SQLALCHEMY_DATABASE_URI comes from the project config, but a hostile or
-    # mistakenly-configured URI like ``sqlite:///../../etc/passwd`` would
-    # otherwise be served verbatim.
-    project_root = os.path.abspath(current_app.root_path)
-    resolved = os.path.abspath(os.path.join(project_root, db_uri))
-    if os.path.commonpath([resolved, project_root]) != project_root:
+    resolved = _resolve_sqlite_db_path()
+    if resolved is None:
         return Response("Database path is outside the project directory.", status=403)
     # TODO: Do I need to do something special if the database is being written to by users?
     return send_file(resolved, as_attachment=True)
@@ -807,8 +815,14 @@ def route_database_delete():
             brute_force.record_failure(ip)
             return render_template("database_delete.html", message="The password you entered is incorrect.")
         else:
-            db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-            copyfile(db_uri, db_uri.replace('.db', '') + "_" + utcnow_naive().strftime("%Y%m%d_%H%M%S") + ".db")  # Make a copy of the db, just in case we didn't truly want to delete everything.
+            resolved = _resolve_sqlite_db_path()
+            if resolved is None:
+                return Response("Database path is outside the project directory.", status=403)
+            # Make a copy of the db, just in case we didn't truly want to
+            # delete everything. The backup lives next to the original so
+            # it also lands under the project root.
+            backup_path = resolved.rsplit('.db', 1)[0] + "_" + utcnow_naive().strftime("%Y%m%d_%H%M%S") + ".db"
+            copyfile(resolved, backup_path)
 
             # now delete everything from the database
             for tbl in reversed(db.metadata.sorted_tables):
