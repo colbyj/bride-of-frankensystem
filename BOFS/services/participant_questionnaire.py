@@ -17,14 +17,21 @@ class ParticipantQuestionnaireService:
         self.participant_id = participant_id
 
     def handle_submission(self, questionnaire, tag: str = "") -> None:
-        # Check to see if the user has submitted this once already...
+        # Check to see if the user has submitted this once already. If
+        # multiple prior rows exist (legacy data, or a fix-and-resubmit
+        # workflow), use the most recent rather than inserting yet another.
         previous = db.session.query(questionnaire.db_class).filter(
             questionnaire.db_class.participantID == self.participant_id,
             questionnaire.db_class.tag == tag
-        ).all()
+        ).order_by(questionnaire.db_class.timeEnded.desc()).all()
 
-        if previous and len(previous) == 1:
+        if previous:
             new_object = previous[0]
+            if len(previous) > 1:
+                current_app.logger.warning(
+                    "Multiple prior rows for participant=%s questionnaire=%s tag=%r — using most recent",
+                    self.participant_id, questionnaire.file_name, tag,
+                )
         else:
             new_object = questionnaire.db_class()
 
