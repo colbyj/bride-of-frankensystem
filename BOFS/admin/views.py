@@ -336,12 +336,30 @@ def _compute_export_section(participant, export_definition):
     if not result_rows:
         return None
 
+    # ``levels`` and ``result_rows`` come from two independent SELECTs and
+    # are not guaranteed to be in the same order. Index result_rows by
+    # the group_by key tuple so each level pairs with its matching row
+    # by value, not by position.
+    group_by_def = export_definition.get('group_by', '')
+    if isinstance(group_by_def, list):
+        group_by_cols = list(group_by_def)
+    elif isinstance(group_by_def, str) and group_by_def:
+        group_by_cols = [group_by_def]
+    else:
+        group_by_cols = []
+
+    def _key(obj):
+        return tuple(getattr(obj, col, None) for col in group_by_cols)
+
     output_rows = []
     if levels:
-        for idx, level in enumerate(levels):
-            if idx >= len(result_rows):
-                break
-            row = result_rows[idx]
+        result_by_key = {_key(r): r for r in result_rows}
+        for level in levels:
+            row = result_by_key.get(_key(level))
+            if row is None:
+                # Participant has no data at this level — skip rather
+                # than emit a placeholder.
+                continue
             level_label = "_".join(str(x) for x in level)
             output_rows.append({
                 'level': level_label,
