@@ -72,6 +72,16 @@ def verify_admin(f):
             current_ip = brute_force.get_client_ip()
             stored_ip = session.get('adminIp')
             if stored_ip != current_ip:
+                # An IP mismatch on a logged-in admin session is exactly
+                # the kind of signal worth keeping — it can mean a stolen
+                # cookie used from another network, a roaming admin, or a
+                # mid-session reverse-proxy reconfig. Log it so it's
+                # visible in the access log alongside the silent redirect.
+                current_app.logger.warning(
+                    "verify_admin: admin session cleared on IP mismatch "
+                    "(stored=%s current=%s endpoint=%s)",
+                    stored_ip, current_ip, getattr(f, "__name__", str(f)),
+                )
                 session.pop('loggedIn', None)
                 session.pop('adminIp', None)
                 session.modified = True
