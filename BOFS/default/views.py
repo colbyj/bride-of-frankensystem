@@ -72,6 +72,11 @@ def route_consent_nc():
 
     This acts just like ``/consent``, except it does not assign the user a condition (defaults to 0).
     """
+    # The admin halt-intake toggle (all conditions disabled) should stop new
+    # participants regardless of whether condition assignment is happening.
+    if all_conditions_disabled():
+        return render_template("study_closed.html"), 503
+
     if request.method == 'POST':
         provide_consent(False)
         return redirect("/redirect_from_page/consent_nc")
@@ -111,6 +116,9 @@ def route_create_participant_nc():
     This does not assign the participant a condition (defaults to 0)
     and so could be used in conjunction with ``/assign_condition``.
     """
+    if all_conditions_disabled():
+        return render_template("study_closed.html"), 503
+
     provide_consent(False, False)
     return redirect("/redirect_from_page/create_participant_nc")
 
