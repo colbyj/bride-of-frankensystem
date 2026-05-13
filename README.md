@@ -18,11 +18,15 @@ BOFS is installed as a Python package and is managed separately from your own pr
 generally backwards compatible with experiments implemented using older releases - projects created in the first version
 of BOFS (from 2015) work on the latest with only minor changes.
 
-Citations
----------
+Citation
+--------
 
-If you use BOFS for your research, please cite it!
-[![DOI](https://zenodo.org/badge/220541237.svg)](https://zenodo.org/badge/latestdoi/220541237)
+If you use BOFS in your research, please cite it via the following identifiers:
+
+- **DOI:** [10.5281/zenodo.11176739](https://doi.org/10.5281/zenodo.11176739) &nbsp;[![DOI](https://zenodo.org/badge/220541237.svg)](https://zenodo.org/badge/latestdoi/220541237)
+- **RRID:** [SCR_028428](https://scicrunch.org/resolver/RRID:SCR_028428)
+
+A BibTeX entry and full citation details are available on the [documentation site](https://bride-of-frankensystem.readthedocs.io/en/latest/#citation).
 
 To see papers that have used BOFS to enable online data collection, see the [publications list](https://frankensystem.net/publications.html).
 

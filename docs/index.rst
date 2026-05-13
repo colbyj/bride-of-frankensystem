@@ -30,7 +30,15 @@ Where to start
 Citation
 --------
 
-If you use BOFS for your research, please cite it:
+If you use BOFS in your research, please cite it via the following identifiers:
+
+- **DOI:** `10.5281/zenodo.11176739 <https://doi.org/10.5281/zenodo.11176739>`_
+- **RRID:** `SCR_028428 <https://scicrunch.org/resolver/RRID:SCR_028428>`_
+
+
+Colby Johanson. (2024). colbyj/bride-of-frankensystem: 2.0 (2.0). Zenodo. https://doi.org/10.5281/zenodo.11176739
+
+BibTeX:
 
 .. code-block:: bibtex
 
