@@ -164,6 +164,32 @@
     border-color: #adb5bd;
 }
 
+.bofs-btn-dark,
+.btn-dark {
+    background-color: #212529;
+    border-color: #212529;
+    color: #fff;
+}
+.bofs-btn-dark:hover:not(:disabled),
+.btn-dark:hover:not(:disabled) {
+    background-color: #424649;
+    border-color: #373b3e;
+    color: #fff;
+}
+
+.bofs-btn-success,
+.btn-success {
+    background-color: #1f7a1f;
+    border-color: #1f7a1f;
+    color: #fff;
+}
+.bofs-btn-success:hover:not(:disabled),
+.btn-success:hover:not(:disabled) {
+    background-color: #196619;
+    border-color: #196619;
+    color: #fff;
+}
+
 .bofs-btn-outline-success,
 .btn-outline-success {
     border-color: #1f7a1f;
@@ -196,6 +222,19 @@
 .btn-outline-secondary:hover:not(:disabled) {
     background-color: #6c757d;
     color: #fff;
+}
+
+/* `btn-outline-light` is used in the admin navbar (dark background). */
+.bofs-btn-outline-light,
+.btn-outline-light {
+    border-color: #f8f9fa;
+    color: #f8f9fa;
+    background-color: transparent;
+}
+.bofs-btn-outline-light:hover:not(:disabled),
+.btn-outline-light:hover:not(:disabled) {
+    background-color: #f8f9fa;
+    color: #212529;
 }
 
 /* Themed primary button — uses the accent so HEADER_COLOR drives it. */
