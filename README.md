@@ -81,3 +81,4 @@ BOFS requires Python 3.9+, along with the following Python packages:
 * `pandas` - data export and the admin results preview.
 * `questionary` - interactive prompts in the `BOFS init` wizard.
 * `bleach` - HTML sanitization for user-supplied content.
+* `docstring-parser` - parses question-type schemas from template docstrings.

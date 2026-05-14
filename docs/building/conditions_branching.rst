@@ -33,7 +33,7 @@ Five routes can trigger condition assignment:
 - ``consent_nc`` and ``create_participant_nc`` — do **not** assign (the ``_nc`` suffix means "no condition").
 - ``assign_condition`` — a standalone PAGE_LIST entry. Triggers assignment if the participant doesn't already have a condition. Use this when consent was collected via one of the ``_nc`` variants and you want to assign later in the flow.
 
-Once a participant has a condition, it doesn't change. The same participant returning to the project always sees the same arm.
+Once a participant has a condition, it doesn't change. The same participant returning to the project always sees the same branch.
 
 Carrying conditions across sessions
 -----------------------------------
@@ -48,7 +48,7 @@ The full longitudinal pattern, including how the participant arrives back at the
 Conditional routing
 -------------------
 
-The ``conditional_routing`` block in ``PAGE_LIST`` shows different page sequences to different conditions. Each arm has a ``condition`` number (and/or a ``show_if`` predicate) plus a nested ``page_list``:
+The ``conditional_routing`` block in ``PAGE_LIST`` shows different page sequences to different conditions. Each branch has a ``condition`` number (and/or a ``show_if`` predicate) plus a nested ``page_list``:
 
 .. code-block:: toml
 
@@ -75,9 +75,9 @@ The ``conditional_routing`` block in ``PAGE_LIST`` shows different page sequence
        {name="End",       path="end"}
    ]
 
-Each participant follows exactly one arm. The arms can have different lengths and different page types, but they should converge back to a shared post-task and end page (otherwise different conditions complete at different points).
+Each participant follows exactly one branch. The branches can have different lengths and different page types, but they should converge back to a shared post-task and end page (otherwise different conditions complete at different points).
 
-A ``conditional_routing`` arm can also branch on prior questionnaire answers using ``show_if`` instead of (or in addition to) ``condition``:
+A ``conditional_routing`` branch can also key off prior questionnaire answers using ``show_if`` instead of (or in addition to) ``condition``:
 
 .. code-block:: text
 
@@ -90,7 +90,7 @@ A ``conditional_routing`` arm can also branch on prior questionnaire answers usi
        ]}
    ]}
 
-Both fields are optional. An arm matches when its ``condition`` matches (when set) and its ``show_if`` is true (when set); the first matching arm wins.
+Both fields are optional. A branch matches when its ``condition`` matches (when set) and its ``show_if`` is true (when set); the first matching branch wins.
 
 Page-level ``show_if``
 ----------------------
