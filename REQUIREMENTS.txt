@@ -7,4 +7,6 @@ flask-compress
 toml
 crawlerdetect
 pandas
+questionary>=2.1.0
 bleach>=6.0.0
+docstring-parser>=0.16
