@@ -385,20 +385,40 @@ def route_redirect_to_page(page):
 
 @default.route("/end")
 @verify_correct_page
-@verify_session_valid
 def route_end():
     """
     ``/end``
 
     Ends the experiment, marks the participants as finished, and shows the user's completion code if they have been
     given one. Can also be configured to redirect to an external URL.
-    """
-    p = db.session.get(db.Participant, session['participantID'])
-    if p.timeEnded is None:
-        p.timeEnded = utcnow_naive()
-    p.finished = True
 
-    db.session.commit()
+    Safe to hit cold (no session, no participant row) — renders ``end.html``
+    anonymously without stamping anyone as finished. This lets researchers
+    route to ``/end`` for "study closed" / "screened out" landings and lets
+    ``/end`` survive being the first ``PAGE_LIST`` entry.
+    """
+    p = None
+    pid = session.get('participantID')
+    if pid is not None:
+        p = db.session.get(db.Participant, pid)
+        # Preserve the IP-binding guarantee that @verify_session_valid used
+        # to provide: a stolen session cookie used from a different IP
+        # shouldn't be able to stamp the real participant as finished.
+        # Render the page either way — /end is a safe terminus — but skip
+        # the stamping for IP-mismatched requests.
+        if p is not None and (
+            current_app.config.get('BRUTE_FORCE_PROTECTION', True)
+            and current_app.config.get('SESSION_BIND_TO_IP_PARTICIPANT', True)
+        ):
+            from BOFS.services.brute_force import get_client_ip
+            if p.ipAddress and p.ipAddress != get_client_ip():
+                p = None
+
+    if p is not None:
+        if p.timeEnded is None:
+            p.timeEnded = utcnow_naive()
+        p.finished = True
+        db.session.commit()
 
     if 'OUTGOING_URL' in current_app.config and current_app.config['OUTGOING_URL'] is not None:
         return redirect(current_app.config['OUTGOING_URL'])
@@ -413,7 +433,7 @@ def route_end():
         restart_reason = None
 
     return render_template('end.html',
-                           code=session['code'] if 'code' in session else None,
+                           code=session.get('code'),
                            restart_reason=restart_reason)
 
 

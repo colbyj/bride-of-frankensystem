@@ -7,6 +7,15 @@ from BOFS.util import (
 import uuid
 
 
+CREATION_ROUTES = frozenset({
+    "consent", "consent_nc", "create_participant", "create_participant_nc",
+})
+"""Paths that bootstrap a Participant row on their own. When the first
+``PAGE_LIST`` entry is one of these, the framework doesn't need to lazy-create
+a participant in ``ParticipantRoutingService.ensure_participant_for_first_page``.
+"""
+
+
 class ParticipantService:
     """Stateless service for Participant lifecycle and condition assignment."""
 

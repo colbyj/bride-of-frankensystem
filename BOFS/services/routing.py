@@ -1,6 +1,6 @@
 from urllib.parse import urlsplit
 
-from flask import current_app, redirect, request, session
+from flask import current_app, redirect, render_template, request, session
 
 from BOFS.globals import db
 from BOFS.util import utcnow_naive
@@ -137,6 +137,63 @@ class ParticipantRoutingService:
         if current_url == expected:
             return None
         return redirect(self.application_root + "/" + str(expected))
+
+    def ensure_participant_for_first_page(self):
+        """Transparently create a Participant when the first ``PAGE_LIST``
+        entry is not one of the routes that bootstrap a participant on their
+        own (``consent``, ``consent_nc``, ``create_participant``,
+        ``create_participant_nc``) and is not ``end`` (a deliberate
+        terminus). Runs the same code path as ``/create_participant``, so a
+        researcher whose ``PAGE_LIST`` starts with ``questionnaire/foo``
+        sees a fully-set-up participant on first request.
+
+        Returns a Flask response when the caller should short-circuit:
+
+        * rendered ``study_closed.html`` (503) if all conditions are disabled
+        * rendered ``condition_lookup_miss.html`` (404) if an external-ID
+          lookup is configured and the participant's ID isn't found
+        * redirect to ``/debug_pick_condition`` in debug mode with conditions
+          configured
+
+        Returns ``None`` when no action is needed (the common case — a
+        creation route is at the front, or a participant already exists) or
+        when creation completed silently and the wrapped view should run.
+        """
+        from BOFS.services.participant import (
+            CREATION_ROUTES,
+            ParticipantService,
+        )
+        from BOFS.services.condition_lookup import ConditionLookupMiss
+
+        if "participantID" in self.session:
+            return None
+
+        flat = self.page_list.flat_page_list()
+        if not flat:
+            return None
+        first_path = flat[0]["path"]
+
+        # ``end`` as the first PAGE_LIST entry is a deliberate "study closed"
+        # terminus — let route_end render without a participant rather than
+        # auto-creating one just to immediately mark it finished.
+        if first_path in CREATION_ROUTES or first_path == "end":
+            return None
+
+        if ParticipantService.all_conditions_disabled():
+            return render_template("study_closed.html"), 503
+
+        try:
+            ParticipantService.provide_consent(assign_condition=True)
+        except ConditionLookupMiss as miss:
+            return render_template(
+                "condition_lookup_miss.html",
+                external_id=miss.external_id,
+            ), 404
+
+        if ParticipantService.use_debug_picker():
+            return redirect(self.application_root + "/debug_pick_condition")
+
+        return None
 
     # ----- Progress tracking -------------------------------------------
 

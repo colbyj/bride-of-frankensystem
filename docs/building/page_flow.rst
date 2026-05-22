@@ -56,7 +56,7 @@ PAGE_LIST: defining the page sequence
        {name="Another Page", path="different/route"}
    ]
 
-**The first page** must be one of these participant-creation routes:
+**The first page** should be one of these participant-creation routes:
 
 - ``consent`` — display ``consent.html``, create the participant on agreement, assign a condition.
 - ``consent_nc`` — display ``consent.html``, create the participant on agreement, no condition assignment.

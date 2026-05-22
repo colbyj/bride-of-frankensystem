@@ -94,6 +94,10 @@ def verify_correct_page(f):
         if bootstrapped is not None and bootstrapped != currentUrl:
             return redirect(current_app.config["APPLICATION_ROOT"] + "/" + bootstrapped)
 
+        ensure_response = service.ensure_participant_for_first_page()
+        if ensure_response is not None:
+            return ensure_response
+
         return f(*args, **kwargs)
 
     decorated_function._bofs_verify_correct_page = True
