@@ -1,7 +1,9 @@
 from flask import session, request, current_app
 from BOFS.globals import db
 from BOFS.services.brute_force import get_client_ip
-from BOFS.util import utcnow_naive, float_or_0, int_or_0
+from BOFS.util import (
+    utcnow_naive, float_or_0, int_or_0, get_external_id_from_session,
+)
 import uuid
 
 
@@ -18,6 +20,16 @@ class ParticipantService:
         p.userAgent = request.user_agent.string
         p.timeStarted = utcnow_naive()
         p.check_useragent_for_crawler()
+
+        # Persist the URL-captured external ID and recruitment source onto
+        # the participant row. Without this, ?PROLIFIC_PID= sits in the
+        # session but never lands on the participant — every Prolific study
+        # would have to include /external_id in PAGE_LIST just to commit it.
+        ext_id = get_external_id_from_session()
+        if ext_id:
+            p.externalID = ext_id
+        if session.get('source'):
+            p.source = session['source']
 
         if current_app.config['STATIC_COMPLETION_CODE'] is not None:
             p.code = current_app.config['STATIC_COMPLETION_CODE']

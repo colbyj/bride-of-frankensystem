@@ -99,12 +99,13 @@ Returns ``None`` on parse error or when a referenced field doesn't exist. The fu
 Session variables
 -----------------
 
-Flask's ``session`` is available in every template. BOFS populates it with five fields:
+Flask's ``session`` is available in every template. BOFS populates it with six fields:
 
 - ``session['participantID']`` — the current participant's ID.
 - ``session['condition']`` — assigned condition number (1+, or 0 if unassigned).
 - ``session['currentUrl']`` — the page the participant should be on.
-- ``session['mTurkID']`` — the external ID (regardless of source: MTurk, Prolific, manual entry).
+- ``session['externalID']`` — the external ID (regardless of source: MTurk, Prolific, manual entry). Also available as ``session['mTurkID']``, an alias kept for backward compatibility with code written before the rename.
+- ``session['source']`` — the recruitment channel string (e.g. ``"prolific"``, ``"reddit"``, ``"email"``), or absent when none was provided.
 - ``session['code']`` — the completion code, populated near the end.
 
 Branching on condition is the most common use:

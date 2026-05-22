@@ -308,6 +308,16 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         check_and_add_column('participant', 'excludeFromCount', 'BOOLEAN', 0)
         check_and_add_column('participant', 'notes', 'TEXT', '')
 
+        # Recruitment source; nullable for back-compat with existing rows.
+        # The matching index keeps `source == "..."` expression filters and
+        # admin source-filter queries cheap on large tables.
+        if check_and_add_column('participant', 'source', 'VARCHAR', None):
+            with app.db.engine.begin() as conn:
+                conn.execute(app.db.DDL(
+                    "CREATE INDEX IF NOT EXISTS ix_participant_source "
+                    "ON participant (source)"
+                ))
+
         if check_and_add_column('participant', 'isCrawler', 'BOOLEAN', 0):
             # If this column wasn't in there, then also check all prior participants' useragent.
             participants = app.db.session.query(app.db.Participant).all()

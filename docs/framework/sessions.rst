@@ -17,12 +17,13 @@ The implementation lives in ``BOFS/BOFSSession.py``. You don't interact with it 
 What's in a session
 -------------------
 
-Five fields cover the participant lifecycle. Each is populated as the participant moves through ``PAGE_LIST``:
+Six fields cover the participant lifecycle. Each is populated as the participant moves through ``PAGE_LIST``:
 
 - ``session['participantID']`` — the database PK of the current participant. Set when the participant row is created (on consent or on a ``create_participant`` route).
 - ``session['condition']`` — the assigned condition number (1+, or 0 if no condition has been assigned). Set at the same time as ``participantID`` for ``consent`` and ``create_participant``; later for the ``_nc`` variants if and when the participant hits ``assign_condition``.
 - ``session['currentUrl']`` — the page the participant should be on according to ``PAGE_LIST``. Updated on every page navigation.
-- ``session['mTurkID']`` — the external ID, regardless of source. Captured from URL parameters (``PROLIFIC_PID``, ``external_id``) on the consent page, or set on the manual ``external_id`` page. The historical name reflects MTurk being the original use case.
+- ``session['externalID']`` — the external ID, regardless of source. Captured from URL parameters (``PROLIFIC_PID``, ``external_id``) on the consent page, or set on the manual ``external_id`` page. Also available as ``session['mTurkID']`` — both keys are kept in sync at every BOFS write site for backward compatibility with code written before the rename.
+- ``session['source']`` — the recruitment channel, set from a ``?source=`` URL parameter. Inferred as ``"prolific"`` when ``PROLIFIC_PID`` is present and no explicit source is given. Free-form string; expression code (``show_if = "source == 'prolific'"``) can branch on it. Absent when the participant arrived without any source hint — treat ``None`` as "unknown source," not as a specific value.
 - ``session['code']`` — the completion code, set near the end of the experiment when ``GENERATE_COMPLETION_CODE = true``.
 
 Admin sessions also exist (a separate session row marking an authenticated admin) but don't share these fields — they're orthogonal to participant sessions.

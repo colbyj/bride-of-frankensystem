@@ -13,19 +13,26 @@ External IDs
 ------------
 
 An *external ID* is the participant identifier issued by the recruiting
-platform (MTurk Worker ID, Prolific PID, etc.). BOFS stores it in the
-``Participant.mTurkID`` database column regardless of which platform you use.
-There are two ways to capture it.
+platform (MTurk Worker ID, Prolific PID, etc.). BOFS stores it on the
+``Participant.externalID`` column (also accessible as ``mTurkID``, an alias
+kept for backward compatibility) regardless of which platform you use. There
+are two ways to capture it.
 
 **URL parameter (automatic).** When a participant arrives via a link that
-includes a recognised parameter, BOFS stores it without showing them
-anything. The recognised parameters are:
+includes a recognised parameter, BOFS stores it on the participant row at
+consent without showing them anything. The recognised parameters are:
 
 - ``PROLIFIC_PID`` — Prolific
 - ``external_id`` — generic
 
+A ``?source=`` URL parameter alongside lets you tag participants by
+recruitment channel (e.g. ``?source=reddit``, ``?source=email``). The value
+is free-form and lands on ``Participant.source``, where expression code can
+branch on it (``show_if = "source == 'reddit'"``). When ``PROLIFIC_PID`` is
+present without an explicit ``?source=``, BOFS infers ``source="prolific"``.
+
 **Manual entry page.** Add the ``external_id`` page to your ``PAGE_LIST``
-and BOFS prompts the participant to type their ID:
+to prompt the participant to type their ID:
 
 .. code-block:: toml
 
@@ -36,8 +43,9 @@ and BOFS prompts the participant to type their ID:
         {name="End", path="end"}
     ]
 
-When a recognised URL parameter is present, the manual page pre-fills the
-field with that value, so it is safe to include the page either way.
+With URL-parameter capture in place, this page is optional. It pre-fills
+from the URL parameter if one was present, so include it only as a fallback
+for participants who might arrive without one.
 
 Customise the label and prompt shown on the manual entry page:
 

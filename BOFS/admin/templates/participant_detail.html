@@ -26,6 +26,7 @@
         <h4>Summary</h4>
         <div style="display: grid; grid-template-columns: 160px auto; row-gap: 4px;">
             <b>External ID</b> <span>{{ participant.externalID or "-" }}</span>
+            <b>Source</b> <span>{{ participant.source or "-" }}</span>
             <b>Condition</b> <span>{{ condition_num_to_label(participant.condition) or "-" }}</span>
             <b>Started</b> <span>{{ participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') if participant.timeStarted else "-" }}</span>
             <b>Ended</b> <span>{{ participant.timeEnded.strftime('%Y-%m-%d %H:%M:%S') if participant.timeEnded else "-" }}</span>

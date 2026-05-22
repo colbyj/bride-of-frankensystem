@@ -18,6 +18,27 @@ def utcnow_naive() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def set_external_id_in_session(value):
+    """Write the external ID to both ``session['externalID']`` (canonical)
+    and ``session['mTurkID']`` (legacy alias).
+
+    All BOFS-internal write sites go through this helper so the two keys
+    never drift. User blueprints that write ``session['mTurkID']`` directly
+    (as some longitudinal-study examples did before the rename) still work —
+    :func:`get_external_id_from_session` falls back to the legacy key on read.
+    """
+    session['externalID'] = value
+    session['mTurkID'] = value
+
+
+def get_external_id_from_session():
+    """Read the external ID, preferring the canonical ``session['externalID']``
+    and falling back to the legacy ``session['mTurkID']``. Returns None if
+    neither key is set.
+    """
+    return session.get('externalID') or session.get('mTurkID')
+
+
 def update_participant_tracking(path):
     """Deprecated: use :meth:`BOFS.services.routing.ParticipantRoutingService.track_progress`.
 
@@ -49,11 +70,19 @@ def verify_correct_page(f):
 
         currentUrl = request.url.replace(request.url_root, "")
 
-        if 'PROLIFIC_PID' in request.args:
-            session['mTurkID'] = request.args['PROLIFIC_PID']
+        external_id = request.args.get('PROLIFIC_PID') or request.args.get('external_id')
+        if external_id:
+            set_external_id_in_session(external_id)
 
-        if 'external_id' in request.args:
-            session['mTurkID'] = request.args['external_id']
+        # ``?source=`` is the explicit channel marker (e.g. "prolific",
+        # "reddit", "email"). When PROLIFIC_PID is present without an
+        # explicit source, infer ``prolific`` — the participant unambiguously
+        # came from Prolific. We never override an already-set source.
+        source = request.args.get('source')
+        if not source and 'PROLIFIC_PID' in request.args:
+            source = 'prolific'
+        if source and not session.get('source'):
+            session['source'] = source
 
         service = ParticipantRoutingService.from_app()
 

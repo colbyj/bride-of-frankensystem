@@ -7,10 +7,15 @@ They use the ``bofs_app`` fixture from conftest.py.
 from datetime import timedelta
 
 import pytest
+from flask import session
 from werkzeug.test import EnvironBuilder
 
 from BOFS.BOFSSession import BOFSSession, BOFSSessionInterface
-from BOFS.util import utcnow_naive
+from BOFS.util import (
+    utcnow_naive,
+    get_external_id_from_session,
+    set_external_id_in_session,
+)
 
 
 # ===========================================================================
@@ -52,6 +57,40 @@ class TestSessionStore:
         store.sessionID = "fresh-test"
         store.expiry = utcnow_naive() + timedelta(days=21)
         assert store.expired is False
+
+
+# ===========================================================================
+# TestExternalIdSessionHelpers — dual-key sync (back-compat for old code that
+# wrote session['mTurkID'] directly).
+# ===========================================================================
+
+class TestExternalIdSessionHelpers:
+    def test_set_writes_both_keys(self, bofs_app):
+        with bofs_app.test_request_context("/"):
+            session.clear()
+            set_external_id_in_session("ABC")
+            assert session['externalID'] == "ABC"
+            assert session['mTurkID'] == "ABC"
+
+    def test_get_prefers_canonical_key(self, bofs_app):
+        with bofs_app.test_request_context("/"):
+            session.clear()
+            session['externalID'] = "NEW"
+            session['mTurkID'] = "OLD"  # would only happen if drift snuck in
+            assert get_external_id_from_session() == "NEW"
+
+    def test_get_falls_back_to_legacy_key(self, bofs_app):
+        # User blueprints that only write session['mTurkID'] (the documented
+        # pattern before the rename) must still be readable.
+        with bofs_app.test_request_context("/"):
+            session.clear()
+            session['mTurkID'] = "LEGACY_ONLY"
+            assert get_external_id_from_session() == "LEGACY_ONLY"
+
+    def test_get_returns_none_when_empty(self, bofs_app):
+        with bofs_app.test_request_context("/"):
+            session.clear()
+            assert get_external_id_from_session() is None
 
 
 # ===========================================================================

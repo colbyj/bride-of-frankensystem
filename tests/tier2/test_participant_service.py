@@ -63,6 +63,62 @@ class TestParticipantService:
         assert p.condition is not None  # condition is set (==0 in debug mode)
         assert p.participantID is not None
 
+    def test_provide_consent_persists_external_id_from_session(self, bofs_app):
+        """provide_consent copies session['externalID'] onto the new participant
+        row. This is the fix for the persistence gap that previously forced
+        Prolific studies to include /external_id in PAGE_LIST just to commit
+        the URL-captured ID.
+        """
+        bofs_app.config["STATIC_COMPLETION_CODE"] = None
+        bofs_app.config["GENERATE_COMPLETION_CODE"] = False
+
+        with bofs_app.test_request_context(
+            "/consent",
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        ):
+            session.clear()
+            session['externalID'] = "ABC123"
+            session['mTurkID'] = "ABC123"  # written together by the helper
+            session['source'] = "prolific"
+            p = ParticipantService.provide_consent(assign_condition=False)
+
+        assert p.externalID == "ABC123"
+        assert p.mTurkID == "ABC123"  # synonym
+        assert p.source == "prolific"
+
+    def test_provide_consent_falls_back_to_legacy_session_key(self, bofs_app):
+        """User blueprints that set only session['mTurkID'] (the pre-rename
+        key) must still have the value persisted at consent. The helper
+        get_external_id_from_session() falls back to the legacy key.
+        """
+        bofs_app.config["STATIC_COMPLETION_CODE"] = None
+        bofs_app.config["GENERATE_COMPLETION_CODE"] = False
+
+        with bofs_app.test_request_context(
+            "/consent",
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        ):
+            session.clear()
+            session['mTurkID'] = "LEGACY_ONLY"  # only the old key
+            p = ParticipantService.provide_consent(assign_condition=False)
+
+        assert p.externalID == "LEGACY_ONLY"
+
+    def test_provide_consent_without_external_id_leaves_default(self, bofs_app):
+        """No session keys set → participant.externalID is "" and source is None."""
+        bofs_app.config["STATIC_COMPLETION_CODE"] = None
+        bofs_app.config["GENERATE_COMPLETION_CODE"] = False
+
+        with bofs_app.test_request_context(
+            "/consent",
+            environ_base={"REMOTE_ADDR": "127.0.0.1"},
+        ):
+            session.clear()
+            p = ParticipantService.provide_consent(assign_condition=False)
+
+        assert p.externalID == ""
+        assert p.source is None
+
     def test_provide_consent_no_condition_sets_zero(self, bofs_app):
         """provide_consent(False) creates a participant with condition==0."""
         bofs_app.config["STATIC_COMPLETION_CODE"] = None

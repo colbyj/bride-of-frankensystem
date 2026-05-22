@@ -138,8 +138,13 @@ class BOFSSessionInterface(SessionInterface):
         if 'participantID' in session:
             storedSession.participantID = session['participantID']
 
-        if 'mTurkID' in session:
-            storedSession.externalID = session['mTurkID']
+        # Either session key writes the same SessionStore column (the model
+        # uses a synonym). Prefer the canonical externalID key; fall back to
+        # the legacy mTurkID so blueprints that only set the old key still
+        # persist correctly.
+        external_id = session.get('externalID') or session.get('mTurkID')
+        if external_id is not None:
+            storedSession.externalID = external_id
 
         # Sliding expiry: every save extends the row's expiry by the
         # configured session lifetime. Without this, long-running studies

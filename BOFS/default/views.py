@@ -253,7 +253,7 @@ def route_external_id():
         # researcher template overrides; assignment uses the canonical name.
         p.externalID = str(request.form['mTurkID']).strip()
 
-        session['mTurkID'] = p.externalID
+        set_external_id_in_session(p.externalID)
 
         recovered_url = SessionRecoveryService.try_restore(p, p.externalID)
         if recovered_url:
@@ -261,10 +261,7 @@ def route_external_id():
 
         return redirect(join_urls('/redirect_from_page', request.path))
 
-    mTurkID = None
-    if 'mTurkID' in session and len(session['mTurkID']) > 0:
-        mTurkID = session['mTurkID']
-
+    mTurkID = get_external_id_from_session() or None
     return render_template('external_id.html', mTurkID=mTurkID)
 
 

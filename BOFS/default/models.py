@@ -228,6 +228,11 @@ def create(db):
         # "Backward Compatibility".
         externalID = db.Column("external_id", db.String, nullable=False, default="")
         mTurkID = synonym("externalID")
+        # Recruitment source (e.g. "prolific", "reddit", "email"). Free-form
+        # string set from a ``?source=`` URL parameter or inferred when
+        # ``PROLIFIC_PID`` is present. NULL on rows from before this column
+        # existed and on participants who arrived without a source hint.
+        source = db.Column(db.String, nullable=True, default=None, index=True)
         ipAddress = db.Column(db.String, nullable=False, default="")
         userAgent = db.Column(db.String, nullable=False, default="")
         condition = db.Column(db.Integer, nullable=True, default=0)

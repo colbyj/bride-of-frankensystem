@@ -27,9 +27,9 @@ How returning participants are recognized
 
 Both patterns need a stable identifier the participant brings back with them. BOFS supports three sources:
 
-- **A URL parameter.** When a participant arrives at ``http://your-study.example/?external_id=abc123``, BOFS captures the value in the session as ``mTurkID`` (the field is named for historical reasons but applies to any external ID). Recruitment platforms like Prolific append the participant ID automatically — Prolific's ``PROLIFIC_PID`` parameter is also captured.
-- **A manual entry page.** Adding ``{name="Enter ID", path="external_id"}`` to ``PAGE_LIST`` shows a form asking the participant to type their ID. Customizable via ``EXTERNAL_ID_LABEL`` and ``EXTERNAL_ID_PROMPT``.
-- **A blueprint route you write.** For custom recruitment flows, a Python view can populate ``session['mTurkID']`` directly.
+- **A URL parameter.** When a participant arrives at ``http://your-study.example/?external_id=abc123``, BOFS captures the value in the session as ``externalID`` (also accessible as ``mTurkID``, an alias kept for backward compatibility — both keys are written together). Recruitment platforms like Prolific append the participant ID automatically — Prolific's ``PROLIFIC_PID`` parameter is also captured.
+- **A manual entry page.** Adding ``{name="Enter ID", path="external_id"}`` to ``PAGE_LIST`` shows a form asking the participant to type their ID. Customizable via ``EXTERNAL_ID_LABEL`` and ``EXTERNAL_ID_PROMPT``. With URL-parameter capture in place this page is optional — include it only as a fallback for participants who arrive without a platform-provided ID.
+- **A blueprint route you write.** For custom recruitment flows, a Python view can call ``set_external_id_in_session(value)`` (from ``BOFS.util``) to populate the external ID. Existing code that writes ``session['mTurkID']`` directly still works.
 
 For details, see :doc:`/deploying/recruiting`.
 
@@ -41,7 +41,7 @@ Two configuration settings drive this:
 - ``RETRIEVE_SESSIONS = true`` — when a participant returns with the same external ID, BOFS looks up their past attempts and copies the prior condition forward into the new session.
 - ``ALLOW_RETAKES = true`` — lets a participant who already finished start a fresh attempt. With ``ALLOW_RETAKES = false``, a finished participant who returns is restored to their finished state and shown the end page again, so they can't run through the flow a second time.
 
-Each return creates a new ``Participant`` row sharing the same external ID (``mTurkID``). All rows for that participant accumulate in the same database — questionnaire responses, custom-table rows, timestamps. The ``Participant.timeStarted`` column distinguishes attempts; admin-panel exports group by external ID.
+Each return creates a new ``Participant`` row sharing the same ``externalID``. All rows for that participant accumulate in the same database — questionnaire responses, custom-table rows, timestamps. The ``Participant.timeStarted`` column distinguishes attempts; admin-panel exports group by external ID.
 
 Because each visit is its own participant row, the same questionnaire submitted on visit 1 and visit 2 doesn't collide — they're separate rows in the questionnaire's table, distinguishable by ``participantID`` and timestamp. No tagging required.
 
@@ -108,7 +108,7 @@ Storing custom task data across sessions
 
 Custom tables defined in ``tables/*.json`` accumulate rows across sessions. Every row carries the participant's ``participantID`` and a ``timeSubmitted`` timestamp. See :doc:`storing_custom_data`.
 
-In Pattern A, each visit is a separate ``participantID``, so rows naturally separate by visit — group by ``participantID`` then look up the shared ``mTurkID`` on the ``Participant`` table to combine across visits. In Pattern B, custom-table data lives in each deployment's own database, so analysis that spans days requires reading from both.
+In Pattern A, each visit is a separate ``participantID``, so rows naturally separate by visit — group by ``participantID`` then look up the shared ``externalID`` on the ``Participant`` table to combine across visits. In Pattern B, custom-table data lives in each deployment's own database, so analysis that spans days requires reading from both.
 
 Bringing participants back
 --------------------------
