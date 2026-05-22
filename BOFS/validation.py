@@ -93,6 +93,17 @@ RESERVED_EXPRESSION_NAMES = frozenset({
 # Regex for SQL-safe identifiers: letter or underscore, then alphanumeric/underscore
 _SQL_SAFE_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
+# Accept hex (#rgb / #rrggbb / #rrggbbaa), CSS named colors, or rgb()/rgba()/hsl()/hsla()
+# functional notation. Restricting the character set blocks CSS/HTML injection via
+# the inline <style> block in template.html.
+_HEADER_COLOR_RE = re.compile(
+    r'^\s*('
+    r'#[0-9a-fA-F]{3,8}'
+    r'|[a-zA-Z]{3,32}'
+    r'|(?:rgb|rgba|hsl|hsla)\([0-9eE\s,.%/+\-]+\)'
+    r')\s*$'
+)
+
 # Identifiers allowed inside JSONTable export expressions ('fields', 'filter',
 # 'having'). Researcher-authored expressions are wrapped in
 # ``db.literal_column`` / ``db.text`` which interpolate them as raw SQL — the
@@ -303,6 +314,15 @@ def is_python_attribute_safe(name: str) -> bool:
     than being a SyntaxError). Requires a valid identifier that isn't a
     Python keyword."""
     return bool(_SQL_SAFE_RE.match(name)) and not keyword.iskeyword(name)
+
+
+def is_valid_header_color(value) -> bool:
+    """Check if ``value`` is a CSS color safe to interpolate into the
+    inline ``<style>`` block in template.html. Accepts hex (#rgb /
+    #rrggbb / #rrggbbaa), CSS named colors, and rgb()/rgba()/hsl()/hsla()
+    functional notation. Restricting the character set blocks CSS/HTML
+    injection via the HEADER_COLOR config value."""
+    return isinstance(value, str) and bool(_HEADER_COLOR_RE.match(value))
 
 
 def _ids_for_question(q: dict, i: int, ids: list) -> None:

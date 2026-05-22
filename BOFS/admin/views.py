@@ -572,11 +572,9 @@ def route_update_exclude_from_count():
 @admin.route("/export_item_timing/download")
 @verify_admin
 def route_export_item_timing():
-    # The CSV header is intentionally kept as "mTurkID" (not "externalID")
-    # for backward compatibility with researchers parsing already-emitted
-    # item-timing CSVs downstream. The internal attribute read uses the
-    # canonical `externalID`; the synonym would accept `mTurkID` here too.
-    header = ["participantID", "mTurkID", "questionnaire", "tag",
+    # The CSV header used to use "mTurkID" instead of "externalID".
+    # This could potentially be a breaking change for researchers who had scripts looking for that CSV column by name.
+    header = ["participantID", "externalID", "questionnaire", "tag",
               "questionID", "eventType", "timestamp", "value"]
     rows = [header]
 

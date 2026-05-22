@@ -1,58 +1,9 @@
 import os
-import re
-import secrets
 import sys
+from . import startup
 from .BOFSFlask import BOFSFlask
 from .admin.util import check_and_add_column, check_and_rename_column, make_columns_nullable
-
-# Accept hex (#rgb / #rrggbb / #rrggbbaa), CSS named colors, or rgb()/rgba()/hsl()/hsla()
-# functional notation. Restricting the character set blocks CSS/HTML injection via
-# the inline <style> block in template.html.
-_HEADER_COLOR_RE = re.compile(
-    r'^\s*('
-    r'#[0-9a-fA-F]{3,8}'
-    r'|[a-zA-Z]{3,32}'
-    r'|(?:rgb|rgba|hsl|hsla)\([0-9eE\s,.%/+\-]+\)'
-    r')\s*$'
-)
-
-
-def _resolve_secret_key(app) -> None:
-    """
-    Load SECRET_KEY from the app_meta table, or generate and persist one.
-
-    Honors a SECRET_KEY supplied in the project config (legacy behavior): the
-    value is seeded into app_meta on first run with a one-time notice. On
-    subsequent runs the database value is the source of truth — the config
-    line is ignored, and a notice is printed reminding the researcher to
-    remove it.
-    """
-    config_key = app.config.get('SECRET_KEY')
-    stored = app.db.session.get(app.db.AppMeta, 'secret_key')
-
-    if stored is None:
-        if config_key:
-            app.db.session.add(app.db.AppMeta(key='secret_key', value=config_key))
-            app.db.session.commit()
-            print(
-                "NOTE: SECRET_KEY in your config has been migrated into the project database. "
-                "BOFS now manages SECRET_KEY automatically — you can safely remove the line "
-                "from your .toml config file."
-            )
-        else:
-            new_key = secrets.token_hex(32)
-            app.db.session.add(app.db.AppMeta(key='secret_key', value=new_key))
-            app.db.session.commit()
-            app.config['SECRET_KEY'] = new_key
-        return
-
-    # Stored value already exists — it is the source of truth.
-    if config_key and config_key != stored.value:
-        print(
-            "NOTE: SECRET_KEY is set in your config but BOFS is using the value persisted "
-            "in the project database. The config line is ignored and can be removed."
-        )
-    app.config['SECRET_KEY'] = stored.value
+from .validation import is_valid_header_color
 
 
 def create_app(path, config_name, debug=False, reloader_off=False):
@@ -74,7 +25,7 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
     header_color = app.config.get('HEADER_COLOR')
     if header_color is not None:
-        if isinstance(header_color, str) and _HEADER_COLOR_RE.match(header_color):
+        if is_valid_header_color(header_color):
             app.config['HEADER_COLOR'] = header_color.strip()
         else:
             print(
@@ -169,6 +120,7 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         app.config['BRUTE_FORCE_BAN_SCHEDULE'] = [1, 2, 5, 15, 60, 360, 1440, 10080]
 
     if 'BRUTE_FORCE_PROBE_URLS' not in app.config:
+        # If a user tries to access these URLs, they are likely a bad actor.
         app.config['BRUTE_FORCE_PROBE_URLS'] = [
             "/.env",
             "/.git",
@@ -198,6 +150,8 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         ]
 
     if 'SESSION_BIND_TO_IP_PARTICIPANT' not in app.config:
+        # For security purposes, we bind the session to a particular IP, so
+        # that the session can't be hijacked so easily.
         app.config['SESSION_BIND_TO_IP_PARTICIPANT'] = True
 
     if 'SESSION_COOKIE_SAMESITE' not in app.config:
@@ -213,9 +167,12 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 
     if 'TRUSTED_IPS' not in app.config:
+        # Can indicate IPs to exclude from the admin login brute-force check.
         app.config['TRUSTED_IPS'] = []
 
     if 'BEHIND_REVERSE_PROXY' not in app.config:
+        # If behind a reverse proxy, need to look for specific HTTP headers that the proxy adds to requests.
+        # This lets us know a user's IP address, for example, instead of just seeing the proxy's IP address.
         app.config['BEHIND_REVERSE_PROXY'] = False
 
     if app.config['BEHIND_REVERSE_PROXY']:
@@ -294,7 +251,7 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         # SECRET_KEY is now persisted in the app_meta table rather than the
         # project's TOML config. This avoids accidental commits of secrets and
         # ensures distinct projects on the same host don't end up sharing a key.
-        _resolve_secret_key(app)
+        startup.resolve_secret_key(app)
 
         # Check to see if all the columns are there
         # These are columns added to newer versions of BOFS
