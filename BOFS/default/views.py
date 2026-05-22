@@ -1,5 +1,6 @@
 import re
-from flask import Blueprint, render_template, current_app, request, make_response, abort
+from flask import Blueprint, render_template, render_template_string, current_app, request, make_response, abort
+from jinja2 import TemplateNotFound
 from urllib.parse import urlsplit
 import traceback
 from BOFS.JSONTable import JSONTable
@@ -46,22 +47,53 @@ def route_consent():
     * ``/create_participant_nc``
     """
     if all_conditions_disabled():
-        return render_template("study_closed.html"), 503
+        ParticipantService.provide_quota_full()
+        return redirect("/end/quota_full")
 
     if request.method == 'POST':
         if 'email' in request.form and request.form['email'] != '':
             # We caught someone with our honeypot.
             return render_template("consent.html")
 
+        # Defense-in-depth: the default consent form's client-side validator
+        # blocks submission unless "I consent" is selected, and the explicit
+        # Decline button posts to ``/decline_consent``. But a participant who
+        # submits ``consent=0`` directly (custom form, bypassed JS) still
+        # shouldn't slip into the normal flow.
+        if request.form.get('consent') == '0':
+            ParticipantService.provide_no_consent()
+            return redirect("/end/no_consent")
+
         try:
-            provide_consent(True)
+            p = provide_consent(True)
         except ConditionLookupMiss as miss:
             return _render_condition_lookup_miss(miss.external_id)
+        if p.isCrawler:
+            return redirect("/end/bot")
         if ParticipantService.use_debug_picker():
             return redirect("/debug_pick_condition")
         return redirect("/redirect_from_page/consent")
 
     return render_template("consent.html")
+
+
+@default.route("/decline_consent", methods=['POST'])
+def route_decline_consent():
+    """
+    ``/decline_consent``
+
+    Endpoint for the consent form's "Decline" button. Creates a minimal
+    Participant row with ``end_reason = "no_consent"`` (so admins can see
+    decline counts) and redirects to ``/end/no_consent``. No condition
+    assignment, no balancer call, no completion code.
+
+    Researchers customize the destination by adding a PAGE_LIST entry
+    with ``path = "end/no_consent"`` and an ``outgoing_url``, or by
+    dropping a ``templates/end/no_consent.html`` for a non-redirect
+    thank-you page.
+    """
+    ParticipantService.provide_no_consent()
+    return redirect("/end/no_consent")
 
 
 # Sets a participant's condition to 0 instead of assigning it as normal
@@ -76,10 +108,13 @@ def route_consent_nc():
     # The admin halt-intake toggle (all conditions disabled) should stop new
     # participants regardless of whether condition assignment is happening.
     if all_conditions_disabled():
-        return render_template("study_closed.html"), 503
+        ParticipantService.provide_quota_full()
+        return redirect("/end/quota_full")
 
     if request.method == 'POST':
-        provide_consent(False)
+        p = provide_consent(False)
+        if p.isCrawler:
+            return redirect("/end/bot")
         return redirect("/redirect_from_page/consent_nc")
     return render_template("consent.html")
 
@@ -94,12 +129,15 @@ def route_create_participant():
     show a consent form.
     """
     if all_conditions_disabled():
-        return render_template("study_closed.html"), 503
+        ParticipantService.provide_quota_full()
+        return redirect("/end/quota_full")
 
     try:
-        provide_consent(True, False)
+        p = provide_consent(True, False)
     except ConditionLookupMiss as miss:
         return _render_condition_lookup_miss(miss.external_id)
+    if p.isCrawler:
+        return redirect("/end/bot")
     if ParticipantService.use_debug_picker():
         return redirect("/debug_pick_condition")
     return redirect("/redirect_from_page/create_participant")
@@ -118,9 +156,12 @@ def route_create_participant_nc():
     and so could be used in conjunction with ``/assign_condition``.
     """
     if all_conditions_disabled():
-        return render_template("study_closed.html"), 503
+        ParticipantService.provide_quota_full()
+        return redirect("/end/quota_full")
 
-    provide_consent(False, False)
+    p = provide_consent(False, False)
+    if p.isCrawler:
+        return redirect("/end/bot")
     return redirect("/redirect_from_page/create_participant_nc")
 
 
@@ -384,18 +425,38 @@ def route_redirect_to_page(page):
 
 
 @default.route("/end")
+@default.route("/end/<reason>")
 @verify_correct_page
-def route_end():
+def route_end(reason="complete"):
     """
-    ``/end``
+    ``/end`` and ``/end/<reason>``
 
-    Ends the experiment, marks the participants as finished, and shows the user's completion code if they have been
-    given one. Can also be configured to redirect to an external URL.
+    Ends the experiment, stamps ``end_reason`` and ``finished`` on the
+    participant, and either redirects them externally or renders a
+    template. Cold-hits (no session or no participant row) render
+    anonymously without stamping anyone.
 
-    Safe to hit cold (no session, no participant row) — renders ``end.html``
-    anonymously without stamping anyone as finished. This lets researchers
-    route to ``/end`` for "study closed" / "screened out" landings and lets
-    ``/end`` survive being the first ``PAGE_LIST`` entry.
+    Resolution order on a real participant:
+
+    1. Walk show_if-visible PAGE_LIST entries; the first whose ``path``
+       matches ``end/<reason>`` (or ``end`` when ``reason == "complete"``)
+       wins. If it has an ``outgoing_url``, render that string through
+       Jinja with ``participant`` in scope and redirect there.
+    2. Else if ``reason == "complete"`` and top-level ``OUTGOING_URL`` is
+       set, redirect there (legacy fallback — applies only to the happy
+       path so framework wire-ins like ``/end/bot`` don't accidentally
+       hand out the completion URL).
+    3. Else render ``templates/end/<reason>.html`` as a fragment wrapped
+       by ``end.html`` (same DX as the ``/simple/<page>`` route — the
+       researcher writes just the body content and inherits the BOFS
+       chrome). Falls back to ``templates/end.html``'s default body when
+       no per-reason template is found.
+
+    Per-reason templates can live in the project root's templates folder
+    at ``/templates/end/<reason>.html`` or inside any blueprint's
+    templates folder at ``/<my_blueprint>/templates/end/<reason>.html``,
+    matching the lookup behavior of the simple/custom/instructions
+    routes.
     """
     p = None
     pid = session.get('participantID')
@@ -415,13 +476,31 @@ def route_end():
                 p = None
 
     if p is not None:
+        p.end_reason = reason
         if p.timeEnded is None:
             p.timeEnded = utcnow_naive()
         p.finished = True
         db.session.commit()
 
-    if 'OUTGOING_URL' in current_app.config and current_app.config['OUTGOING_URL'] is not None:
-        return redirect(current_app.config['OUTGOING_URL'])
+        # PAGE_LIST entry override. ``flat_page_list(participant_id=...)``
+        # already filters by ``show_if`` so per-source / per-condition gates
+        # on the entry are honored without re-evaluating predicates here.
+        matched_entry = _find_matching_end_entry(p.participantID, reason)
+        if matched_entry is not None:
+            outgoing_url = matched_entry.get('outgoing_url')
+            if outgoing_url:
+                rendered_url = render_template_string(outgoing_url, participant=p)
+                return redirect(rendered_url)
+
+    # Legacy top-level OUTGOING_URL applies only to the ``complete`` reason.
+    # Other reasons must redirect through a per-entry ``outgoing_url`` or
+    # fall through to template rendering — this prevents framework wire-ins
+    # (bot, no_consent, quota_full, duplicate) from inadvertently sending
+    # rejected participants to the happy-path completion URL.
+    if p is not None and reason == "complete":
+        outgoing = current_app.config.get('OUTGOING_URL')
+        if outgoing and isinstance(outgoing, str):
+            return redirect(outgoing)
 
     host = request.host.split(':')[0]
     is_local = host in ('127.0.0.1', 'localhost', '::1')
@@ -432,9 +511,52 @@ def route_end():
     else:
         restart_reason = None
 
+    # Per-reason template lookup follows the ``/simple/<page>`` DX: the
+    # researcher's ``templates/end/<reason>.html`` is just a fragment, no
+    # ``{% extends %}`` boilerplate. We render it standalone to capture
+    # the inner HTML, then pass it as ``simple_contents`` to ``end.html``
+    # so the BOFS chrome (title bar, footer, styles from template.html)
+    # wraps it automatically. ``end.html`` falls back to its default
+    # completion-code body when ``simple_contents`` isn't set.
+    try:
+        inner = current_app.jinja_env.get_or_select_template(
+            f'end/{reason}.html'
+        ).render(
+            participant=p,
+            code=session.get('code'),
+            restart_reason=restart_reason,
+        )
+    except TemplateNotFound:
+        return render_template('end.html',
+                               code=session.get('code'),
+                               restart_reason=restart_reason)
     return render_template('end.html',
+                           simple_contents=inner,
                            code=session.get('code'),
                            restart_reason=restart_reason)
+
+
+def _find_matching_end_entry(participant_id, reason):
+    """Return the first show_if-visible PAGE_LIST entry whose path matches
+    the given end ``reason``, or ``None`` if no entry matches.
+
+    Match rule: ``path == f"end/{reason}"`` always matches; when
+    ``reason == "complete"``, ``path == "end"`` also matches (the legacy
+    happy-path form). First match wins, regardless of whether the entry
+    sets ``outgoing_url`` — a matched entry without ``outgoing_url`` is a
+    deliberate "render the template instead of redirecting" signal.
+    """
+    target = f"end/{reason}"
+    legacy_complete = reason == "complete"
+    for entry in current_app.page_list.flat_page_list(participant_id=participant_id):
+        if not isinstance(entry, dict):
+            continue
+        entry_path = entry.get('path')
+        if entry_path is None:
+            continue
+        if entry_path == target or (legacy_complete and entry_path == "end"):
+            return entry
+    return None
 
 
 @default.route("/user_active")

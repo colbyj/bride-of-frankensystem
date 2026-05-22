@@ -10,6 +10,7 @@
             <th scope="col" style="text-align: center; width: 110px;">{{ page['path'].replace("/", " ").replace("_", " ") }}</th>
         {% endfor %}
         <th scope="col" style="text-align: center; width:50px;">Finished</th>
+        <th scope="col" style="text-align: left; width:90px;">End Reason</th>
         <th scope="col" style="text-align: center; width:50px;">Excluded From Count</th>
         <th scope="col" style="text-align: center; width:70px;">Time Taken</th>
     </tr>
@@ -34,6 +35,7 @@
             <td style="text-align: center;">
                 <input type="checkbox" disabled readonly {{ 'checked' if r.Participant.finished }}>
             </td>
+            <td style="text-align: left;">{{ r.Participant.end_reason or "" }}</td>
             <td style="text-align: center;">
                 <form>
                     <input type="hidden" name="participantID" value="{{ r.Participant.participantID }}">

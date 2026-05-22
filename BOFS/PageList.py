@@ -63,6 +63,7 @@ class PageList(object):
                     PageList._compile_show_if(cr.get("page_list", []))
                 continue
             PageList._compile_one_show_if(entry)
+            PageList._validate_outgoing_url(entry)
 
     @staticmethod
     def _compile_one_show_if(entry):
@@ -85,6 +86,34 @@ class PageList(object):
             )
         entry["_show_if_ast"] = ast_node
         entry["_show_if_refs"] = refs
+
+    @staticmethod
+    def _validate_outgoing_url(entry):
+        """Reject ``outgoing_url`` on entries that are not end terminations.
+
+        ``outgoing_url`` is only meaningful for entries whose ``path`` is
+        ``end`` or starts with ``end/``. Allowing it on questionnaire or
+        custom-page entries would create the "will this render or
+        redirect?" ambiguity the design explicitly avoids. The string
+        itself is stored as-is and rendered through Jinja at request time
+        by :func:`route_end`; no parsing happens here.
+        """
+        if "outgoing_url" not in entry:
+            return
+        url = entry["outgoing_url"]
+        if not isinstance(url, str) or not url.strip():
+            raise Exception(
+                f"PAGE_LIST entry {entry.get('name', entry.get('path'))!r} "
+                f"has a non-string or empty outgoing_url: {url!r}"
+            )
+        path = entry.get("path")
+        if not isinstance(path, str) or (path != "end" and not path.startswith("end/")):
+            raise Exception(
+                f"PAGE_LIST entry {entry.get('name', entry.get('path'))!r} "
+                f"has outgoing_url but its path is {path!r}; outgoing_url "
+                f"is only valid on entries whose path is 'end' or starts "
+                f"with 'end/'."
+            )
 
     @staticmethod
     def _compile_arm_show_if(arm):

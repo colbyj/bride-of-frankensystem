@@ -84,7 +84,8 @@ class Results(object):
             "source",
             "condition",
             "duration",
-            "finished"
+            "finished",
+            "end_reason",
         ])
 
         query_result = self.query_participants.all()
@@ -96,7 +97,8 @@ class Results(object):
                 'source': row.source or "",
                 'condition': condition_num_to_label(row.condition),
                 'duration': row.duration,
-                'finished': row.finished
+                'finished': row.finished,
+                'end_reason': row.end_reason or "",
             }
 
     def handle_questionnaires(self) -> None:

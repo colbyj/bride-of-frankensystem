@@ -275,6 +275,15 @@ def create_app(path, config_name, debug=False, reloader_off=False):
                     "ON participant (source)"
                 ))
 
+        # Why the session ended. NULL for participants who abandoned mid-study.
+        # Indexed because admin dashboards group/filter by it.
+        if check_and_add_column('participant', 'end_reason', 'VARCHAR', None):
+            with app.db.engine.begin() as conn:
+                conn.execute(app.db.DDL(
+                    "CREATE INDEX IF NOT EXISTS ix_participant_end_reason "
+                    "ON participant (end_reason)"
+                ))
+
         if check_and_add_column('participant', 'isCrawler', 'BOOLEAN', 0):
             # If this column wasn't in there, then also check all prior participants' useragent.
             participants = app.db.session.query(app.db.Participant).all()

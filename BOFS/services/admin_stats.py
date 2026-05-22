@@ -25,7 +25,9 @@ class AdminStatsService:
         """
         pages = [p for p in current_app.page_list.flat_page_list(
                     condition=0, participant_id=None)
-                 if p['path'] not in ("end", "consent")]
+                 if p['path'] != "consent"
+                 and p['path'] != "end"
+                 and not p['path'].startswith("end/")]
         progress = db.session.query(db.Participant).filter(db.Participant.isCrawler == False)
 
         for page in pages:
@@ -72,3 +74,22 @@ class AdminStatsService:
             one()
 
         return summary_groups, summary
+
+    @staticmethod
+    def fetch_end_reason_counts() -> List[Tuple[Any, int]]:
+        """Participant counts grouped by ``end_reason``.
+
+        Returns a list of ``(end_reason, count)`` tuples ordered by count
+        descending. ``end_reason`` is ``None`` for participants who never
+        reached ``/end/<reason>`` (i.e. abandoned mid-study).
+
+        Does not filter by ``excludeFromCount`` — admins typically want
+        to see all participants here, including bots that were
+        auto-excluded, since the whole point of the widget is to surface
+        per-reason intake patterns.
+        """
+        rows = db.session.query(
+            db.Participant.end_reason,
+            db.func.count(db.Participant.participantID).label('count'),
+        ).group_by(db.Participant.end_reason).all()
+        return sorted(rows, key=lambda r: (-r.count, r.end_reason or ""))

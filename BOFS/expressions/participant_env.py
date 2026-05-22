@@ -9,8 +9,9 @@ specific ``tag``.
 
 Reference syntax in source expressions:
 
-* ``condition`` (bare, reserved) — the participant's assigned condition
-  number from the ``Participant`` row.
+* ``condition``, ``source``, ``end_reason`` (bare, reserved) — values
+  from the ``Participant`` row itself rather than any questionnaire.
+  See :data:`RESERVED_PARTICIPANT_BARE_NAMES`.
 * ``field`` (bare) — looked up across all questionnaires; the most
   recent record wins. Useful when field IDs are unique app-wide.
 * ``qname.field`` — most recent submission of ``qname`` (any tag).
@@ -52,6 +53,13 @@ _DOTTED_RE = re.compile(
 # answered from current data — distinguishes "no data yet" from a legitimate
 # ``None`` aggregate result.
 _UNRESOLVED = object()
+
+
+# Bare names in a ``show_if`` predicate that resolve to scalar attributes on
+# the ``Participant`` row rather than to a questionnaire field. Add new
+# Participant-backed names here when they should be referenceable from
+# expressions; ``getattr`` does the rest in :func:`build_env`.
+RESERVED_PARTICIPANT_BARE_NAMES = frozenset({"condition", "source", "end_reason"})
 
 
 def _resolve_table_ref(participant_id, tname, column, db, tables, key=None):
@@ -223,15 +231,22 @@ def build_env(participant_id, referenced, refs, questionnaires, db,
     referenced_placeholders = set(referenced) & placeholder_names
     referenced_bare = set(referenced) - placeholder_names
 
-    # ``condition`` is a reserved bare name that resolves to the
-    # participant's assigned condition number, not a questionnaire field.
-    if "condition" in referenced_bare:
-        referenced_bare.discard("condition")
+    # Bare names backed by the ``Participant`` row itself (not by a
+    # questionnaire field). ``condition`` is the legacy member of this set;
+    # ``source`` and ``end_reason`` join it so ``show_if = "source ==
+    # 'prolific'"`` and ``show_if = "end_reason == 'screened_out'"`` work
+    # without per-name special cases. ``None`` flows through the evaluator's
+    # ``==`` / ``!=`` paths cleanly, so a participant with no source or no
+    # recorded end reason matches against any string as ``False``.
+    reserved_in_use = referenced_bare & RESERVED_PARTICIPANT_BARE_NAMES
+    if reserved_in_use:
+        referenced_bare -= reserved_in_use
         participant_model = getattr(db, "Participant", None)
         if participant_model is not None:
             participant = db.session.get(participant_model, participant_id)
             if participant is not None:
-                env["condition"] = participant.condition
+                for name in reserved_in_use:
+                    env[name] = getattr(participant, name, None)
 
     # Resolve qualified references through the placeholder side table.
     for ph in referenced_placeholders:

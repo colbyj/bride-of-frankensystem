@@ -197,21 +197,30 @@ class TestLazyParticipantCreation:
         client.get("/questionnaire/demographics")
         assert app.db.session.query(app.db.Participant).count() == 1
 
-    def test_all_conditions_disabled_returns_503(self, app_questionnaire_first):
+    def test_all_conditions_disabled_redirects_to_quota_full(self, app_questionnaire_first):
         """The same study_closed guard the creation routes use must apply to
         lazy creation: flip every condition to disabled, then a cold GET on
-        the first page returns 503 with study_closed.html."""
+        the first page redirects to ``/end/quota_full``. The quota_full
+        wire-in replaced the prior 503 ``study_closed.html`` response so
+        admins get a Participant row (with ``end_reason = "quota_full"``)
+        for every blocked arrival."""
         app = app_questionnaire_first
         for cond in app.config["CONDITIONS"]:
             cond["enabled"] = False
 
         client = app.test_client()
-        response = client.get("/questionnaire/demographics")
+        response = client.get(
+            "/questionnaire/demographics", follow_redirects=False,
+        )
 
-        assert response.status_code == 503
-        assert b"not currently accepting new participants" in response.data
-        # No participant was created.
-        assert app.db.session.query(app.db.Participant).count() == 0
+        assert response.status_code == 302
+        assert response.headers["Location"].endswith("/end/quota_full")
+        # A minimal Participant exists, stamped with end_reason="quota_full"
+        # and excluded from balancer counts.
+        participants = app.db.session.query(app.db.Participant).all()
+        assert len(participants) == 1
+        assert participants[0].end_reason == "quota_full"
+        assert participants[0].excludeFromCount is True
 
     def test_debug_picker_redirect(self, app_questionnaire_first_debug):
         """In debug mode with conditions defined, lazy creation must redirect

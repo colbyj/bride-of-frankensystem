@@ -3,24 +3,33 @@
 {% endblock %}
 
 {% block content %}
-        <b>Thanks for participating!</b>
+        {% if simple_contents %}
+            {# Per-reason fragment supplied by route_end after locating a
+               templates/end/<reason>.html file. The fragment is the full
+               body of the end page; the researcher writes just the
+               content and inherits the BOFS chrome (title bar, footer,
+               styles) from template.html -- same DX as the /simple/ route. #}
+            {{ simple_contents | safe }}
+        {% else %}
+            <b>Thanks for participating!</b>
 
-        {% if code and (code != '0') %}
-        <div class="bofs-question" style="background-color: #F8FFF7; width: 500px; margin-left: auto; margin-right: auto;">
-            <div class="bofs-padding" style="text-align: center">
-                {{ config['COMPLETION_CODE_MESSAGE'] }}
-                <br>
-                <input type="text" value="{{ code }}" id="code" name="code" readonly style="text-align: center; margin-top: 5px; width: 350px;">
+            {% if code and (code != '0') %}
+            <div class="bofs-question" style="background-color: #F8FFF7; width: 500px; margin-left: auto; margin-right: auto;">
+                <div class="bofs-padding" style="text-align: center">
+                    {{ config['COMPLETION_CODE_MESSAGE'] }}
+                    <br>
+                    <input type="text" value="{{ code }}" id="code" name="code" readonly style="text-align: center; margin-top: 5px; width: 350px;">
+                </div>
             </div>
-        </div>
-        {% endif %}
+            {% endif %}
 
-        {% if restart_reason %}
-        <div style="text-align: center; margin-top: 20px;">
-            <a href="{{ config['APPLICATION_ROOT'] }}/restart">Restart the experiment</a>
-            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-                This link is only shown because {{ restart_reason }}.
+            {% if restart_reason %}
+            <div style="text-align: center; margin-top: 20px;">
+                <a href="{{ config['APPLICATION_ROOT'] }}/restart">Restart the experiment</a>
+                <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                    This link is only shown because {{ restart_reason }}.
+                </div>
             </div>
-        </div>
+            {% endif %}
         {% endif %}
 {% endblock %}

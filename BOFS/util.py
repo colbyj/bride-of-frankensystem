@@ -243,23 +243,43 @@ def create_breadcrumbs():
      whether or not that page is the active page, meaning it should be made bold.
     """
 
-    page_list = current_app.page_list.flat_page_list(hide_unresolved=True)
     current_path = request.path
     if current_path.startswith("/"):
         current_path = current_path[1:]
+
+    # End pages (``/end`` and ``/end/<reason>``) never show the breadcrumb.
+    # They're terminal: the participant has finished or been screened out,
+    # and a "you were on Survey → Demographics → ..." trail at the moment
+    # of exit is more noise than navigation. Returning empty here makes
+    # the ``{% if crumbs %}`` guard in template.html collapse the block.
+    if current_path == "end" or current_path.startswith("end/"):
+        return []
+
+    page_list = current_app.page_list.flat_page_list(hide_unresolved=True)
     crumbs = []
 
     # Create breadcrumbs. Match the active page by path rather than by
     # index, because ``hide_unresolved=True`` may have dropped earlier
     # entries that are still present in the unfiltered list ``get_index``
     # would consult.
+    #
+    # End entries (``path = "end"`` or ``path = "end/<reason>"``) never
+    # show in the breadcrumb. They typically represent the terminus or a
+    # screen-out exit; the participant is gone before the breadcrumb
+    # would be re-rendered, and the per-reason entries exist mostly as
+    # redirect/template configuration that the participant never "passes
+    # through" in the page-flow sense.
     for page in page_list:
-        if page['name'] == '':
+        name = page.get('name', '')
+        if not name:
+            continue
+        path = page.get('path', '')
+        if path == "end" or path.startswith("end/"):
             continue
 
         crumbs.append({
-            'name': page['name'],
-            'active': page['path'] == current_path,
+            'name': name,
+            'active': path == current_path,
         })
 
     # Check for and handle any groupings of pages with the same name.
@@ -274,7 +294,10 @@ def create_breadcrumbs():
             positionInGroup = crumbsInGroup
 
         # Keep removing pages after the first one which have the same name.
-        while crumbs[i]['name'] == crumbs[i + 1]['name']:
+        # The ``i + 1 < len(crumbs)`` bound is required because each pop
+        # shrinks the list — without it, a run of duplicates that extends
+        # to the final entry walks past the end of ``crumbs`` and raises.
+        while i + 1 < len(crumbs) and crumbs[i]['name'] == crumbs[i + 1]['name']:
             removedCrumb = crumbs.pop(i + 1)
 
             crumbsInGroup += 1

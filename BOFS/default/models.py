@@ -242,6 +242,13 @@ def create(db):
         isCrawler = db.Column(db.Boolean, nullable=False, default=False)
         excludeFromCount = db.Column(db.Boolean, nullable=False, default=False)
         code = db.Column(db.String, nullable=False, default=0)
+        # Why the session ended. ``None`` for participants who abandoned
+        # mid-experiment without hitting ``/end``. Stamped at ``/end/<reason>``
+        # to one of the framework reasons (``complete``, ``bot``,
+        # ``no_consent``, ``quota_full``, ``duplicate``) or any
+        # researcher-defined string. Exposed as a bare name to the expression
+        # engine so ``show_if = "end_reason == 'screened_out'"`` works.
+        end_reason = db.Column(db.String, nullable=True, default=None, index=True)
         lastActiveOn = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
         notes = db.Column(db.String, nullable=False, default="")
 

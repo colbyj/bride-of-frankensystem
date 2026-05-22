@@ -226,11 +226,14 @@ def _ensure_preview_participant():
 def route_progress():
     pages, progress = AdminStatsService.fetch_progress()
     summary_groups, summary = AdminStatsService.fetch_progress_summary()
+    end_reason_counts = AdminStatsService.fetch_end_reason_counts()
 
     return render_template("progress.html",
                            pages=pages, progress=progress,
                            show_source=_should_show_source(progress),
-                           summary_groups=summary_groups, summary=summary, display_time=display_time)
+                           summary_groups=summary_groups, summary=summary,
+                           end_reason_counts=end_reason_counts,
+                           display_time=display_time)
 
 
 @admin.route("/progress_ajax")
@@ -255,8 +258,11 @@ def _should_show_source(progress) -> bool:
 @verify_admin
 def route_progress_summary_ajax():
     summary_groups, summary = AdminStatsService.fetch_progress_summary()
+    end_reason_counts = AdminStatsService.fetch_end_reason_counts()
     return render_template("progress_summary_ajax.html",
-                           summary_groups=summary_groups, summary=summary, display_time=display_time)
+                           summary_groups=summary_groups, summary=summary,
+                           end_reason_counts=end_reason_counts,
+                           display_time=display_time)
 
 
 @admin.route("/condition/<int:condition_num>/toggle", methods=['POST'])
@@ -270,8 +276,11 @@ def route_toggle_condition(condition_num):
     ParticipantService.toggle_condition_enabled(idx)
 
     summary_groups, summary = AdminStatsService.fetch_progress_summary()
+    end_reason_counts = AdminStatsService.fetch_end_reason_counts()
     return render_template("progress_summary_ajax.html",
-                           summary_groups=summary_groups, summary=summary, display_time=display_time)
+                           summary_groups=summary_groups, summary=summary,
+                           end_reason_counts=end_reason_counts,
+                           display_time=display_time)
 
 
 def _question_text_lookup(questionnaire):

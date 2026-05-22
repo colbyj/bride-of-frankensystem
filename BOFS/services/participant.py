@@ -23,6 +23,14 @@ class ParticipantService:
     def provide_consent(assign_condition: bool = True, log_display_size: bool = False):
         """Create a Participant, optionally assign a condition, commit, write session keys.
         Returns the Participant. Must be called inside a request context.
+
+        Bot short-circuit: if ``check_useragent_for_crawler`` flags the
+        participant as a crawler, condition assignment, completion-code
+        generation, and the balancer are all skipped. The participant is
+        stamped with ``end_reason = "bot"`` and committed so admins still
+        get a row in the table, but the caller is responsible for noticing
+        ``p.isCrawler`` and redirecting to ``/end/bot`` instead of into the
+        normal flow.
         """
         p = db.Participant()
         p.ipAddress = get_client_ip()
@@ -39,6 +47,21 @@ class ParticipantService:
             p.externalID = ext_id
         if session.get('source'):
             p.source = session['source']
+
+        if p.isCrawler:
+            # Skip condition assignment so bots don't consume balanced slots,
+            # and don't hand out a completion code. ``excludeFromCount`` is
+            # already True (set by ``check_useragent_for_crawler``), so the
+            # row won't pollute the balancer. Condition stays at the column
+            # default (0) — matching ``consent_nc`` semantics for
+            # "no assigned condition". Caller must detect ``p.isCrawler``
+            # and redirect to ``/end/bot``.
+            p.condition = 0
+            p.end_reason = "bot"
+            db.session.add(p)
+            db.session.commit()
+            session['participantID'] = p.participantID
+            return p
 
         if current_app.config['STATIC_COMPLETION_CODE'] is not None:
             p.code = current_app.config['STATIC_COMPLETION_CODE']
@@ -80,6 +103,70 @@ class ParticipantService:
             db.session.add(entry)
             db.session.commit()
 
+        return p
+
+    @staticmethod
+    def provide_quota_full():
+        """Create a minimal Participant for someone arriving after intake
+        closed (``all_conditions_disabled()`` is True). Stamps
+        ``end_reason = "quota_full"`` and skips the balancer; the caller
+        is responsible for redirecting to ``/end/quota_full``.
+
+        Creating a row gives admins visibility into how many people
+        arrived after the quota closed — without it, the legacy 503
+        ``study_closed.html`` response was invisible to dashboards.
+        """
+        p = db.Participant()
+        p.ipAddress = get_client_ip()
+        p.userAgent = request.user_agent.string
+        p.timeStarted = utcnow_naive()
+        p.check_useragent_for_crawler()
+        ext_id = get_external_id_from_session()
+        if ext_id:
+            p.externalID = ext_id
+        if session.get('source'):
+            p.source = session['source']
+        # Match ``consent_nc`` semantics for "no assigned condition":
+        # the column's default-0 is what existing studies see, and the
+        # ``excludeFromCount`` flag below keeps these rows from polluting
+        # balancer counts.
+        p.condition = 0
+        p.excludeFromCount = True
+        p.end_reason = "quota_full"
+        db.session.add(p)
+        db.session.commit()
+        session['participantID'] = p.participantID
+        return p
+
+    @staticmethod
+    def provide_no_consent():
+        """Create a minimal Participant for someone who clicked Decline on
+        the consent form. Stamps ``end_reason = "no_consent"`` and skips
+        condition assignment / completion code generation; the caller
+        redirects to ``/end/no_consent``.
+
+        A row is created (rather than rendering anonymously) so admins
+        can see decline counts alongside the other reasons.
+        """
+        p = db.Participant()
+        p.ipAddress = get_client_ip()
+        p.userAgent = request.user_agent.string
+        p.timeStarted = utcnow_naive()
+        p.check_useragent_for_crawler()
+        ext_id = get_external_id_from_session()
+        if ext_id:
+            p.externalID = ext_id
+        if session.get('source'):
+            p.source = session['source']
+        # See note in ``provide_quota_full`` — using condition=0 with
+        # ``excludeFromCount=True`` matches the ``consent_nc`` semantics
+        # for "row exists but doesn't participate in the balancer".
+        p.condition = 0
+        p.excludeFromCount = True
+        p.end_reason = "no_consent"
+        db.session.add(p)
+        db.session.commit()
+        session['participantID'] = p.participantID
         return p
 
     @staticmethod

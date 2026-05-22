@@ -81,6 +81,11 @@
         <br>
     </form>
 
+    <form method="post" action="{{ config['APPLICATION_ROOT'] }}/decline_consent"
+          style="margin-top: 8px;">
+        <button type="submit" class="bofs-btn bofs-btn-decline">I do not consent</button>
+    </form>
+
     <script>
         // Block submission unless the "I consent" radio is checked, and reveal the feedback message.
         (function () {

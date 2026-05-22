@@ -67,6 +67,17 @@ class SessionRecoveryService:
                 if recovered_url and recovered_url in SessionRecoveryService._LOOP_BLOCKED_PATHS:
                     return None
 
+                # Label the orphan. ``p`` is the row created on this entry —
+                # ``/consent`` or lazy creation already committed it before
+                # ``/external_id`` ran. Restoring below points
+                # ``session['participantID']`` at the past row, abandoning
+                # ``p``. Without this stamp it sits in the table looking
+                # like an incomplete mid-flight participant; ``end_reason
+                # == "session_loaded"`` tells admins it was superseded by
+                # session recovery. ``clear_condition`` below commits the
+                # change.
+                p.end_reason = "session_loaded"
+
                 SessionRecoveryService._apply_session_dict(dict_data)
                 ParticipantService.clear_condition(p)
                 SessionRecoveryService._restore_condition(past_participants)

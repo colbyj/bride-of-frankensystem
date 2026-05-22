@@ -173,22 +173,27 @@ class ParticipantRoutingService:
             return None
         first_path = flat[0]["path"]
 
-        # ``end`` as the first PAGE_LIST entry is a deliberate "study closed"
-        # terminus — let route_end render without a participant rather than
-        # auto-creating one just to immediately mark it finished.
-        if first_path in CREATION_ROUTES or first_path == "end":
+        # An ``end`` or ``end/<reason>`` entry as the first PAGE_LIST step is
+        # a deliberate "study closed" / "screened out" terminus — let
+        # route_end render without a participant rather than auto-creating
+        # one just to immediately mark it finished.
+        if first_path in CREATION_ROUTES or first_path == "end" or first_path.startswith("end/"):
             return None
 
         if ParticipantService.all_conditions_disabled():
-            return render_template("study_closed.html"), 503
+            ParticipantService.provide_quota_full()
+            return redirect(self.application_root + "/end/quota_full")
 
         try:
-            ParticipantService.provide_consent(assign_condition=True)
+            p = ParticipantService.provide_consent(assign_condition=True)
         except ConditionLookupMiss as miss:
             return render_template(
                 "condition_lookup_miss.html",
                 external_id=miss.external_id,
             ), 404
+
+        if p.isCrawler:
+            return redirect(self.application_root + "/end/bot")
 
         if ParticipantService.use_debug_picker():
             return redirect(self.application_root + "/debug_pick_condition")
