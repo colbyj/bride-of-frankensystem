@@ -229,6 +229,7 @@ def route_progress():
 
     return render_template("progress.html",
                            pages=pages, progress=progress,
+                           show_source=_should_show_source(progress),
                            summary_groups=summary_groups, summary=summary, display_time=display_time)
 
 
@@ -236,7 +237,18 @@ def route_progress():
 @verify_admin
 def route_progress_ajax():
     pages, progress = AdminStatsService.fetch_progress()
-    return render_template("progress_ajax.html", pages=pages, progress=progress)
+    return render_template("progress_ajax.html", pages=pages, progress=progress,
+                           show_source=_should_show_source(progress))
+
+
+def _should_show_source(progress) -> bool:
+    """Show the Source column only when participants differ on it.
+
+    Hides the column when every row carries the same source value
+    (including the all-NULL case for studies that don't use ?source=) so
+    the table doesn't widen with a column that carries no information.
+    """
+    return len({r.Participant.source for r in progress}) > 1
 
 
 @admin.route("/progress_summary_ajax")
