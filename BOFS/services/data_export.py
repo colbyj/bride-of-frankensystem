@@ -81,6 +81,7 @@ class Results(object):
         self.column_list.extend([
             "participantID",
             "externalID",
+            "source",
             "condition",
             "duration",
             "finished"
@@ -92,6 +93,7 @@ class Results(object):
             self.export_data[row.participantID] = {
                 'participantID': row.participantID,
                 'externalID': row.externalID,
+                'source': row.source or "",
                 'condition': condition_num_to_label(row.condition),
                 'duration': row.duration,
                 'finished': row.finished

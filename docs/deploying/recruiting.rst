@@ -219,6 +219,14 @@ participated in. They are stored in the database alongside the participant's
 responses. Check your IRB's data-retention guidance and consider whether your
 analysis pipeline needs to anonymise them before export.
 
+The ``?source=`` parameter is self-reported and arrives unauthenticated in
+the URL. A participant recruited from one channel can claim to be from
+another by editing the URL. Treat ``source`` as a hint for filtering and
+reporting, not as a credential. Where the distinction matters — for
+example, per-source completion URLs that gate payment — gate on the
+presence of a platform-issued parameter like ``PROLIFIC_PID``, not on the
+``source`` string.
+
 .. warning::
    Never commit ``ADMIN_PASSWORD`` to public version control.
 
