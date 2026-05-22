@@ -198,7 +198,7 @@ def find_files_in_app_and_blueprints(app, folder_name: str,
                     if blueprint_path not in results:
                         results[blueprint_path] = []
 
-                    results[blueprint_path].append(q.replace(".json", ""))
+                    results[blueprint_path].append(q.replace(extension, ""))
 
     return results
 
