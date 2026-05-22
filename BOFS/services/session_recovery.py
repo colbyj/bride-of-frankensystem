@@ -21,7 +21,7 @@ class SessionRecoveryService:
 
         Behavior, in order:
           1. If RETRIEVE_SESSIONS is False → return None (no recovery).
-          2. Look up SessionStore rows with matching mTurkID and a different
+          2. Look up SessionStore rows with matching externalID and a different
              participantID, ordered most-recent first.
           3. If none → return None.
           4. Look up the matching past Participant; with ALLOW_RETAKES=True,
@@ -82,7 +82,7 @@ class SessionRecoveryService:
         return (
             db.session.query(db.SessionStore)
             .filter(
-                db.SessionStore.mTurkID == mturk_id,
+                db.SessionStore.externalID == mturk_id,
                 db.SessionStore.participantID != current_pid,
             )
             .order_by(db.desc(db.SessionStore.createdOn))
@@ -95,7 +95,7 @@ class SessionRecoveryService:
         With allow_retakes=True, also excludes finished attempts and the current pid.
         """
         query = db.session.query(db.Participant).filter(
-            db.Participant.mTurkID == mturk_id,
+            db.Participant.externalID == mturk_id,
             db.Participant.participantID == sessionstore_pid,
         )
 

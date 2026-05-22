@@ -8,7 +8,7 @@ The participant object
 
 The current participant is available as the ``participant`` variable in every BOFS-rendered template, and as ``db.Participant.query.get(session['participantID'])`` in custom blueprint routes.
 
-The participant object has a small set of database-backed attributes (``participantID``, ``condition``, ``mTurkID``, ``timeStarted``, ``finished``, ``code``) and a few methods that return their related data:
+The participant object has a small set of database-backed attributes (``participantID``, ``condition``, ``externalID``, ``timeStarted``, ``finished``, ``code``) and a few methods that return their related data. ``externalID`` is also accessible as ``mTurkID`` — both names refer to the same column, with ``mTurkID`` kept as an alias for backward compatibility.
 
 - ``participant.questionnaire(name, tag="")`` — the response row, with each field accessible as an attribute.
 - ``participant.has_questionnaire(name, tag="")`` — boolean; was the questionnaire submitted at all.

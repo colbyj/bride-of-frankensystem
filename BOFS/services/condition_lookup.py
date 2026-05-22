@@ -35,7 +35,7 @@ class ConditionLookupMiss(Exception):
     """An external ID was looked up against a configured source but not found.
 
     Raised from Participant.assign_condition when CONDITIONS_FROM_CSV or
-    CONDITIONS_FROM_DB is set but the participant's mTurkID isn't present.
+    CONDITIONS_FROM_DB is set but the participant's externalID isn't present.
     """
 
     def __init__(self, external_id: str):
@@ -60,7 +60,15 @@ class ConditionLookupService:
         Called from create_app once config defaults are in place. Raises
         ConditionLookupConfigError on any validation failure.
         """
-        state = {'csv_map': None, 'csv_path': None, 'db_engine': None, 'db_uri': None}
+        state = {
+            'csv_map': None, 'csv_path': None,
+            'db_engine': None, 'db_uri': None,
+            # Column name in the prior DB's `participant` table holding the
+            # external ID. New BOFS DBs use `external_id`; pre-rename DBs use
+            # `mTurkID`. Detected at startup so a single string substitution
+            # serves every later query.
+            'db_external_id_col': None,
+        }
 
         csv_path = app.config.get('CONDITIONS_FROM_CSV')
         if csv_path:
@@ -69,8 +77,10 @@ class ConditionLookupService:
 
         db_uri = app.config.get('CONDITIONS_FROM_DB')
         if db_uri:
-            state['db_engine'] = ConditionLookupService._open_db(db_uri)
+            engine, detected_col = ConditionLookupService._open_db(db_uri)
+            state['db_engine'] = engine
             state['db_uri'] = db_uri
+            state['db_external_id_col'] = detected_col
 
         app.extensions[_EXTENSION_KEY] = state
 
@@ -153,7 +163,13 @@ class ConditionLookupService:
     @staticmethod
     def _open_db(db_uri: str):
         """Create a read-only-intent SQLAlchemy engine for the prior-study DB
-        and verify it has a usable participant table."""
+        and verify it has a usable participant table.
+
+        Returns ``(engine, external_id_column_name)``. The column name is
+        whichever of ``external_id`` (new BOFS schema) or ``mTurkID``
+        (pre-rename BOFS schema) is present. When both exist (an
+        upgrade-rollback edge case), ``external_id`` wins.
+        """
         try:
             engine = create_engine(db_uri)
         except Exception as exc:
@@ -161,21 +177,31 @@ class ConditionLookupService:
                 f"CONDITIONS_FROM_DB={db_uri!r} is not a valid SQLAlchemy URI: {exc}"
             )
 
-        try:
-            with engine.connect() as conn:
-                # Probe the schema. We need mTurkID and condition columns.
-                # Using a LIMIT 0 SELECT keeps this lightweight and dialect-agnostic.
-                conn.execute(text(
-                    "SELECT mTurkID, condition FROM participant LIMIT 0"
-                ))
-        except Exception as exc:
+        # Try the new column name first, then fall back to the legacy name.
+        # The LIMIT 0 SELECT is dialect-agnostic (works on SQLite, Postgres,
+        # MySQL, etc.) and avoids depending on SQLite-only PRAGMAs.
+        detected_col = None
+        last_exc = None
+        for candidate in ('external_id', 'mTurkID'):
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(
+                        f"SELECT {candidate}, condition FROM participant LIMIT 0"
+                    ))
+                detected_col = candidate
+                break
+            except Exception as exc:
+                last_exc = exc
+
+        if detected_col is None:
             raise ConditionLookupConfigError(
                 f"CONDITIONS_FROM_DB={db_uri!r} could not be opened or its "
-                f"'participant' table is missing required columns "
-                f"(mTurkID, condition): {exc}"
+                f"'participant' table is missing the required external-ID "
+                f"column (looked for 'external_id' or 'mTurkID') and "
+                f"'condition' column: {last_exc}"
             )
 
-        return engine
+        return engine, detected_col
 
     # ---------------- Runtime ----------------
 
@@ -214,7 +240,9 @@ class ConditionLookupService:
                 return hit
 
         if state['db_engine'] is not None:
-            row = ConditionLookupService._query_db(state['db_engine'], external_id)
+            row = ConditionLookupService._query_db(
+                state['db_engine'], external_id, state['db_external_id_col'],
+            )
             if row is not None:
                 return row['condition']
 
@@ -233,7 +261,9 @@ class ConditionLookupService:
         state = ConditionLookupService._state()
         if not state or state['db_engine'] is None or not external_id:
             return None
-        return ConditionLookupService._query_db(state['db_engine'], external_id.strip())
+        return ConditionLookupService._query_db(
+            state['db_engine'], external_id.strip(), state['db_external_id_col'],
+        )
 
     @staticmethod
     def open_prior_db():
@@ -248,8 +278,12 @@ class ConditionLookupService:
         return state['db_engine']
 
     @staticmethod
-    def _query_db(engine, external_id: str) -> Optional[dict]:
+    def _query_db(engine, external_id: str, id_col: str) -> Optional[dict]:
         """Look up a participant row in the prior DB.
+
+        ``id_col`` is the participant-table column holding the external ID,
+        as detected at startup (``external_id`` for new BOFS DBs,
+        ``mTurkID`` for pre-rename ones).
 
         Prefers a finished attempt over an unfinished one, and the most
         recent attempt within those. Skips rows where condition is NULL or 0,
@@ -258,11 +292,11 @@ class ConditionLookupService:
         with engine.connect() as conn:
             result = conn.execute(
                 text(
-                    "SELECT * FROM participant "
-                    "WHERE mTurkID = :external_id "
-                    "  AND condition IS NOT NULL AND condition != 0 "
-                    "ORDER BY finished DESC, participantID DESC "
-                    "LIMIT 1"
+                    f"SELECT * FROM participant "
+                    f"WHERE {id_col} = :external_id "
+                    f"  AND condition IS NOT NULL AND condition != 0 "
+                    f"ORDER BY finished DESC, participantID DESC "
+                    f"LIMIT 1"
                 ),
                 {'external_id': external_id},
             )

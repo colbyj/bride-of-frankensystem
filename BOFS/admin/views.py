@@ -560,6 +560,10 @@ def route_update_exclude_from_count():
 @admin.route("/export_item_timing/download")
 @verify_admin
 def route_export_item_timing():
+    # The CSV header is intentionally kept as "mTurkID" (not "externalID")
+    # for backward compatibility with researchers parsing already-emitted
+    # item-timing CSVs downstream. The internal attribute read uses the
+    # canonical `externalID`; the synonym would accept `mTurkID` here too.
     header = ["participantID", "mTurkID", "questionnaire", "tag",
               "questionID", "eventType", "timestamp", "value"]
     rows = [header]
@@ -573,7 +577,7 @@ def route_export_item_timing():
             db.QuestionnaireInteraction.participantID == p.participantID
         ).order_by(db.QuestionnaireInteraction.timestamp).all()
 
-        mturk = p.mTurkID.strip() if p.mTurkID else ""
+        mturk = p.externalID.strip() if p.externalID else ""
         for i in interactions:
             rows.append([
                 p.participantID, mturk, i.questionnaire, i.tag,

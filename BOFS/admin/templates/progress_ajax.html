@@ -19,7 +19,7 @@
             <td style="text-align: right">
                 <a href="{{ url_for('admin.route_participant_detail', pid=r.Participant.participantID) }}">{{ r.Participant.participantID }}</a>
             </td>
-            <td style="text-align: left">{{ r.Participant.mTurkID }}</td>
+            <td style="text-align: left">{{ r.Participant.externalID }}</td>
             <td style="text-align: right">{{ condition_num_to_label(r.Participant.condition) }}</td>
             <td style="text-align: center">{{ r.Participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             {% for page in pages %}

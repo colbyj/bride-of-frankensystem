@@ -91,7 +91,7 @@ class Results(object):
         for row in query_result:
             self.export_data[row.participantID] = {
                 'participantID': row.participantID,
-                'externalID': row.mTurkID,
+                'externalID': row.externalID,
                 'condition': condition_num_to_label(row.condition),
                 'duration': row.duration,
                 'finished': row.finished

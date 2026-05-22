@@ -3,7 +3,7 @@ import re
 import secrets
 import sys
 from .BOFSFlask import BOFSFlask
-from .admin.util import check_and_add_column, make_columns_nullable
+from .admin.util import check_and_add_column, check_and_rename_column, make_columns_nullable
 
 # Accept hex (#rgb / #rrggbb / #rrggbbaa), CSS named colors, or rgb()/rgba()/hsl()/hsla()
 # functional notation. Restricting the character set blocks CSS/HTML injection via
@@ -298,6 +298,13 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
         # Check to see if all the columns are there
         # These are columns added to newer versions of BOFS
+        # Rename `mTurkID` -> `external_id` on existing databases. The ORM
+        # uses `externalID` (Python) / `external_id` (DB) with a `mTurkID`
+        # synonym; on a fresh DB, create_all() above already created
+        # `external_id` and these calls are no-ops.
+        check_and_rename_column('participant', 'mTurkID', 'external_id')
+        check_and_rename_column('session_store', 'mTurkID', 'external_id')
+
         check_and_add_column('participant', 'excludeFromCount', 'BOOLEAN', 0)
         check_and_add_column('participant', 'notes', 'TEXT', '')
 

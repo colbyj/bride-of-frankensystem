@@ -209,8 +209,8 @@ def route_debug_pick_condition():
     # is bypassed and assign_condition would run the same lookup itself.
     lookup_configured = ConditionLookupService.is_configured()
     looked_up_condition = None
-    if lookup_configured and p.mTurkID:
-        looked_up_condition = ConditionLookupService.lookup(p.mTurkID)
+    if lookup_configured and p.externalID:
+        looked_up_condition = ConditionLookupService.lookup(p.externalID)
 
     rows = []
     for idx, meta in enumerate(conditions):
@@ -230,7 +230,7 @@ def route_debug_pick_condition():
         organic=organic,
         lookup_configured=lookup_configured,
         looked_up_condition=looked_up_condition,
-        external_id=p.mTurkID,
+        external_id=p.externalID,
     )
 
 
@@ -249,11 +249,13 @@ def route_external_id():
     """
     if request.method == 'POST':
         p = db.session.get(db.Participant, session['participantID'])
-        p.mTurkID = str(request.form['mTurkID']).strip()
+        # The form input is `name="mTurkID"` for backward compatibility with
+        # researcher template overrides; assignment uses the canonical name.
+        p.externalID = str(request.form['mTurkID']).strip()
 
-        session['mTurkID'] = p.mTurkID
+        session['mTurkID'] = p.externalID
 
-        recovered_url = SessionRecoveryService.try_restore(p, p.mTurkID)
+        recovered_url = SessionRecoveryService.try_restore(p, p.externalID)
         if recovered_url:
             return redirect(recovered_url)
 
@@ -465,7 +467,7 @@ def route_restart():
         ss = db.session.get(db.SessionStore, sessionID)
         if ss:
             ss.participantID = None
-            ss.mTurkID = None
+            ss.externalID = None
             db.session.commit()
 
     session.clear()

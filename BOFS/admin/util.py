@@ -158,21 +158,46 @@ def questionnaire_name_and_tag(questionnnaireNameAndTagString):
     return qName, qTag
 
 
+_SUPPORTED_MIGRATION_DIALECTS = ('sqlite', 'postgresql', 'mysql', 'mariadb')
+
+
+def _check_migration_dialect_supported(operation: str) -> bool:
+    """Return True if the current DB dialect supports our migration helpers.
+
+    Logs a clear warning (once per call) when it doesn't, so a Postgres/MySQL
+    admin on an unsupported dialect can run the ALTER manually instead of
+    silently ending up with a schema/ORM mismatch.
+    """
+    dialect = db.engine.dialect.name
+    if dialect in _SUPPORTED_MIGRATION_DIALECTS:
+        return True
+    current_app.logger.warning(
+        "%s skipped: dialect %r is not in the supported list %r. "
+        "Run the equivalent ALTER TABLE statement manually.",
+        operation, dialect, _SUPPORTED_MIGRATION_DIALECTS,
+    )
+    return False
+
+
 def check_and_add_column(table_name: str, column_name: str, column_data_type: str, default_value=None) -> bool:
     """
     Check whether a column exists in a table; if not, add it. Table name is the actual
-    name of the table in the database, not the class name. Only works for SQLite databases.
+    name of the table in the database, not the class name.
+
+    Works on SQLite, PostgreSQL, MySQL/MariaDB — all four accept the same
+    ``ALTER TABLE ... ADD COLUMN`` syntax for the simple cases BOFS uses. Other
+    dialects are skipped with a warning so an admin can run the ALTER manually.
 
     :param table_name:
     :param column_name:
     :param column_data_type: in SQL DDL format, e.g., BOOLEAN, VARCHAR, TEXT, INTEGER etc.
     :param default_value: If provided, the column is added with NOT NULL DEFAULT <value>.
         If None (default), the column is added as nullable with no default.
-    :return: True if the column was added, False if it already existed.
+    :return: True if the column was added, False if it already existed (or was skipped).
     """
-    is_sqlite = current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///')
-
-    if not is_sqlite:
+    if not _check_migration_dialect_supported(
+        f"check_and_add_column({table_name!r}, {column_name!r})"
+    ):
         return False
 
     inspector = sa_inspect(db.engine)
@@ -189,6 +214,45 @@ def check_and_add_column(table_name: str, column_name: str, column_data_type: st
     add_column = db.DDL(ddl)
     with db.engine.connect() as conn:
         conn.execute(add_column)
+        db.session.commit()
+
+    return True
+
+
+def check_and_rename_column(table_name: str, old_name: str, new_name: str) -> bool:
+    """Rename a column if the old name exists and the new name does not.
+
+    Works on SQLite >= 3.25, PostgreSQL >= 9.2, MySQL >= 8.0, MariaDB >= 10.5 —
+    all accept the identical ``ALTER TABLE ... RENAME COLUMN ... TO ...`` syntax.
+    Older versions of Postgres/MySQL are out of support; the ALTER will raise
+    and surface the version mismatch clearly. Other dialects are skipped with
+    a warning so an admin can run the rename manually.
+
+    Backward-compatibility note: this helper exists because BOFS treats
+    pre-existing study databases as part of the public contract (see CLAUDE.md
+    "Backward Compatibility"). A SQLite-only rename would silently leave
+    Postgres/MySQL deployments with the old column while the ORM expected the
+    new one — every read/write would then raise.
+
+    :return: True if the rename happened, False if it was a no-op (already
+        renamed) or skipped (unsupported dialect).
+    """
+    if not _check_migration_dialect_supported(
+        f"check_and_rename_column({table_name!r}, {old_name!r} -> {new_name!r})"
+    ):
+        return False
+
+    inspector = sa_inspect(db.engine)
+    existing = {col['name'] for col in inspector.get_columns(table_name)}
+
+    if new_name in existing:
+        return False  # already renamed (or new schema all along)
+    if old_name not in existing:
+        return False  # nothing to rename
+
+    ddl = f"ALTER TABLE {table_name} RENAME COLUMN {old_name} TO {new_name}"
+    with db.engine.connect() as conn:
+        conn.execute(db.DDL(ddl))
         db.session.commit()
 
     return True

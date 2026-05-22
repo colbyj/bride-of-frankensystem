@@ -539,6 +539,133 @@ class TestWarnUndecoratedPages:
 # TestQuestionnaireInteractions
 # ===========================================================================
 
+# ===========================================================================
+# TestExternalIDSynonym — mTurkID is a SQLAlchemy synonym for externalID
+# (back-compat for code written before the rename).
+# ===========================================================================
+
+class TestExternalIDSynonym:
+    def test_write_via_either_reads_via_either(self, bofs_app):
+        p = _make_participant(bofs_app, mTurkID="ABC")
+        # Writing via the legacy name is visible via the canonical attribute.
+        assert p.externalID == "ABC"
+        # And vice versa.
+        p.externalID = "XYZ"
+        bofs_app.db.session.commit()
+        assert p.mTurkID == "XYZ"
+
+    def test_filter_by_either_name_matches_same_row(self, bofs_app):
+        _make_participant(bofs_app, mTurkID="TARGET")
+        _make_participant(bofs_app, mTurkID="OTHER")
+
+        via_legacy = bofs_app.db.session.query(bofs_app.db.Participant).filter_by(
+            mTurkID="TARGET"
+        ).all()
+        via_canonical = bofs_app.db.session.query(bofs_app.db.Participant).filter_by(
+            externalID="TARGET"
+        ).all()
+
+        assert len(via_legacy) == 1
+        assert len(via_canonical) == 1
+        assert via_legacy[0].participantID == via_canonical[0].participantID
+
+    def test_class_attribute_equality_produces_same_sql(self, bofs_app):
+        # The class-level attribute access should resolve through the synonym
+        # to the same InstrumentedAttribute, producing identical SQL.
+        from sqlalchemy import select
+        canonical_sql = str(
+            select(bofs_app.db.Participant).where(
+                bofs_app.db.Participant.externalID == "X"
+            ).compile(compile_kwargs={"literal_binds": True})
+        )
+        legacy_sql = str(
+            select(bofs_app.db.Participant).where(
+                bofs_app.db.Participant.mTurkID == "X"
+            ).compile(compile_kwargs={"literal_binds": True})
+        )
+        assert canonical_sql == legacy_sql
+        # And the column it references is `external_id`, not `mTurkID`.
+        assert "external_id" in canonical_sql
+
+    def test_db_column_name_is_external_id(self, bofs_app):
+        from sqlalchemy import inspect as sa_inspect
+        cols = {c['name'] for c in sa_inspect(bofs_app.db.engine).get_columns('participant')}
+        assert 'external_id' in cols
+        assert 'mTurkID' not in cols  # only the canonical DB name exists
+
+
+# ===========================================================================
+# TestCheckAndRenameColumn — the dialect-aware migration helper.
+# ===========================================================================
+
+class TestCheckAndRenameColumn:
+    def _make_test_table(self, app, columns_sql: str):
+        """Create a throwaway table with the given columns DDL."""
+        with app.db.engine.begin() as conn:
+            conn.execute(app.db.DDL(
+                f"CREATE TABLE test_rename_target ({columns_sql})"
+            ))
+
+    def _columns(self, app):
+        from sqlalchemy import inspect as sa_inspect
+        return {
+            c['name']
+            for c in sa_inspect(app.db.engine).get_columns('test_rename_target')
+        }
+
+    def test_renames_when_only_old_exists(self, bofs_app):
+        from BOFS.admin.util import check_and_rename_column
+        self._make_test_table(bofs_app, "id INTEGER PRIMARY KEY, mTurkID TEXT")
+
+        assert check_and_rename_column(
+            'test_rename_target', 'mTurkID', 'external_id'
+        ) is True
+        cols = self._columns(bofs_app)
+        assert 'external_id' in cols
+        assert 'mTurkID' not in cols
+
+    def test_noop_when_new_already_exists(self, bofs_app):
+        from BOFS.admin.util import check_and_rename_column
+        self._make_test_table(bofs_app, "id INTEGER PRIMARY KEY, external_id TEXT")
+
+        # Already-renamed schema — no-op, no error.
+        assert check_and_rename_column(
+            'test_rename_target', 'mTurkID', 'external_id'
+        ) is False
+        assert 'external_id' in self._columns(bofs_app)
+
+    def test_noop_when_neither_exists(self, bofs_app):
+        from BOFS.admin.util import check_and_rename_column
+        self._make_test_table(bofs_app, "id INTEGER PRIMARY KEY, other TEXT")
+
+        # Nothing to rename, nothing to error on.
+        assert check_and_rename_column(
+            'test_rename_target', 'mTurkID', 'external_id'
+        ) is False
+
+    def test_preserves_data(self, bofs_app):
+        from sqlalchemy import text
+        from BOFS.admin.util import check_and_rename_column
+        self._make_test_table(bofs_app, "id INTEGER PRIMARY KEY, mTurkID TEXT")
+        with bofs_app.db.engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO test_rename_target (id, mTurkID) VALUES (1, 'PRE_VALUE')"
+            ))
+
+        check_and_rename_column('test_rename_target', 'mTurkID', 'external_id')
+
+        with bofs_app.db.engine.begin() as conn:
+            row = conn.execute(text(
+                "SELECT external_id FROM test_rename_target WHERE id = 1"
+            )).first()
+        assert row is not None
+        assert row[0] == 'PRE_VALUE'
+
+
+# ===========================================================================
+# TestQuestionnaireInteractions
+# ===========================================================================
+
 class TestQuestionnaireInteractions:
     def test_questionnaire_interactions_helper_returns_ordered_events(self, bofs_app):
         p = _make_participant(bofs_app)

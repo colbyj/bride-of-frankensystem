@@ -54,9 +54,9 @@ These are database columns on the ``Participant`` model, readable directly in te
    * - ``condition``
      - ``int``
      - Assigned condition number, starting at 1. ``0`` means no condition has been assigned (single-condition projects, or before assignment runs).
-   * - ``mTurkID``
+   * - ``externalID``
      - ``str``
-     - External worker or participant identifier (MTurk Worker ID, Prolific ID, or the value passed via the ``external_id`` query parameter). Empty string when not set.
+     - External worker or participant identifier (MTurk Worker ID, Prolific ID, or the value passed via the ``external_id`` query parameter). Empty string when not set. Also accessible as ``mTurkID``, an alias kept for backward compatibility with code written before the rename.
    * - ``timeStarted``
      - ``datetime``
      - UTC timestamp recorded after the participant submits the consent page (when their session is created). Naive datetime — no timezone info attached.

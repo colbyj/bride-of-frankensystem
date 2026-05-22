@@ -30,7 +30,7 @@ Built-in models
 
 Four SQLAlchemy models are part of BOFS itself, not derived from user JSON. They live in ``BOFS/default/models.py``.
 
-- **Participant.** One row per consenting participant. Columns include ``participantID`` (PK), ``condition``, ``mTurkID``, ``timeStarted``, ``timeEnded``, ``finished``, ``code``. The ``Participant`` class also defines the methods used through the ``participant`` template variable — ``questionnaire()``, ``table()``, ``has_questionnaire()``, ``evaluate()``, ``display_duration()``. See :doc:`/reference/participant_data_api`.
+- **Participant.** One row per consenting participant. Columns include ``participantID`` (PK), ``condition``, ``externalID`` (also accessible as ``mTurkID``, an alias kept for backward compatibility), ``timeStarted``, ``timeEnded``, ``finished``, ``code``. The ``Participant`` class also defines the methods used through the ``participant`` template variable — ``questionnaire()``, ``table()``, ``has_questionnaire()``, ``evaluate()``, ``display_duration()``. See :doc:`/reference/participant_data_api`.
 - **Progress.** One row per page transition. Used by the admin panel to show timestamps for each page in a participant's flow.
 - **QuestionnaireInteraction.** One row per UI event (focus, blur, change, paste, visibility) when ``LOG_QUESTIONNAIRE_INTERACTIONS = true``. For text fields, additional rows record per-input authenticity signals (keystroke counts, paste lengths, focus duration).
 - **ResponseLog.** One row per consent submission, keyed to the participant.

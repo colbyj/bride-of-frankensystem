@@ -2,7 +2,7 @@ import functools
 import threading
 
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import column_property
+from sqlalchemy.orm import column_property, synonym
 from sqlalchemy.ext.declarative import declared_attr
 from BOFS.util import display_time, utcnow_naive
 from flask import current_app
@@ -222,7 +222,12 @@ def create(db):
         __tablename__ = "participant"
 
         participantID = db.Column(db.Integer, primary_key=True, autoincrement=True)
-        mTurkID = db.Column(db.String, nullable=False, default="")
+        # DB column is `external_id`; `mTurkID` is kept as a synonym so existing
+        # researcher blueprints (`participant.mTurkID`, `filter_by(mTurkID=...)`)
+        # continue to work unchanged. See bride-of-frankensystem/CLAUDE.md
+        # "Backward Compatibility".
+        externalID = db.Column("external_id", db.String, nullable=False, default="")
+        mTurkID = synonym("externalID")
         ipAddress = db.Column(db.String, nullable=False, default="")
         userAgent = db.Column(db.String, nullable=False, default="")
         condition = db.Column(db.Integer, nullable=True, default=0)
@@ -433,12 +438,12 @@ def create(db):
                 ConditionLookupMiss,
                 ConditionLookupService,
             )
-            if ConditionLookupService.is_configured() and self.mTurkID:
-                looked_up = ConditionLookupService.lookup(self.mTurkID)
+            if ConditionLookupService.is_configured() and self.externalID:
+                looked_up = ConditionLookupService.lookup(self.externalID)
                 if looked_up is not None:
                     self.condition = looked_up
                     return
-                raise ConditionLookupMiss(self.mTurkID)
+                raise ConditionLookupMiss(self.externalID)
 
             with _ASSIGN_CONDITION_LOCK:
                 pCount = type(self).balancer_counts()
@@ -558,7 +563,8 @@ def create(db):
 
         sessionID = db.Column(db.String(255), primary_key=True)
         participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'), nullable=True)
-        mTurkID = db.Column(db.Text, nullable=True)
+        externalID = db.Column("external_id", db.Text, nullable=True)
+        mTurkID = synonym("externalID")
         data = db.Column(db.Text)
         expiry = db.Column(db.DateTime)
         createdOn = db.Column(db.DateTime, nullable=False, default=utcnow_naive)

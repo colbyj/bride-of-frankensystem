@@ -102,7 +102,7 @@ class BOFSSessionInterface(SessionInterface):
         new_row.expiry = utcnow_naive() + timedelta(days=21)
         if old_row is not None:
             new_row.participantID = old_row.participantID
-            new_row.mTurkID = old_row.mTurkID
+            new_row.externalID = old_row.externalID
             app.db.session.delete(old_row)
         app.db.session.add(new_row)
         app.db.session.commit()
@@ -139,7 +139,7 @@ class BOFSSessionInterface(SessionInterface):
             storedSession.participantID = session['participantID']
 
         if 'mTurkID' in session:
-            storedSession.mTurkID = session['mTurkID']
+            storedSession.externalID = session['mTurkID']
 
         # Sliding expiry: every save extends the row's expiry by the
         # configured session lifetime. Without this, long-running studies
