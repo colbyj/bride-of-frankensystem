@@ -499,17 +499,33 @@ class JSONQuestionnaire(object):
 
         table_name = f"questionnaire_{self.file_name}"
 
+        # Cross-bind FK/relationship: when the questionnaire lives on a
+        # non-default DB bind, SQLAlchemy can't enforce a FK across engines
+        # and the backref to Participant isn't reachable from the model's
+        # bind. Link by integer participantID only, with an index so
+        # Participant.questionnaire(...) lookups stay cheap.
+        bind_key = (self.json_data or {}).get("database") or None
+        self.bind_key = bind_key
+
         table_attr = {
             '__tablename__': table_name,
             str.format(u'{0}ID', self.file_name): db.Column(db.Integer, primary_key=True, autoincrement=True),
-            'participantID': db.Column(db.Integer, db.ForeignKey("participant.participantID"), nullable=False),
-            #'participantID': db.Column(db.Integer),
-            'participant': db.relationship("Participant", backref=table_name),
             'tag': db.Column(db.String, nullable=False, default=""),
             'timeStarted': db.Column(db.DateTime, nullable=False, default=db.func.now()),
             'timeEnded': db.Column(db.DateTime, nullable=False, default=db.func.now()),
             'duration': lambda self: (self.timeEnded - self.timeStarted).total_seconds()
         }
+
+        if bind_key is None:
+            table_attr['participantID'] = db.Column(
+                db.Integer, db.ForeignKey("participant.participantID"), nullable=False
+            )
+            table_attr['participant'] = db.relationship("Participant", backref=table_name)
+        else:
+            table_attr['__bind_key__'] = bind_key
+            table_attr['participantID'] = db.Column(
+                db.Integer, nullable=False, index=True
+            )
 
         for field in self.__fields:
             table_attr[field.id] = field.generate_db_column()
@@ -588,7 +604,8 @@ class JSONQuestionnaire(object):
         self._orphaned_columns = []
         self._type_mismatches = []
         try:
-            inspector = sa_inspect(db.engine)
+            reflect_engine = db.engine if bind_key is None else db.engines[bind_key]
+            inspector = sa_inspect(reflect_engine)
             if table_name in inspector.get_table_names():
                 db_columns = {col['name']: col for col in inspector.get_columns(table_name)}
                 json_field_names = {field.id for field in self.__fields}

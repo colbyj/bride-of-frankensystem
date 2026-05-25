@@ -234,7 +234,8 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             orphaned = getattr(q, '_orphaned_columns', None) or []
             if orphaned:
                 orphaned_names = [col['name'] for col in orphaned]
-                make_columns_nullable(q.db_class.__tablename__, orphaned_names)
+                make_columns_nullable(q.db_class.__tablename__, orphaned_names,
+                                      bind_key=getattr(q, 'bind_key', None))
 
         # Print validation summary (JSON-level errors only; schema warnings come later)
         fatal_errors = [e for e in app.validation_errors if e.severity == "error"]
@@ -246,6 +247,10 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             print(f"Open the app in a browser to see detailed error descriptions.")
             print(f"{'='*60}\n")
 
+        # Flask-SQLAlchemy iterates every configured engine (default plus
+        # SQLALCHEMY_BINDS) and emits each model against the engine matching
+        # its __bind_key__. Cross-bind questionnaires/tables land on their
+        # bound engine; default-bind models stay on the default engine.
         app.db.create_all()
 
         # SECRET_KEY is now persisted in the app_meta table rather than the
@@ -298,18 +303,22 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             q = app.questionnaires[q_key]
             q_fields = q.fetch_fields()
             table_name = q.db_class.__tablename__
+            bind_key = getattr(q, 'bind_key', None)
 
             for field in q_fields:
-                if check_and_add_column(table_name, field.id, field.get_type_ddl()):
+                if check_and_add_column(table_name, field.id, field.get_type_ddl(),
+                                        bind_key=bind_key):
                     print(f"Added new column to {table_name}: {field.id}")
 
         for t_key in app.tables:
             t = app.tables[t_key]
             columns = t.get_columns()
             table_name = t.db_class.__tablename__
+            bind_key = getattr(t, 'bind_key', None)
 
             for column in columns:
-                if check_and_add_column(table_name, column.name, column.get_type_ddl(), column.default):
+                if check_and_add_column(table_name, column.name, column.get_type_ddl(),
+                                        column.default, bind_key=bind_key):
                     print(f"Added new column to {t_key}: {column.name}")
 
         # Check for DB-vs-JSON schema mismatches and generate warnings
@@ -325,5 +334,13 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         # Warn about PAGE_LIST routes missing @verify_correct_page (which
         # enforces ordering and bootstraps session state).
         app.warn_undecorated_pages()
+
+        # Warn about binds that aren't referenced by any questionnaire/table
+        # (likely typo). Also walk every cross-bind table with a
+        # participantID column and surface rows whose participantID isn't
+        # in the default-bind participant table (orphan PII from a
+        # partial restore or out-of-band DB editing).
+        app.warn_about_unused_binds()
+        app.warn_about_orphan_participants()
 
     return app

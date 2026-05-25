@@ -14,6 +14,7 @@ from BOFS.validation import (
     validate_image_select,
     validate_image_click,
     validate_calculations,
+    validate_database_binding,
     validate_questionnaire,
     validate_page_list_references,
     validate_show_if,
@@ -1117,6 +1118,87 @@ class TestValidateShowIf:
             ]
         }
         errors = validate_show_if(data, "exotic")
+        assert all(e.severity != "error" for e in errors), [
+            (e.severity, e.message) for e in errors
+        ]
+
+
+# ===========================================================================
+# validate_database_binding
+# ===========================================================================
+
+class TestValidateDatabaseBinding:
+    def test_no_database_field_passes(self):
+        errors = validate_database_binding({"questions": []}, "x", frozenset())
+        assert errors == []
+
+    def test_null_database_treated_as_default(self):
+        errors = validate_database_binding({"database": None}, "x", frozenset())
+        assert errors == []
+
+    def test_empty_string_database_treated_as_default(self):
+        errors = validate_database_binding({"database": ""}, "x", frozenset())
+        assert errors == []
+
+    def test_non_string_database_is_error(self):
+        errors = validate_database_binding({"database": 42}, "x", frozenset({"pii"}))
+        assert len(errors) == 1
+        assert errors[0].severity == "error"
+        assert "must be a string" in errors[0].message
+
+    def test_unknown_bind_when_no_binds_configured(self):
+        errors = validate_database_binding({"database": "pii"}, "contact",
+                                           frozenset())
+        assert len(errors) == 1
+        assert errors[0].severity == "error"
+        # Distinct wording when SQLALCHEMY_BINDS doesn't exist at all —
+        # blames the missing block, not a missing key in it.
+        assert "no [SQLALCHEMY_BINDS]" in errors[0].message
+        assert "'pii'" in errors[0].message
+        # Suggestion gives the operator a concrete config snippet to add.
+        assert "SQLALCHEMY_BINDS" in errors[0].suggestion
+        assert "pii" in errors[0].suggestion
+
+    def test_unknown_bind_when_other_binds_configured(self):
+        errors = validate_database_binding({"database": "ppi"}, "contact",
+                                           frozenset({"pii", "archive"}))
+        assert len(errors) == 1
+        # Suggestion should list the actual binds so a typo is obvious
+        assert "pii" in errors[0].suggestion
+        assert "archive" in errors[0].suggestion
+
+    def test_known_bind_passes(self):
+        errors = validate_database_binding({"database": "pii"}, "contact",
+                                           frozenset({"pii"}))
+        assert errors == []
+
+    def test_questionnaire_wires_through(self):
+        # validate_questionnaire should reject unknown binds via the new check
+        data = {"database": "missing", "questions": [
+            {"questiontype": "field", "id": "name"}
+        ]}
+        errors = validate_questionnaire(data, "q", available_binds=frozenset({"pii"}))
+        assert any(e.severity == "error" and "missing" in e.message for e in errors)
+
+    def test_questionnaire_accepts_known_bind(self):
+        data = {"database": "pii", "questions": [
+            {"questiontype": "field", "id": "name"}
+        ]}
+        errors = validate_questionnaire(data, "q", available_binds=frozenset({"pii"}))
+        assert all(e.severity != "error" for e in errors), [
+            (e.severity, e.message) for e in errors
+        ]
+
+    def test_table_wires_through(self):
+        data = {"database": "missing",
+                "columns": {"value": {"type": "integer"}}}
+        errors = validate_table(data, "t", available_binds=frozenset({"pii"}))
+        assert any(e.severity == "error" and "missing" in e.message for e in errors)
+
+    def test_table_accepts_known_bind(self):
+        data = {"database": "pii",
+                "columns": {"value": {"type": "integer"}}}
+        errors = validate_table(data, "t", available_binds=frozenset({"pii"}))
         assert all(e.severity != "error" for e in errors), [
             (e.severity, e.message) for e in errors
         ]

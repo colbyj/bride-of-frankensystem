@@ -118,13 +118,27 @@ class JSONTable(object):
     def create_db_class(self):
         table_name = "table_" + self.file_name
 
+        # Cross-bind FK/relationship: see equivalent comment in
+        # JSONQuestionnaire.create_db_class.
+        bind_key = (self.json_data or {}).get("database") or None
+        self.bind_key = bind_key
+
         table_attr = {
             '__tablename__': table_name,
             str.format(u'{0}ID', self.file_name): db.Column(db.Integer, primary_key=True, autoincrement=True),
-            'participantID': db.Column(db.Integer, db.ForeignKey("participant.participantID"), nullable=False),
-            'participant': db.relationship("Participant", backref=table_name),
             'timeSubmitted': db.Column(db.DateTime, nullable=False, default=utcnow_naive)
         }
+
+        if bind_key is None:
+            table_attr['participantID'] = db.Column(
+                db.Integer, db.ForeignKey("participant.participantID"), nullable=False
+            )
+            table_attr['participant'] = db.relationship("Participant", backref=table_name)
+        else:
+            table_attr['__bind_key__'] = bind_key
+            table_attr['participantID'] = db.Column(
+                db.Integer, nullable=False, index=True
+            )
 
         for column in self.json_data['columns']:
             column_details = self.json_data['columns'][column]

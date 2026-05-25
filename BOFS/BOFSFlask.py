@@ -327,6 +327,12 @@ class BOFSFlask(Flask):
     def warn_undecorated_pages(self) -> None:
         return startup.warn_undecorated_pages(self)
 
+    def warn_about_unused_binds(self) -> None:
+        return startup.warn_about_unused_binds(self)
+
+    def warn_about_orphan_participants(self) -> None:
+        return startup.warn_about_orphan_participants(self)
+
     _ACTIVITY_POLL_TAG = b'<script src="/BOFS_static/js/user_active.js"></script>'
     _ACTIVITY_POLL_SKIP_PREFIXES = ('/admin', '/BOFS_static')
 

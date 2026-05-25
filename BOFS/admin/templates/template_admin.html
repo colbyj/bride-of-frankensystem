@@ -19,12 +19,24 @@
                       <a class="nav-link" href="{{ url_for('admin.route_progress') }}">Progress</a>
                     </li>
 
-                    {% if logInteractions %}
+                    {% if logInteractions or exportBinds %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Export</a>
                         <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{{ url_for('admin.route_export') }}">Questionnaire Data</a>
-                            <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Interaction Timing Data</a>
+                            {% if exportBinds %}
+                                {# One entry per database. The default-bind entry keeps the historical "Questionnaire Data" label when no binds are configured; once binds exist, we surface "Main Database" / per-bind names to make the storage layout obvious. #}
+                                <a class="dropdown-item" href="{{ url_for('admin.route_export') }}">Main Database</a>
+                                {% for bind in exportBinds %}
+                                <a class="dropdown-item" href="{{ url_for('admin.route_export', bind=bind) }}">{{ bind }}</a>
+                                {% endfor %}
+                                {% if logInteractions %}
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Interaction Timing Data</a>
+                                {% endif %}
+                            {% else %}
+                                <a class="dropdown-item" href="{{ url_for('admin.route_export') }}">Questionnaire Data</a>
+                                <a class="dropdown-item" href="{{ url_for('admin.route_export_item_timing') }}">Interaction Timing Data</a>
+                            {% endif %}
                         </div>
                     </li>
                     {% else %}
@@ -59,11 +71,32 @@
                             {% if isSqliteDb %}
                             <a class="dropdown-item" href="{{ url_for('admin.route_database_delete') }}">Delete Database</a>
                             <a class="dropdown-item" href="{{ url_for('admin.route_database_download') }}">Download Database</a>
+                            <div class="dropdown-divider"></div>
                             {% endif %}
-                            <h6 class="dropdown-header">Tables</h6>
-                            {% for t in tableNames %}
+
+                            {# System Data: framework default-bind tables. Always present. #}
+                            <h6 class="dropdown-header">System Data</h6>
+                            {% for t in systemTables %}
                             <a class="dropdown-item" href="{{ url_for('admin.route_table_view', tableName=t) }}">{{ t }}</a>
                             {% endfor %}
+
+                            {# One submenu header per non-default bind. Tables routed to that engine via __bind_key__ land here. #}
+                            {% for bind, names in bindTables.items() | sort %}
+                            <div class="dropdown-divider"></div>
+                            <h6 class="dropdown-header">{{ bind }}</h6>
+                            {% for t in names %}
+                            <a class="dropdown-item" href="{{ url_for('admin.route_table_view', tableName=t) }}">{{ t }}</a>
+                            {% endfor %}
+                            {% endfor %}
+
+                            {# Researcher-defined default-bind tables (questionnaires, JSONTables, blueprint models). #}
+                            {% if userTables %}
+                            <div class="dropdown-divider"></div>
+                            <h6 class="dropdown-header">Tables</h6>
+                            {% for t in userTables %}
+                            <a class="dropdown-item" href="{{ url_for('admin.route_table_view', tableName=t) }}">{{ t }}</a>
+                            {% endfor %}
+                            {% endif %}
                         </div>
                     </li>
 

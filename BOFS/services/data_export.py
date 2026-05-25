@@ -54,6 +54,20 @@ class Results(object):
 
         self.df = None
         self.column_list: list[str] = []
+        # Maps bind_key (``None`` for the default bind) to the columns owned
+        # by that bind, so :meth:`build_export_csv_for_bind` can emit a CSV
+        # that contains only its own questionnaires/tables. Every non-default
+        # bind's CSV is joinable on ``participantID``.
+        self.column_list_by_bind: dict = {None: []}
+        # Maps non-default bind_key to the set of participantIDs that have
+        # at least one row on that bind. ``build_export_csv_for_bind`` reads
+        # this to decide which participants to include in each per-bind CSV;
+        # a participant who submitted nothing on the bind is omitted rather
+        # than written as a row of empty cells. Default-bind participants
+        # are not tracked here — they all appear in the default CSV by
+        # construction (every participantID comes from the Participant
+        # table on the default bind).
+        self._bind_pids: dict = {}
         self.export_data: Union[dict[str, dict], dict] = {}
         """Keys are participant IDs, value is a dictionary of all columns."""
         self.query_participants: Query
@@ -78,7 +92,7 @@ class Results(object):
         if self.query_filter_criterion is not None:
             self.query_participants = self.query_participants.filter(self.query_filter_criterion)
 
-        self.column_list.extend([
+        participant_cols = [
             "participantID",
             "externalID",
             "source",
@@ -86,7 +100,9 @@ class Results(object):
             "duration",
             "finished",
             "end_reason",
-        ])
+        ]
+        self.column_list.extend(participant_cols)
+        self.column_list_by_bind[None].extend(participant_cols)
 
         query_result = self.query_participants.all()
 
@@ -104,63 +120,135 @@ class Results(object):
     def handle_questionnaires(self) -> None:
         list_of_questionnaires = page_list.get_questionnaire_list(include_tags=True)
 
+        # Group entries by bind so we can use the existing JOIN strategy for
+        # the default bind (preserves byte-identical column ordering) and
+        # query each non-default bind on its own engine (cross-bind JOINs
+        # aren't possible — different engines, possibly different dialects).
+        by_bind: dict = {}
+        for entry in list_of_questionnaires:
+            qname, _ = questionnaire_name_and_tag(entry)
+            q = questionnaires[qname]
+            by_bind.setdefault(getattr(q, 'bind_key', None), []).append(entry)
+
+        # Default-bind group: today's JOIN against the Participant query.
+        default_entries = by_bind.pop(None, [])
+        if default_entries:
+            self._handle_default_bind_questionnaires(default_entries)
+
+        # Non-default binds: separate query per bind.
+        for bind_key, entries in by_bind.items():
+            self._handle_cross_bind_questionnaires(bind_key, entries)
+
+    def _handle_default_bind_questionnaires(self, entries: list) -> None:
         query_questionnaires = self.query_participants
         q_columns = {}
         q_calculated_columns = {}
 
-        # First loop constructs the query and fetches the column names
-        for entry in list_of_questionnaires:
+        for entry in entries:
             q_columns[entry] = []
             q_calculated_columns[entry] = []
             questionnaire_name, questionnaire_tag = questionnaire_name_and_tag(entry)
-
-            # The python class that describes the questionnaire
             questionnaire = questionnaires[questionnaire_name]
 
-            # Add the questionnaire's table/class to the query...
             questionnaire_db_class = db.aliased(questionnaire.db_class, name=entry)
-            join_condition = db.and_(questionnaire_db_class.participantID == db.Participant.participantID,
-                                     questionnaire_db_class.tag == questionnaire_tag
-                                     )
+            join_condition = db.and_(
+                questionnaire_db_class.participantID == db.Participant.participantID,
+                questionnaire_db_class.tag == questionnaire_tag,
+            )
 
-            query_questionnaires = query_questionnaires.outerjoin(questionnaire_db_class, join_condition). \
-                add_entity(questionnaire_db_class)
+            query_questionnaires = query_questionnaires.outerjoin(
+                questionnaire_db_class, join_condition
+            ).add_entity(questionnaire_db_class)
 
-            # Make a list of the columns to later construct the CSV header row
-            # This could also be done with questionnaire.fields
             for column in questionnaire.fetch_fields():
-                self.column_list.append(entry + "_" + column.id)
+                col_name = entry + "_" + column.id
+                self.column_list.append(col_name)
+                self.column_list_by_bind[None].append(col_name)
                 q_columns[entry].append(column.id)
 
-            # Similarly, make a list of calculated columns to later be part of the CSV header row.
             for column in questionnaire.get_calculated_fields():
-                self.column_list.append(entry + "_" + column)
+                col_name = entry + "_" + column
+                self.column_list.append(col_name)
+                self.column_list_by_bind[None].append(col_name)
                 q_calculated_columns[entry].append(column)
 
-            # Duration always gets added
-            self.column_list.append(entry + "_duration")
+            duration_col = entry + "_duration"
+            self.column_list.append(duration_col)
+            self.column_list_by_bind[None].append(duration_col)
 
         query_result = query_questionnaires.all()
 
-        # Now we get the actual data
         for row in query_result:
-            for entry in list_of_questionnaires:  # Need to look through the questionnaires again
+            for entry in entries:
                 questionnaire_data = getattr(row, entry)
+                if not questionnaire_data:
+                    continue
+                pid = row.Participant.participantID
+                for col in q_columns[entry]:
+                    self.export_data[pid][entry + "_" + col] = getattr(questionnaire_data, col)
+                for col in q_calculated_columns[entry]:
+                    self.export_data[pid][entry + "_" + col] = getattr(questionnaire_data, col)()
+                self.export_data[pid][entry + "_duration"] = questionnaire_data.duration()
 
-                if questionnaire_data:
-                    # Regular columns first
-                    for col in q_columns[entry]:
-                        self.export_data[row.Participant.participantID][entry + "_" + col] = (
-                            getattr(questionnaire_data, col))
+    def _handle_cross_bind_questionnaires(self, bind_key: str, entries: list) -> None:
+        """Pull rows for questionnaires on a non-default bind.
 
-                    # Now calculated columns
-                    for col in q_calculated_columns[entry]:
-                        if questionnaire_data:
-                            self.export_data[row.Participant.participantID][entry + "_" + col] = (
-                                getattr(questionnaire_data, col)())
+        Cross-bind tables have no FK to ``Participant`` and live on a
+        different engine, so we can't JOIN. Query each (questionnaire, tag)
+        directly, filtering by the ``participantID`` integer column.
+        """
+        known_pids = list(self.export_data.keys())
+        bind_columns = self.column_list_by_bind.setdefault(bind_key, [])
+        bind_pids = self._bind_pids.setdefault(bind_key, set())
+        # Every per-bind CSV leads with participantID + externalID so it's
+        # joinable to the default-bind CSV (and recognisable on its own when
+        # MTurk/Prolific IDs are in use).
+        for key_col in ("participantID", "externalID"):
+            if key_col not in bind_columns:
+                bind_columns.append(key_col)
 
-                    # Duration always gets added
-                    self.export_data[row.Participant.participantID][entry + "_duration"] = questionnaire_data.duration()
+        for entry in entries:
+            questionnaire_name, questionnaire_tag = questionnaire_name_and_tag(entry)
+            questionnaire = questionnaires[questionnaire_name]
+            q_class = questionnaire.db_class
+
+            field_ids = [f.id for f in questionnaire.fetch_fields()]
+            calc_field_ids = list(questionnaire.get_calculated_fields() or [])
+
+            for col_id in field_ids:
+                col_name = entry + "_" + col_id
+                self.column_list.append(col_name)
+                bind_columns.append(col_name)
+            for col_id in calc_field_ids:
+                col_name = entry + "_" + col_id
+                self.column_list.append(col_name)
+                bind_columns.append(col_name)
+            duration_col = entry + "_duration"
+            self.column_list.append(duration_col)
+            bind_columns.append(duration_col)
+
+            if not known_pids:
+                continue
+
+            rows = db.session.query(q_class).filter(
+                q_class.tag == questionnaire_tag,
+                q_class.participantID.in_(known_pids),
+            ).all()
+
+            for row in rows:
+                pid = row.participantID
+                if pid not in self.export_data:
+                    continue
+                # Mirror the participantID into the row dict so it appears
+                # in the per-bind CSV even when the participant submitted
+                # only this bind's questionnaire.
+                self.export_data[pid].setdefault("participantID", pid)
+                bind_pids.add(pid)
+                for col_id in field_ids:
+                    self.export_data[pid][entry + "_" + col_id] = getattr(row, col_id)
+                for col_id in calc_field_ids:
+                    self.export_data[pid][entry + "_" + col_id] = getattr(row, col_id)()
+                self.export_data[pid][entry + "_duration"] = row.duration()
 
     def handle_custom_exports(self) -> None:
         # Repeated measures in other tables...
@@ -168,10 +256,28 @@ class Results(object):
 
         for export in current_app.config['EXPORT']:
             levels, fields, base_query = self.create_export_base_query(export)
-            custom_exports.append({'options': export, 'fields': fields, 'base_query': base_query, 'levels': levels})
+            # Bind: read from the table class. JSONTable-defined tables set
+            # ``__bind_key__`` when ``database`` is configured; hand-written
+            # SQLAlchemy models in researcher blueprints either set it
+            # explicitly or default to None (the default bind).
+            table_class = getattr(db, export['table'])
+            bind_key = getattr(table_class, '__bind_key__', None)
+            custom_exports.append({
+                'options': export, 'fields': fields, 'base_query': base_query,
+                'levels': levels, 'bind_key': bind_key,
+            })
 
         # For custom exports, add columns based on levels determined by prior query
         for export in custom_exports:
+            bind_columns = self.column_list_by_bind.setdefault(export['bind_key'], [])
+            # Cross-bind CSVs need participantID + externalID as join keys;
+            # default-bind already added the full participant column set via
+            # handle_participants_table.
+            if export['bind_key'] is not None:
+                for key_col in ("participantID", "externalID"):
+                    if key_col not in bind_columns:
+                        bind_columns.append(key_col)
+
             if export['levels']:
                 for level in export['levels']:
                     for field in export['options']['fields']:
@@ -179,9 +285,12 @@ class Results(object):
                         for level_name in level:
                             column_header += str.format("_{}", str(level_name).replace(" ", "_"))
                         self.column_list.append(column_header)
+                        bind_columns.append(column_header)
             else:
                 for field in export['options']['fields']:
-                    self.column_list.append(str.format(u"{}", field))
+                    col_name = str.format(u"{}", field)
+                    self.column_list.append(col_name)
+                    bind_columns.append(col_name)
 
         query_result = self.query_participants.all()
 
@@ -196,6 +305,14 @@ class Results(object):
 
                 export_row_index = 0
                 for custom_export_row in custom_export_data:
+                    # Cross-bind rows: mirror participantID into the row dict
+                    # so the per-bind CSV can use it as the join key, and
+                    # record that this participant has data on this bind.
+                    if export['bind_key'] is not None:
+                        self.export_data[participant_id].setdefault("participantID", participant_id)
+                        self._bind_pids.setdefault(
+                            export['bind_key'], set()
+                        ).add(participant_id)
                     for field in export['fields']:
                         export_column_name = field
                         if export['levels']:
@@ -336,12 +453,68 @@ class Results(object):
 
         return self.df
 
+    def build_data_frame_for_bind(self, bind_key) -> "pd.DataFrame":
+        """Return a DataFrame containing only the columns and rows for
+        *bind_key*. Used by the admin export preview when binds are
+        configured so the operator sees one DB at a time, not a merged
+        cross-bind view that masks the privacy separation.
+        """
+        columns = self.column_list_by_bind.get(bind_key, [])
+        if bind_key is None:
+            pids = list(self.export_data.keys())
+        else:
+            pid_filter = self._bind_pids.get(bind_key, set())
+            pids = [pid for pid in self.export_data if pid in pid_filter]
+        data = [
+            {col: self.export_data[pid].get(col, "") for col in columns}
+            for pid in pids
+        ]
+        return pd.DataFrame(data, columns=columns)
+
     def build_export_csv(self) -> str:
         rows = [list(self.column_list)]
         for row in self.export_data.values():
             rows.append([row.get(column, "") for column in self.column_list])
         # csv_string ends with a trailing newline; existing callers expected
         # no trailing newline, so strip it.
+        return csv_string(rows).rstrip("\n")
+
+    def build_export_csv_for_bind(self, bind_key) -> str:
+        """Return a CSV containing only columns owned by *bind_key*.
+
+        Pass ``None`` for the default bind (participant columns plus
+        default-bind questionnaires/tables). Every non-default bind's CSV
+        leads with ``participantID`` so the operator can rejoin to the
+        default-bind CSV when they need to.
+
+        Participants who didn't submit anything on a non-default bind are
+        omitted from that bind's CSV — included only when at least one row
+        actually exists for them on that engine, as recorded in
+        ``self._bind_pids`` by the cross-bind handlers.
+
+        Returns an empty string when the bind has no columns (e.g. a
+        configured-but-unused bind).
+
+        .. warning:: Do not call after :meth:`load_data_frame` populates
+            ``Results`` from cache. The cache path only restores
+            ``column_list`` / ``export_data``, not ``column_list_by_bind``
+            or ``_bind_pids``, so a per-bind CSV built from a cached
+            instance would be empty. Construct a fresh ``Results`` (no
+            ``cache_path``) when emitting per-bind CSVs.
+        """
+        columns = self.column_list_by_bind.get(bind_key, [])
+        if not columns:
+            return ""
+        rows = [list(columns)]
+        if bind_key is None:
+            # Every participant in export_data appears in the default CSV.
+            pid_filter = None
+        else:
+            pid_filter = self._bind_pids.get(bind_key, set())
+        for pid, row in self.export_data.items():
+            if pid_filter is not None and pid not in pid_filter:
+                continue
+            rows.append([row.get(column, "") for column in columns])
         return csv_string(rows).rstrip("\n")
 
     @staticmethod

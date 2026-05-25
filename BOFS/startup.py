@@ -231,7 +231,8 @@ def load_table(app, directory: str, filename: str) -> Union[JSONTable, None]:
 
     if table.json_data:
         from .validation import validate_table
-        errors = validate_table(table.json_data, filename)
+        available_binds = set(app.config.get("SQLALCHEMY_BINDS", {}) or {})
+        errors = validate_table(table.json_data, filename, available_binds=available_binds)
         fatal = [e for e in errors if e.severity == "error"]
         warnings = [e for e in errors if e.severity == "warning"]
         for w in warnings:
@@ -305,7 +306,11 @@ def load_questionnaire(app, directory: str, filename: str, add_to_db: bool = Fal
         return None
 
     # Validate the questionnaire JSON before creating the DB class
-    errors = validate_questionnaire(questionnaire.json_data, filename, valid_question_types)
+    available_binds = set(app.config.get("SQLALCHEMY_BINDS", {}) or {})
+    errors = validate_questionnaire(
+        questionnaire.json_data, filename, valid_question_types,
+        available_binds=available_binds,
+    )
     fatal_errors = [e for e in errors if e.severity == "error"]
     warnings = [e for e in errors if e.severity == "warning"]
 
@@ -375,6 +380,127 @@ def get_questionnaire_path(app, questionnaire_to_find: str) -> Union[str, None]:
 # ---------------------------------------------------------------------------
 # Startup warnings
 # ---------------------------------------------------------------------------
+
+def warn_about_unused_binds(app) -> None:
+    """Warn when a bind is configured but no questionnaire or table uses it.
+
+    Likely a typo or a stale config. Soft warning rather than fatal because
+    a researcher may be mid-setup, or may use the bind programmatically in a
+    custom blueprint's hand-written SQLAlchemy model (which won't appear in
+    ``app.questionnaires`` / ``app.tables``).
+    """
+    configured = set(app.config.get("SQLALCHEMY_BINDS", {}) or {})
+    if not configured:
+        return
+    used = {getattr(q, 'bind_key', None) for q in app.questionnaires.values()}
+    used |= {getattr(t, 'bind_key', None) for t in app.tables.values()}
+    used.discard(None)
+    for unused in sorted(configured - used):
+        app.logger.warning(
+            "SQLALCHEMY_BINDS entry %r is configured but no questionnaire "
+            "or table references it. Set `database: %r` on a JSON file or "
+            "remove the bind from your config.",
+            unused, unused,
+        )
+
+
+# Sample size in the orphan warning. Enough that a researcher can spot the
+# pattern (e.g. all orphans clustered in a contiguous ID range from an old
+# study) without flooding the log when something has gone catastrophically
+# wrong and every row is an orphan.
+_ORPHAN_SAMPLE_LIMIT = 10
+
+
+def warn_about_orphan_participants(app) -> None:
+    """Detect rows on a non-default bind whose ``participantID`` value
+    doesn't exist in the default-bind ``participant`` table.
+
+    SQLAlchemy can't enforce a FK across engines, so a partial restore
+    (researcher copies a stale ``main.db`` over the current one, or deletes
+    only one bind file out of band) silently leaves orphan PII rows that
+    will be silently reattributed when ``participantID`` values get reused
+    by new participants. This check catches that state at startup so the
+    researcher sees it before the next signup makes the privacy leak
+    permanent.
+
+    The check is a soft warning, not a fatal error: legitimate cases exist
+    (e.g. importing PII from a prior wave while the new study's
+    participants haven't signed up yet). The framework can't tell the
+    difference, so it logs and lets the researcher decide.
+    """
+    from sqlalchemy import select, inspect as sa_inspect
+    from .globals import db
+
+    configured = app.config.get("SQLALCHEMY_BINDS", {}) or {}
+    if not configured:
+        return
+
+    # Pull the full set of known participantIDs once. On the default bind
+    # this is a single indexed query against the primary key.
+    default_engine = db.engine
+    default_inspector = sa_inspect(default_engine)
+    if 'participant' not in default_inspector.get_table_names():
+        # Fresh project, nothing to check against yet.
+        return
+    participant_tbl = db.metadatas[None].tables.get('participant')
+    if participant_tbl is None:
+        return
+    with default_engine.connect() as conn:
+        known_pids = {
+            row[0]
+            for row in conn.execute(select(participant_tbl.c.participantID))
+        }
+
+    for bind_key in configured:
+        bind_md = db.metadatas.get(bind_key)
+        if bind_md is None:
+            continue
+        try:
+            bind_engine = db.engines[bind_key]
+        except KeyError:
+            continue
+        bind_inspector = sa_inspect(bind_engine)
+        existing_tables = set(bind_inspector.get_table_names())
+
+        for table_name, table in bind_md.tables.items():
+            if table_name not in existing_tables:
+                # Schema declared but DB hasn't been created yet — nothing
+                # to check.
+                continue
+            pid_col = table.c.get('participantID')
+            if pid_col is None:
+                # Not every cross-bind table is participant-keyed (a
+                # blueprint might use the bind for a stimulus catalog, say).
+                continue
+
+            with bind_engine.connect() as conn:
+                bind_pids = {
+                    row[0]
+                    for row in conn.execute(
+                        select(pid_col).distinct().where(pid_col.isnot(None))
+                    )
+                }
+
+            orphans = sorted(bind_pids - known_pids)
+            if not orphans:
+                continue
+
+            shown = orphans[:_ORPHAN_SAMPLE_LIMIT]
+            more = len(orphans) - len(shown)
+            sample = ", ".join(str(p) for p in shown)
+            if more > 0:
+                sample += f", ... (+{more} more)"
+            app.logger.warning(
+                "Table %r on bind %r has %d row(s) referencing participantID "
+                "values that don't exist in the default-bind participant "
+                "table: %s. These are orphans — most likely from a partial "
+                "DB restore or out-of-band editing. A new participant who "
+                "is assigned a reused ID will silently inherit the orphan "
+                "row's data; rotate or delete the orphans before letting "
+                "new participants sign up.",
+                table_name, bind_key, len(orphans), sample,
+            )
+
 
 def warn_undecorated_pages(app) -> None:
     """Emit a warning for any PAGE_LIST entry whose route is missing the

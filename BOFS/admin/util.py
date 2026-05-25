@@ -161,25 +161,47 @@ def questionnaire_name_and_tag(questionnnaireNameAndTagString):
 _SUPPORTED_MIGRATION_DIALECTS = ('sqlite', 'postgresql', 'mysql', 'mariadb')
 
 
-def _check_migration_dialect_supported(operation: str) -> bool:
-    """Return True if the current DB dialect supports our migration helpers.
+def _engine_for(bind_key):
+    """Resolve a SQLAlchemy Engine for *bind_key*. ``None`` -> default engine.
+
+    Raises ``ValueError`` with the configured bind names when *bind_key* is
+    not in ``SQLALCHEMY_BINDS`` — clearer than the bare ``KeyError`` that
+    ``db.engines[bind_key]`` would otherwise produce. Reachable only when
+    validation was bypassed (e.g. constructing ``JSONQuestionnaire``
+    directly in tests or custom code without going through the normal
+    ``load_questionnaire`` path).
+    """
+    if bind_key is None:
+        return db.engine
+    try:
+        return db.engines[bind_key]
+    except KeyError:
+        configured = sorted(k for k in db.engines if k is not None)
+        raise ValueError(
+            f"Unknown bind {bind_key!r}. Configured binds in SQLALCHEMY_BINDS: "
+            f"{configured or '(none)'}."
+        )
+
+
+def _check_migration_dialect_supported(operation: str, bind_key=None) -> bool:
+    """Return True if the target bind's DB dialect supports our migration helpers.
 
     Logs a clear warning (once per call) when it doesn't, so a Postgres/MySQL
     admin on an unsupported dialect can run the ALTER manually instead of
     silently ending up with a schema/ORM mismatch.
     """
-    dialect = db.engine.dialect.name
+    dialect = _engine_for(bind_key).dialect.name
     if dialect in _SUPPORTED_MIGRATION_DIALECTS:
         return True
     current_app.logger.warning(
-        "%s skipped: dialect %r is not in the supported list %r. "
+        "%s skipped: dialect %r on bind %r is not in the supported list %r. "
         "Run the equivalent ALTER TABLE statement manually.",
-        operation, dialect, _SUPPORTED_MIGRATION_DIALECTS,
+        operation, dialect, bind_key, _SUPPORTED_MIGRATION_DIALECTS,
     )
     return False
 
 
-def check_and_add_column(table_name: str, column_name: str, column_data_type: str, default_value=None) -> bool:
+def check_and_add_column(table_name: str, column_name: str, column_data_type: str, default_value=None, bind_key=None) -> bool:
     """
     Check whether a column exists in a table; if not, add it. Table name is the actual
     name of the table in the database, not the class name.
@@ -193,14 +215,19 @@ def check_and_add_column(table_name: str, column_name: str, column_data_type: st
     :param column_data_type: in SQL DDL format, e.g., BOOLEAN, VARCHAR, TEXT, INTEGER etc.
     :param default_value: If provided, the column is added with NOT NULL DEFAULT <value>.
         If None (default), the column is added as nullable with no default.
+    :param bind_key: Name of a SQLALCHEMY_BINDS entry. ``None`` (default) targets
+        the default-bind engine. Pass the bind key for a cross-bind questionnaire
+        or table so the inspector and DDL run against the correct engine.
     :return: True if the column was added, False if it already existed (or was skipped).
     """
     if not _check_migration_dialect_supported(
-        f"check_and_add_column({table_name!r}, {column_name!r})"
+        f"check_and_add_column({table_name!r}, {column_name!r})",
+        bind_key=bind_key,
     ):
         return False
 
-    inspector = sa_inspect(db.engine)
+    engine = _engine_for(bind_key)
+    inspector = sa_inspect(engine)
 
     for column in inspector.get_columns(table_name):
         if column['name'] == column_name:
@@ -212,14 +239,14 @@ def check_and_add_column(table_name: str, column_name: str, column_data_type: st
         ddl = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_data_type}"
 
     add_column = db.DDL(ddl)
-    with db.engine.connect() as conn:
+    with engine.connect() as conn:
         conn.execute(add_column)
         db.session.commit()
 
     return True
 
 
-def check_and_rename_column(table_name: str, old_name: str, new_name: str) -> bool:
+def check_and_rename_column(table_name: str, old_name: str, new_name: str, bind_key=None) -> bool:
     """Rename a column if the old name exists and the new name does not.
 
     Works on SQLite >= 3.25, PostgreSQL >= 9.2, MySQL >= 8.0, MariaDB >= 10.5 —
@@ -234,15 +261,19 @@ def check_and_rename_column(table_name: str, old_name: str, new_name: str) -> bo
     Postgres/MySQL deployments with the old column while the ORM expected the
     new one — every read/write would then raise.
 
+    :param bind_key: Name of a SQLALCHEMY_BINDS entry. ``None`` (default) targets
+        the default-bind engine.
     :return: True if the rename happened, False if it was a no-op (already
         renamed) or skipped (unsupported dialect).
     """
     if not _check_migration_dialect_supported(
-        f"check_and_rename_column({table_name!r}, {old_name!r} -> {new_name!r})"
+        f"check_and_rename_column({table_name!r}, {old_name!r} -> {new_name!r})",
+        bind_key=bind_key,
     ):
         return False
 
-    inspector = sa_inspect(db.engine)
+    engine = _engine_for(bind_key)
+    inspector = sa_inspect(engine)
     existing = {col['name'] for col in inspector.get_columns(table_name)}
 
     if new_name in existing:
@@ -251,14 +282,14 @@ def check_and_rename_column(table_name: str, old_name: str, new_name: str) -> bo
         return False  # nothing to rename
 
     ddl = f"ALTER TABLE {table_name} RENAME COLUMN {old_name} TO {new_name}"
-    with db.engine.connect() as conn:
+    with engine.connect() as conn:
         conn.execute(db.DDL(ddl))
         db.session.commit()
 
     return True
 
 
-def make_columns_nullable(table_name: str, column_names: list) -> bool:
+def make_columns_nullable(table_name: str, column_names: list, bind_key=None) -> bool:
     """
     Make specified columns nullable in a SQLite table via table reconstruction.
 
@@ -269,16 +300,18 @@ def make_columns_nullable(table_name: str, column_names: list) -> bool:
 
     :param table_name: The actual table name in the database.
     :param column_names: List of column names to make nullable.
+    :param bind_key: Name of a SQLALCHEMY_BINDS entry. ``None`` (default) targets
+        the default-bind engine.
     :return: True if the table was rebuilt, False if no changes were needed.
     """
     if not column_names:
         return False
 
-    is_sqlite = current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///')
-    if not is_sqlite:
+    engine = _engine_for(bind_key)
+    if engine.dialect.name != 'sqlite':
         return False
 
-    inspector = sa_inspect(db.engine)
+    inspector = sa_inspect(engine)
 
     if table_name not in inspector.get_table_names():
         return False
@@ -337,7 +370,7 @@ def make_columns_nullable(table_name: str, column_names: list) -> bool:
     new_create = f'CREATE TABLE "{table_name}" ({", ".join(col_defs)})'
 
     from sqlalchemy import text
-    with db.engine.connect() as conn:
+    with engine.connect() as conn:
         conn.execute(text("PRAGMA foreign_keys=OFF"))
         conn.execute(text(f'ALTER TABLE "{table_name}" RENAME TO "{backup_name}"'))
         conn.execute(text(new_create))

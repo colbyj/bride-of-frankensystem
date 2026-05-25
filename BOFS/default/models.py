@@ -55,7 +55,17 @@ class TableAccessor:
     def rows(self):
         """The participant's raw rows in the table, as a list of model
         instances. Returns ``[]`` when the participant has no rows."""
-        return list(getattr(self._participant, f"table_{self._name}", []) or [])
+        backref = getattr(self._participant, f"table_{self._name}", None)
+        if backref is not None:
+            return list(backref)
+        # Cross-bind tables have no Participant backref (FK can't cross
+        # engines). Fall back to a direct query keyed by participantID.
+        table = self._jsontable()
+        if table is None or table.db_class is None:
+            return []
+        return db.session.query(table.db_class).filter(
+            table.db_class.participantID == self._participant.participantID
+        ).all()
 
     @property
     def exports(self):
@@ -272,6 +282,26 @@ def create(db):
                 )
             return TableAccessor(self, name)
 
+        def _fetch_questionnaire_rows(self, name):
+            """Return all submitted rows for questionnaire *name* for this
+            participant, regardless of bind.
+
+            Default-bind questionnaires expose a ``questionnaire_<name>``
+            backref via ``relationship("Participant", backref=...)``.
+            Cross-bind questionnaires have no FK to Participant and
+            therefore no backref — fall back to a direct query keyed by
+            ``participantID``.
+            """
+            backref = getattr(self, f"questionnaire_{name}", None)
+            if backref is not None:
+                return list(backref)
+            q = current_app.questionnaires.get(name)
+            if q is None or q.db_class is None:
+                return []
+            return db.session.query(q.db_class).filter(
+                q.db_class.participantID == self.participantID
+            ).all()
+
         def has_questionnaire(self, name, tag=""):
             """``True`` when the participant has at least one stored
             submission of ``name`` with the given tag.
@@ -282,8 +312,7 @@ def create(db):
             succeeds. Use ``has_questionnaire`` first when you need to
             distinguish a defaulted row from a real submission.
             """
-            results = getattr(self, f"questionnaire_{name}", None) or []
-            for r in results:
+            for r in self._fetch_questionnaire_rows(name):
                 if r.tag == tag or (r.tag == u"0" and tag == ""):
                     return True
             return False
@@ -333,7 +362,7 @@ def create(db):
 
         def questionnaire(self, name, tag=""):
             from BOFS.globals import questionnaires
-            q_results = getattr(self, "questionnaire_" + name)
+            q_results = self._fetch_questionnaire_rows(name)
 
             toConsider = []
 

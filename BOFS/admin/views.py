@@ -32,12 +32,21 @@ _CSRF_PROTECTED_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
 _REDIRECT_ENDPOINT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-# Tables that hold framework state, not researcher data, and must not be
-# surfaced through the generic table viewer. ``app_meta`` carries the
-# SECRET_KEY (which was deliberately moved out of config.toml so it
-# wouldn't sit in researcher backups); ``session_store`` carries every
-# live session blob.
-_TABLE_VIEW_BLOCKED = frozenset({'app_meta', 'session_store'})
+# Tables that hold framework state and must not be surfaced through the
+# generic table viewer. ``app_meta`` carries the SECRET_KEY (deliberately
+# moved out of config.toml so it wouldn't sit in researcher backups);
+# exposing it in the admin UI would defeat that.
+_TABLE_VIEW_BLOCKED = frozenset({'app_meta'})
+
+# Framework-defined default-bind tables that get their own "System Data"
+# submenu in the navbar Database dropdown. Everything *else* on the
+# default bind is treated as researcher-defined and listed separately.
+# These tables are defined in ``BOFS/default/models.py``.
+_SYSTEM_TABLE_NAMES = frozenset({
+    'participant', 'progress', 'display', 'banned_ip',
+    'admin_trusted_ip', 'login_attempt', 'questionnaire_interaction',
+    'response_log', 'session_store',
+})
 
 
 _NO_STORE_PATH_PREFIXES = (
@@ -101,11 +110,47 @@ def inject_template_vars():
     else:
         additionalAdminPages = None
 
-    tableNames = []
-    for t in db.metadata.tables:
-        if t in _TABLE_VIEW_BLOCKED:
-            continue
-        tableNames.append(t)
+    # Categorise tables for the Database dropdown:
+    #   - system_tables: framework default-bind tables (Participant,
+    #     Progress, etc.) — researchers occasionally need to inspect these
+    #     but the list is fixed.
+    #   - user_tables: default-bind tables defined by the researcher
+    #     (questionnaire_*, table_*, blueprint models).
+    #   - bind_tables: dict keyed by bind name → list of table names on
+    #     that engine. Surfaced as one submenu per configured bind so the
+    #     dropdown reflects the actual storage layout, not a flat union.
+    #
+    # Flask-SQLAlchemy 3.x keeps a separate MetaData per bind (``db.metadatas``,
+    # keyed by bind name with ``None`` for the default bind). Cross-bind
+    # tables don't appear in ``db.metadata.tables``, so we have to walk
+    # every MetaData explicitly.
+    system_tables = []
+    user_tables = []
+    bind_tables = {}
+
+    for bk, md in db.metadatas.items():
+        for t_name in md.tables:
+            if t_name in _TABLE_VIEW_BLOCKED:
+                continue
+            if bk is None:
+                if t_name in _SYSTEM_TABLE_NAMES:
+                    system_tables.append(t_name)
+                else:
+                    user_tables.append(t_name)
+            else:
+                bind_tables.setdefault(bk, []).append(t_name)
+
+    system_tables.sort()
+    user_tables.sort()
+    for bk in bind_tables:
+        bind_tables[bk].sort()
+
+    # Legacy flat list, still passed for any external template override
+    # that expects ``tableNames``. The new dropdown structure uses the
+    # categorised lists above.
+    tableNames = sorted(system_tables + user_tables + [
+        name for names in bind_tables.values() for name in names
+    ])
 
     questionnairesSystem = []
     questionnairesLive = []
@@ -118,17 +163,25 @@ def inject_template_vars():
 
     questionnairesLive.sort()
     questionnairesSystem.sort()
-    tableNames = sorted(tableNames)
     isSqliteDb = current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///')
 
+    # Per-bind navbar export menu: one entry per configured bind that
+    # actually has a column-owning questionnaire/table loaded. The
+    # default-bind entry ("Main Database") is always present.
+    configured_binds = current_app.config.get('SQLALCHEMY_BINDS', {}) or {}
+    used_binds_in_export = sorted(bind_tables.keys() & set(configured_binds))
 
     return dict(
         additionalAdminPages=additionalAdminPages,
         tableNames=tableNames,
+        systemTables=system_tables,
+        userTables=user_tables,
+        bindTables=bind_tables,
         questionnairesLive=questionnairesLive,
         questionnairesSystem=questionnairesSystem,
         logInteractions=current_app.config['LOG_QUESTIONNAIRE_INTERACTIONS'],
         isSqliteDb=isSqliteDb,
+        exportBinds=used_binds_in_export,
         condition_num_to_label=condition_num_to_label,
         csrf_token=generate_csrf,
     )
@@ -613,45 +666,132 @@ def route_export_item_timing():
     return render_template("export_csv.html", data=data)
 
 
+def _used_binds_for_export(results):
+    """Return the sorted list of non-default bind names that actually have
+    data for the export — i.e. at least one column was registered for that
+    bind by a loaded questionnaire or table. A configured-but-unreferenced
+    bind has no columns (the unused-bind startup warning tells the operator
+    about that case)."""
+    return sorted({
+        bk for bk in results.column_list_by_bind
+        if bk is not None and results.column_list_by_bind.get(bk)
+    })
+
+
+def _df_with_formula_safe_strings(df):
+    """Copy *df* with string-typed cells prefixed against CSV formula
+    injection. Pandas' to_csv handles RFC 4180 quoting; the formula sigils
+    (=+-@\\t) are a spreadsheet-app concern to_csv doesn't know about.
+    """
+    safe = df.copy()
+    for col in safe.select_dtypes(include='object').columns:
+        safe[col] = safe[col].map(
+            lambda v: formula_safe(v) if isinstance(v, str) else v
+        )
+    return safe
+
+
 @admin.route("/export")
 @admin.route("/export/download", endpoint="route_export_download")
 @verify_admin
 def route_export():
+    """Export preview for the default-bind data, or — when ``?bind=NAME``
+    is supplied — a preview restricted to that bind. The download URL on
+    the page targets the same bind so the preview and the CSV stay in
+    sync.
+
+    When no binds are configured (today's common case), the preview and
+    the download both look exactly like they did before per-bind support
+    landed. When binds *are* configured, the default-bind download
+    excludes any PII / archive columns — those live behind their own
+    ``/admin/export/download/<bind>`` endpoints.
+    """
     unfinished_count = db.session.query(db.Participant). \
         filter(db.Participant.finished == False).count()  # For display only
     excluded_count = db.session.query(db.Participant). \
         filter(db.Participant.excludeFromCount == True).count()  # For display only
 
     results = Results(Results.build_filter_from_args(request.args))
-    df = results.build_data_frame()
+    used_binds = _used_binds_for_export(results)
+    has_binds = bool(used_binds)
 
+    bind_arg = request.args.get("bind")
+    # ``bind`` query arg picks which bind's data to preview. None / empty
+    # / unrecognised means the default bind. Passing an unknown bind isn't
+    # an error — the user might have removed it after opening the page —
+    # we just fall back to default rather than 404ing the preview UI.
+    selected_bind = bind_arg if bind_arg in used_binds else None
 
     if request.base_url.endswith("/download"):
-        # ``na_rep=""`` so missing rows from outer-joined questionnaires
-        # (e.g. a participant whose flow branched away from a particular
-        # questionnaire) render as empty cells rather than the literal
-        # string "NaN".
-        # Apply formula-injection prefixing to every string-typed cell before
-        # pandas writes the CSV. Pandas' to_csv handles RFC 4180 quoting; the
-        # formula sigils (=+-@\t) are a spreadsheet-app concern that to_csv
-        # doesn't know about.
-        df_safe = df.copy()
-        for col in df_safe.select_dtypes(include='object').columns:
-            df_safe[col] = df_safe[col].map(
-                lambda v: formula_safe(v) if isinstance(v, str) else v
-            )
-        return Response(df_safe.to_csv(na_rep=""),
-                        mimetype="text/csv",
-                        headers={
-                            "Content-disposition": "attachment; filename=%s.csv" %
-                                                   ("export_" + utcnow_naive().strftime("%Y-%m-%d_%H-%M"))
-                        })
+        if has_binds:
+            # Privacy default once binds exist: even the default-bind
+            # download endpoint must not leak PII columns.
+            df = results.build_data_frame_for_bind(None)
+        else:
+            df = results.build_data_frame()
+        df_safe = _df_with_formula_safe_strings(df)
+        return Response(
+            df_safe.to_csv(na_rep="", index=False),
+            mimetype="text/csv",
+            headers={
+                "Content-disposition": "attachment; filename=%s.csv" %
+                                       ("export_" + utcnow_naive().strftime("%Y-%m-%d_%H-%M"))
+            },
+        )
+
+    # Preview
+    if has_binds:
+        df = results.build_data_frame_for_bind(selected_bind)
     else:
-        return render_template("export.html",
-                               data_table=df.to_html(index=False, classes="table table-striped border", justify="left", na_rep=""),
-                               rowCount=len(results.export_data),
-                               unfinishedCount=unfinished_count,
-                               excludedCount=excluded_count)
+        df = results.build_data_frame()
+
+    if selected_bind is None:
+        download_url = url_for("admin.route_export_download")
+        bind_label = "Main Database"
+    else:
+        download_url = url_for("admin.route_export_download_bind", bind=selected_bind)
+        bind_label = selected_bind
+
+    return render_template(
+        "export.html",
+        data_table=df.to_html(index=False, classes="table table-striped border", justify="left", na_rep=""),
+        rowCount=len(df),
+        unfinishedCount=unfinished_count,
+        excludedCount=excluded_count,
+        has_binds=has_binds,
+        used_binds=used_binds,
+        selected_bind=selected_bind,
+        bind_label=bind_label,
+        download_url=download_url,
+    )
+
+
+@admin.route("/export/download/<bind>", endpoint="route_export_download_bind")
+@verify_admin
+def route_export_download_bind(bind):
+    """Download a CSV containing only the columns owned by *bind*.
+
+    Joinable on ``participantID`` to the default-bind CSV at
+    ``/admin/export/download``. Returns 404 if the bind isn't configured.
+    """
+    configured = current_app.config.get("SQLALCHEMY_BINDS", {}) or {}
+    if bind not in configured:
+        from flask import abort
+        abort(404)
+
+    results = Results(Results.build_filter_from_args(request.args))
+    df = results.build_data_frame_for_bind(bind)
+    df_safe = _df_with_formula_safe_strings(df)
+    return Response(
+        df_safe.to_csv(na_rep="", index=False),
+        mimetype="text/csv",
+        headers={
+            "Content-disposition": (
+                f"attachment; filename=export_{bind}_"
+                f"{utcnow_naive().strftime('%Y-%m-%d_%H-%M')}.csv"
+            )
+        },
+    )
 
 
 @admin.route("/results")
@@ -745,14 +885,39 @@ def route_questionnaire_html(questionnaireName):
     return ParticipantQuestionnaireService.render_unloaded_questionnaire(json_data, "preview_questionnaire_simple.html", errors=errors)
 
 
+def _find_table(tableName):
+    """Find a Table object across every bind's MetaData.
+
+    Cross-bind tables don't live in ``db.metadata`` — Flask-SQLAlchemy 3.x
+    keeps one MetaData per bind in ``db.metadatas``. Returns
+    ``(table, bind_key)`` (with ``bind_key`` ``None`` for the default
+    bind) or ``(None, None)`` if no bind has a table by that name.
+    """
+    for bk, md in db.metadatas.items():
+        if tableName in md.tables:
+            return md.tables[tableName], bk
+    return None, None
+
+
 def table_data(tableName):
-    if tableName in _TABLE_VIEW_BLOCKED or tableName not in db.metadata.tables:
+    if tableName in _TABLE_VIEW_BLOCKED:
         abort(404)
-    rows = db.session.query(db.metadata.tables[tableName]).all()
+    table, bind_key = _find_table(tableName)
+    if table is None:
+        abort(404)
+
+    # ``db.session.query(table)`` against a bare Table object loses the
+    # bind information (only models carry ``__bind_key__``), so the
+    # session would default to the main engine and 'no such table' for
+    # cross-bind tables. Execute against the engine that actually owns it.
+    from sqlalchemy import select
+    engine = db.engine if bind_key is None else db.engines[bind_key]
+    with engine.connect() as conn:
+        rows = list(conn.execute(select(table)))
 
     columns = []
 
-    for c in db.metadata.tables[tableName].columns:
+    for c in table.columns:
         type = str(c.type)
         if type.startswith("VARCHAR") or type.startswith("TEXT"):
             type = u"string"
@@ -794,36 +959,110 @@ def route_table_csv(tableName):
                     })
 
 
-def _resolve_sqlite_db_path():
-    """Return the absolute SQLite DB path if it resolves under the project root,
-    otherwise ``None``. ``SQLALCHEMY_DATABASE_URI`` comes from the project
-    config, but a hostile or mistakenly-configured URI like
-    ``sqlite:///../../etc/passwd`` should not be honored for backup/delete
-    operations."""
-    db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+def _resolve_sqlite_uri(uri):
+    """Return the absolute SQLite DB path for *uri* if it resolves under
+    the project root, otherwise ``None``. The project-root containment
+    check guards against hostile or mistakenly-configured URIs like
+    ``sqlite:///../../etc/passwd`` reaching backup/delete operations.
+    """
+    if not isinstance(uri, str) or not uri.startswith('sqlite:///'):
+        return None
+    rel = uri.replace('sqlite:///', '')
     project_root = os.path.abspath(current_app.root_path)
-    resolved = os.path.abspath(os.path.join(project_root, db_uri))
+    resolved = os.path.abspath(os.path.join(project_root, rel))
     if os.path.commonpath([resolved, project_root]) != project_root:
         return None
     return resolved
 
 
+def _sqlite_db_paths():
+    """Yield ``(bind_key, absolute_path)`` for every SQLite-backed bind
+    whose file exists on disk and resolves under the project root.
+
+    ``bind_key`` is ``None`` for the default database. Non-SQLite binds
+    (Postgres, MySQL) are skipped — they have no file to back up or
+    delete through this UI; an operator with those binds has to wipe
+    them through their respective DB tools.
+    """
+    seen = set()
+    entries = [(None, current_app.config.get('SQLALCHEMY_DATABASE_URI'))]
+    for bk, uri in (current_app.config.get('SQLALCHEMY_BINDS') or {}).items():
+        entries.append((bk, uri))
+    for bk, uri in entries:
+        resolved = _resolve_sqlite_uri(uri)
+        if resolved is None or not os.path.exists(resolved):
+            continue
+        if resolved in seen:
+            # Defensive: two binds pointing at the same file would
+            # otherwise produce duplicate zip entries.
+            continue
+        seen.add(resolved)
+        yield bk, resolved
+
+
+def _backup_basename(prefix):
+    """``<prefix>_YYYYmmdd_HHMMSS.zip`` — matches the timestamp format used
+    elsewhere in the admin for download filenames so a researcher can sort
+    their downloads by name."""
+    return f"{prefix}_{utcnow_naive().strftime('%Y%m%d_%H%M%S')}.zip"
+
+
+def _build_databases_zip():
+    """Return ``(bytes, paths)`` where *bytes* is a zip of every SQLite
+    bind file and *paths* is the list of paths included. Empty *paths*
+    means nothing was zippable (no SQLite binds or no files on disk yet).
+    """
+    import io
+    import zipfile
+    buf = io.BytesIO()
+    paths = []
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for _bk, resolved in _sqlite_db_paths():
+            zf.write(resolved, arcname=os.path.basename(resolved))
+            paths.append(resolved)
+    return buf.getvalue(), paths
+
+
 @admin.route("/database_download")
 @verify_admin
 def route_database_download():
+    """Download every SQLite-backed database as a single ZIP.
+
+    Researchers with multiple binds (e.g. a PII bind) get all files in
+    one shot — backing up via this endpoint can't silently miss the
+    second file the way a single-file download would.
+    """
     if not current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///'):
         return "Not using a SQLite database."
 
-    resolved = _resolve_sqlite_db_path()
-    if resolved is None:
-        return Response("Database path is outside the project directory.", status=403)
-    # TODO: Do I need to do something special if the database is being written to by users?
-    return send_file(resolved, as_attachment=True)
+    zip_bytes, paths = _build_databases_zip()
+    if not paths:
+        return Response("No SQLite database files were found.", status=404)
+
+    return Response(
+        zip_bytes,
+        mimetype="application/zip",
+        headers={
+            "Content-disposition":
+                f"attachment; filename={_backup_basename('databases')}"
+        },
+    )
 
 
 @admin.route("/database_delete", methods=['GET', 'POST'])
 @verify_admin
 def route_database_delete():
+    """Clear rows from every configured bind.
+
+    Before clearing, a timestamped ZIP backup of every SQLite-backed
+    bind is written to the project root. The backup is automatic — a
+    researcher who clicks Delete and immediately regrets it can recover
+    by unzipping that file back over the live DBs.
+
+    Like the pre-bind version, this clears *rows* from every table; the
+    schemas stay in place so ``db.create_all()`` on the next startup
+    doesn't have to re-create anything.
+    """
     if not current_app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:///'):
         return "Not using a SQLite database."
 
@@ -837,26 +1076,47 @@ def route_database_delete():
             # session can't grind it offline-style.
             brute_force.record_failure(ip)
             return render_template("database_delete.html", message="The password you entered is incorrect.")
-        else:
-            resolved = _resolve_sqlite_db_path()
-            if resolved is None:
-                return Response("Database path is outside the project directory.", status=403)
-            # Make a copy of the db, just in case we didn't truly want to
-            # delete everything. The backup lives next to the original so
-            # it also lands under the project root.
-            backup_path = resolved.rsplit('.db', 1)[0] + "_" + utcnow_naive().strftime("%Y%m%d_%H%M%S") + ".db"
-            copyfile(resolved, backup_path)
 
-            # now delete everything from the database
-            for tbl in reversed(db.metadata.sorted_tables):
-                db.session.query(tbl).delete()
-            db.session.commit()
+        # Write the backup before touching anything. If the zip can't be
+        # written (disk full, permission denied), abort the delete — a
+        # silent half-deletion with no recovery file is exactly what the
+        # backup is meant to prevent.
+        zip_bytes, paths = _build_databases_zip()
+        if not paths:
+            return Response(
+                "No SQLite database files were found to back up.",
+                status=500,
+            )
+        project_root = os.path.abspath(current_app.root_path)
+        backup_path = os.path.join(project_root, _backup_basename('backup'))
+        try:
+            with open(backup_path, 'wb') as f:
+                f.write(zip_bytes)
+        except OSError as e:
+            current_app.logger.exception(
+                "database_delete: backup write failed (%s); aborting delete.", e,
+            )
+            return Response(
+                f"Backup could not be written ({e}); delete aborted.",
+                status=500,
+            )
 
+        # Clear rows from every bind. ``db.session.query(tbl).delete()``
+        # against a bare Table loses bind information; route the delete
+        # through the engine that owns each MetaData.
+        for bk, md in db.metadatas.items():
+            engine = db.engine if bk is None else db.engines[bk]
+            with engine.begin() as conn:
+                for tbl in reversed(md.sorted_tables):
+                    conn.execute(tbl.delete())
+        db.session.commit()
+
+        current_app.logger.info(
+            "database_delete: cleared rows from %d bind(s); backup at %s",
+            len(list(db.metadatas)), backup_path,
+        )
         return redirect(url_for("admin.route_progress"))
 
     return render_template("database_delete.html")
-
-    #db_uri = current_app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
-    #return send_file(db_uri, as_attachment=True)
 
 

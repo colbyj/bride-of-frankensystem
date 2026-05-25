@@ -934,8 +934,67 @@ def validate_calculations(json_data: dict, filename: str) -> list[ValidationResu
 # Main entry points
 # ---------------------------------------------------------------------------
 
+def validate_database_binding(json_data: dict, filename: str,
+                              available_binds) -> list[ValidationResult]:
+    """Reject ``database`` values that aren't keys in ``SQLALCHEMY_BINDS``.
+
+    A typo here would silently send rows to the default DB instead of the
+    intended (often PII-isolated) bind, so this is a fatal validation error
+    rather than a warning.
+
+    :param available_binds: An iterable (typically a set) of configured bind
+        names. Pass an empty set when ``SQLALCHEMY_BINDS`` is unset.
+    """
+    if not isinstance(json_data, dict):
+        return []
+
+    if "database" not in json_data:
+        return []
+
+    value = json_data["database"]
+    if value is None or value == "":
+        # Treat explicit null / empty as "use default bind" — same as omitting
+        # the field. No error.
+        return []
+
+    available_set = set(available_binds)
+
+    if not isinstance(value, str):
+        return [ValidationResult(
+            "error", filename,
+            f"'database' must be a string naming an entry in "
+            f"SQLALCHEMY_BINDS, got {type(value).__name__}.",
+            f"Configured binds: {sorted(available_set) or '(none)'}. "
+            f"Remove the 'database' field to use the default DB."
+        )]
+
+    if value not in available_set:
+        if not available_set:
+            # Distinct message when SQLALCHEMY_BINDS is missing entirely —
+            # otherwise the "is not a configured bind" wording reads as if
+            # the bind list exists and just doesn't contain this one.
+            return [ValidationResult(
+                "error", filename,
+                f"'database' is set to {value!r} but no [SQLALCHEMY_BINDS] "
+                f"block is configured.",
+                f"Add a [SQLALCHEMY_BINDS] table to your config.toml with "
+                f"{value!r} as a key (e.g. {value} = \"sqlite:///{value}.db\"), "
+                f"or remove the 'database' field to use the default DB."
+            )]
+        return [ValidationResult(
+            "error", filename,
+            f"'database' value {value!r} is not a configured bind.",
+            f"Configured binds: {sorted(available_set)}. "
+            f"Add {value!r} to [SQLALCHEMY_BINDS] in your config, or remove "
+            f"the 'database' field to use the default DB."
+        )]
+
+    return []
+
+
 def validate_questionnaire(json_data: dict, filename: str,
-                           valid_types: frozenset = None) -> list[ValidationResult]:
+                           valid_types: frozenset = None,
+                           available_binds=frozenset()) -> list[ValidationResult]:
     """
     Run all validations on a single questionnaire's JSON data.
     Returns a list of ValidationResult objects (may be empty if everything is valid).
@@ -955,6 +1014,7 @@ def validate_questionnaire(json_data: dict, filename: str,
     results.extend(validate_image_click(json_data, filename))
     results.extend(validate_calculations(json_data, filename))
     results.extend(validate_show_if(json_data, filename))
+    results.extend(validate_database_binding(json_data, filename, available_binds))
 
     return results
 
@@ -998,7 +1058,8 @@ def validate_db_schema(questionnaire, filename: str) -> list[ValidationResult]:
     return results
 
 
-def validate_table(json_data: dict, filename: str) -> list[ValidationResult]:
+def validate_table(json_data: dict, filename: str,
+                   available_binds=frozenset()) -> list[ValidationResult]:
     """Validate a JSONTable JSON file.
 
     Checks:
@@ -1015,6 +1076,11 @@ def validate_table(json_data: dict, filename: str) -> list[ValidationResult]:
 
     if not isinstance(json_data, dict):
         return results
+
+    # Bind validation runs first so it isn't masked by an early return below
+    # (e.g. when the table has no exports). Researcher-visible errors should
+    # surface together rather than in a second pass.
+    results.extend(validate_database_binding(json_data, filename, available_binds))
 
     columns = json_data.get("columns")
     if columns is None:

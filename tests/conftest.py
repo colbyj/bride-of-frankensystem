@@ -57,6 +57,51 @@ def bofs_app(tmp_path):
 
 
 
+@pytest.fixture
+def bofs_app_with_binds(tmp_path):
+    """
+    BOFS app with a non-default SQLALCHEMY_BINDS entry ("pii") backed by a
+    separate in-memory SQLite engine. Use for per-bind tests.
+
+    Both engines are :memory:, so each test starts with empty databases.
+    """
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "SQLALCHEMY_BINDS": {
+            "pii": "sqlite:///:memory:",
+        },
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test Experiment",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": False,
+        "BRUTE_FORCE_PROTECTION": False,
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    (tmp_path / "questionnaires").mkdir()
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    original_cwd = os.getcwd()
+
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=True)
+
+    ctx = app.app_context()
+    ctx.push()
+    app.db.create_all()
+
+    yield app
+
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
 # ===========================================================================
 # Tier 2 helper — write a questionnaire JSON to the app's questionnaires dir
 # ===========================================================================
@@ -323,6 +368,170 @@ def bofs_app_with_questionnaires(tmp_path):
             {"name": "Consent", "path": "consent"},
             {"name": "Survey", "path": "questionnaire/survey"},
             {"name": "Survey", "path": "questionnaire/survey/before"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    original_cwd = os.getcwd()
+
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=False)
+
+    ctx = app.app_context()
+    ctx.push()
+
+    yield app
+
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
+@pytest.fixture
+def bofs_app_for_export_with_binds(tmp_path):
+    """BOFS app with two questionnaires: one on the default bind, one on a
+    ``pii`` bind. PAGE_LIST includes both so ``page_list.get_questionnaire_list``
+    yields them and the export pipeline picks them up.
+    """
+    q_dir = tmp_path / "questionnaires"
+    q_dir.mkdir()
+    (q_dir / "experiment.json").write_text(json.dumps({
+        "title": "Experiment",
+        "questions": [{"questiontype": "field", "id": "score"}],
+    }), encoding="utf-8")
+    (q_dir / "contact.json").write_text(json.dumps({
+        "title": "Contact",
+        "database": "pii",
+        "questions": [{"questiontype": "field", "id": "email"}],
+    }), encoding="utf-8")
+
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "SQLALCHEMY_BINDS": {"pii": "sqlite:///:memory:"},
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test Experiment",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": True,
+        "BRUTE_FORCE_PROTECTION": False,
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"name": "Experiment", "path": "questionnaire/experiment"},
+            {"name": "Contact", "path": "questionnaire/contact"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    original_cwd = os.getcwd()
+
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=False)
+
+    ctx = app.app_context()
+    ctx.push()
+
+    yield app
+
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
+@pytest.fixture
+def bofs_app_with_file_binds(tmp_path):
+    """BOFS app with file-backed SQLite for the default *and* PII binds.
+
+    Required for tests that exercise ``/admin/database_download`` and
+    ``/admin/database_delete`` — those routes resolve real on-disk files
+    via ``_resolve_sqlite_uri`` and skip ``:memory:`` URIs (which don't
+    correspond to a file). Tests that don't care about on-disk artefacts
+    should stay on ``bofs_app_for_export_with_binds`` (in-memory).
+    """
+    q_dir = tmp_path / "questionnaires"
+    q_dir.mkdir()
+    (q_dir / "experiment.json").write_text(json.dumps({
+        "title": "Experiment",
+        "questions": [{"questiontype": "field", "id": "score"}],
+    }), encoding="utf-8")
+    (q_dir / "contact.json").write_text(json.dumps({
+        "title": "Contact",
+        "database": "pii",
+        "questions": [{"questiontype": "field", "id": "email"}],
+    }), encoding="utf-8")
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///main.db",
+        "SQLALCHEMY_BINDS": {"pii": "sqlite:///pii.db"},
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test Experiment",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": True,
+        "BRUTE_FORCE_PROTECTION": False,
+        # /admin/database_delete is a POST through the admin CSRF gate.
+        # Disable here so tests can exercise the route without manually
+        # threading a token through every request.
+        "WTF_CSRF_ENABLED": False,
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"name": "Experiment", "path": "questionnaire/experiment"},
+            {"name": "Contact", "path": "questionnaire/contact"},
+            {"name": "End", "path": "end"},
+        ],
+    }
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(toml.dumps(config_data), encoding="utf-8")
+
+    original_cwd = os.getcwd()
+
+    from BOFS.create_app import create_app
+    app = create_app(str(tmp_path), str(config_path), debug=False)
+
+    ctx = app.app_context()
+    ctx.push()
+
+    yield app
+
+    app.db.drop_all()
+    ctx.pop()
+    os.chdir(original_cwd)
+
+
+@pytest.fixture
+def bofs_app_for_export_no_binds(tmp_path):
+    """Backward-compat fixture: same questionnaires as bofs_app_for_export_with_binds
+    but no SQLALCHEMY_BINDS and no ``database`` field on either questionnaire.
+    Used to assert the single-CSV export path is byte-identical to before.
+    """
+    q_dir = tmp_path / "questionnaires"
+    q_dir.mkdir()
+    (q_dir / "experiment.json").write_text(json.dumps({
+        "title": "Experiment",
+        "questions": [{"questiontype": "field", "id": "score"}],
+    }), encoding="utf-8")
+    (q_dir / "contact.json").write_text(json.dumps({
+        "title": "Contact",
+        "questions": [{"questiontype": "field", "id": "email"}],
+    }), encoding="utf-8")
+
+    (tmp_path / "consent.html").write_text("<p>Consent</p>", encoding="utf-8")
+
+    config_data = {
+        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+        "SECRET_KEY": "test-secret-key",
+        "TITLE": "Test Experiment",
+        "ADMIN_PASSWORD": "test",
+        "USE_ADMIN": True,
+        "BRUTE_FORCE_PROTECTION": False,
+        "PAGE_LIST": [
+            {"name": "Consent", "path": "consent"},
+            {"name": "Experiment", "path": "questionnaire/experiment"},
+            {"name": "Contact", "path": "questionnaire/contact"},
             {"name": "End", "path": "end"},
         ],
     }
