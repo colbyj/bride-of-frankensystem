@@ -117,6 +117,76 @@
                     </li>
                     {% endif %}
                 </ul>
+                {# Setup diagnostics widget. Pills are hidden when both
+                   counts are zero (clean projects shouldn't have nav
+                   chrome they don't need). Each pill opens the same
+                   modal; ``data-bofs-focus`` lets the modal scroll
+                   straight to the matching severity block.
+
+                   Colors are written inline because the surrounding
+                   header carries ``data-bs-theme="dark"``, which
+                   overrides ``btn-warning`` / ``btn-info`` background
+                   variables and would otherwise render the pill text
+                   against an invisible (dark) background. #}
+                {% if diagWarningCount or diagInfoCount %}
+                <div class="d-flex align-items-center me-3">
+                    {% if diagWarningCount %}
+                    <button type="button"
+                            class="btn btn-sm me-2 d-flex align-items-center bofs-diag-pill bofs-diag-pill-warning"
+                            data-bs-toggle="modal"
+                            data-bs-target="#bofsDiagnosticsModal"
+                            data-bofs-focus="warning"
+                            title="Setup warnings">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i>
+                        {{ diagWarningCount }}
+                        {{ "warning" if diagWarningCount == 1 else "warnings" }}
+                    </button>
+                    {% endif %}
+                    {% if diagInfoCount %}
+                    <button type="button"
+                            class="btn btn-sm d-flex align-items-center bofs-diag-pill bofs-diag-pill-info"
+                            data-bs-toggle="modal"
+                            data-bs-target="#bofsDiagnosticsModal"
+                            data-bofs-focus="info"
+                            title="Setup notices">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        {{ diagInfoCount }}
+                        {{ "notice" if diagInfoCount == 1 else "notices" }}
+                    </button>
+                    {% endif %}
+                </div>
+                <style>
+                    /* Pills sit on the dark navbar. Default state is
+                       transparent with the severity hue applied to the
+                       text + border; hover/focus fills the background
+                       with the same hue and swaps the text to dark
+                       for contrast against the now-light pill. */
+                    .bofs-diag-pill {
+                        font-weight: 600;
+                        background-color: transparent !important;
+                        transition: background-color 0.15s, color 0.15s;
+                    }
+                    .bofs-diag-pill-warning {
+                        color: #ffc107 !important;
+                        border: 1px solid #ffc107 !important;
+                    }
+                    .bofs-diag-pill-warning:hover,
+                    .bofs-diag-pill-warning:focus {
+                        background-color: #ffc107 !important;
+                        color: #1f2937 !important;
+                    }
+                    .bofs-diag-pill-info {
+                        color: #6edff6 !important;
+                        border: 1px solid #6edff6 !important;
+                    }
+                    .bofs-diag-pill-info:hover,
+                    .bofs-diag-pill-info:focus {
+                        background-color: #6edff6 !important;
+                        color: #1f2937 !important;
+                    }
+                </style>
+                {% endif %}
+
                 <form action="{{ url_for('admin.admin_logout') }}" method="post" class="d-flex">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-outline-light btn-sm">Log out</button>
@@ -130,6 +200,102 @@
 {% block content %}
 {% endblock %}
 </main>
+
+{# Setup-diagnostics modal. Rendered once per admin page and only
+   populated when the collector has at least one warning or notice. The
+   pill in the navbar opens it via Bootstrap's data-bs-toggle. #}
+{% if diagGrouped %}
+<div class="modal fade" id="bofsDiagnosticsModal" tabindex="-1" aria-labelledby="bofsDiagnosticsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bofsDiagnosticsModalLabel">
+                    <i class="fa-solid fa-clipboard-list me-2"></i>
+                    Setup Diagnostics
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    These warnings and notices were recorded when BOFS started.
+                    Restart the project to re-evaluate after fixing them.
+                </p>
+                {% for sec in diagGrouped %}
+                <section class="bofs-diag-section mb-4">
+                    <h6 class="border-bottom pb-1 mb-3 text-uppercase text-muted">{{ sec.section }}</h6>
+                    {% for sub in sec.subgroups %}
+                    <div class="bofs-diag-subgroup mb-3">
+                        <div class="fw-semibold mb-2">{{ sub.label }}</div>
+                        {% for item in sub.diagnostics %}
+                        <div class="bofs-diag-item bofs-diag-{{ item.severity }} mb-2 p-2 border-start border-3 rounded"
+                             data-bofs-severity="{{ item.severity }}">
+                            <div class="d-flex align-items-start">
+                                {% if item.severity == 'error' %}
+                                <span class="badge bg-danger me-2 mt-1">ERROR</span>
+                                {% elif item.severity == 'warning' %}
+                                <span class="badge bg-warning text-dark me-2 mt-1">WARNING</span>
+                                {% else %}
+                                <span class="badge bg-info text-dark me-2 mt-1">NOTE</span>
+                                {% endif %}
+                                <div class="flex-grow-1">
+                                    <div class="fw-semibold">{{ item.message }}</div>
+                                    {% if item.suggestion %}
+                                    <div class="text-muted small mt-1">{{ item.suggestion }}</div>
+                                    {% endif %}
+                                    {% if item.source %}
+                                    <div class="text-muted small mt-1"><code>{{ item.source }}</code></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endfor %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+    .bofs-diag-item.bofs-diag-error {
+        border-color: #dc3545 !important;
+        background: #fdf3f4;
+    }
+    .bofs-diag-item.bofs-diag-warning {
+        border-color: #fd7e14 !important;
+        background: #fff8f0;
+    }
+    .bofs-diag-item.bofs-diag-info {
+        border-color: #0dcaf0 !important;
+        background: #f0fafd;
+    }
+</style>
+<script>
+    // When the modal opens, scroll to the first item matching the
+    // severity the pill represents (warning vs info) so the researcher
+    // lands in the right section.
+    (function () {
+        var modalEl = document.getElementById('bofsDiagnosticsModal');
+        if (!modalEl) return;
+        modalEl.addEventListener('shown.bs.modal', function (event) {
+            var trigger = event.relatedTarget;
+            if (!trigger) return;
+            var focus = trigger.getAttribute('data-bofs-focus');
+            if (!focus) return;
+            var first = modalEl.querySelector(
+                '.bofs-diag-item[data-bofs-severity="' + focus + '"]'
+            );
+            if (first) {
+                first.scrollIntoView({ behavior: 'instant', block: 'start' });
+            }
+        });
+    })();
+</script>
+{% endif %}
 
 <script>
     // Send the admin CSRF token on every htmx request so state-changing

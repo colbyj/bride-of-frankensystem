@@ -456,8 +456,10 @@ class TestEndToEnd:
 class TestValidateDbSchema:
     """Test the validation warning generation."""
 
-    def test_warnings_for_orphaned_columns(self, bofs_app):
-        """Orphaned columns should produce warnings."""
+    def test_notice_for_orphaned_columns(self, bofs_app):
+        """Orphaned columns are surfaced as info-level notices: BOFS
+        preserves the existing data and writes NULL for new submissions,
+        so nothing is broken — the researcher is just informed."""
         from BOFS.validation import validate_db_schema
 
         q = write_questionnaire_file(bofs_app, "warn_test", {
@@ -473,11 +475,11 @@ class TestValidateDbSchema:
             ]
         })
 
-        warnings = validate_db_schema(q_new, "warn_test")
-        assert len(warnings) == 1
-        assert warnings[0].severity == "warning"
-        assert "q2" in warnings[0].message
-        assert "no longer defined" in warnings[0].message
+        results = validate_db_schema(q_new, "warn_test")
+        assert len(results) == 1
+        assert results[0].severity == "info"
+        assert "q2" in results[0].message
+        assert "no longer defined" in results[0].message
 
     def test_warnings_for_type_mismatches(self, bofs_app):
         """Type mismatches should produce warnings."""

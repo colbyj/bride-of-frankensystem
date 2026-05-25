@@ -293,7 +293,9 @@ class ValidationResult:
         self.suggestion = suggestion
 
     def __str__(self):
-        prefix = "ERROR" if self.severity == "error" else "WARNING"
+        prefix = {"error": "ERROR", "warning": "WARNING", "info": "NOTE"}.get(
+            self.severity, self.severity.upper()
+        )
         s = f"  {prefix} in '{self.questionnaire}': {self.message}"
         if self.suggestion:
             s += f"\n    -> {self.suggestion}"
@@ -910,20 +912,37 @@ def validate_calculations(json_data: dict, filename: str) -> list[ValidationResu
             ))
             continue
 
-        # Extract word tokens from the expression and check against known field IDs.
-        # Tokens that look like identifiers but aren't known fields or Python builtins
-        # are flagged as warnings (not errors, since they could be valid Python names).
-        tokens = set(re.findall(r"[a-zA-Z_][a-zA-Z0-9_]*", calc_expr))
-        # Common functions/builtins used in calculations
-        safe_tokens = {"mean", "sum", "min", "max", "abs", "float", "int", "len",
-                       "round", "self", "getattr", "True", "False", "None"}
-        unknown = tokens - known_ids - safe_tokens
+        # Parse the expression and check that every referenced identifier
+        # is either a question field ID, another calculated field on this
+        # same questionnaire (calcs are added as methods on the row
+        # class, so cross-calc references resolve at runtime), or one of
+        # the participant-level reserved bare names. Function-call names
+        # are validated by the parser whitelist, so they don't appear in
+        # referenced_fields(ast) and never trigger this warning.
+        from BOFS.expressions import ExpressionError, parse_with_field_ids, referenced_fields
+        from BOFS.expressions.participant_env import RESERVED_PARTICIPANT_BARE_NAMES
+
+        all_calc_names = set(calcs.keys()) if isinstance(calcs, dict) else set()
+        known_in_scope = known_ids | all_calc_names | set(RESERVED_PARTICIPANT_BARE_NAMES)
+
+        try:
+            calc_ast = parse_with_field_ids(calc_expr, list(known_in_scope))
+        except ExpressionError:
+            # The expression doesn't parse under the BOFS DSL. The fatal
+            # parser failure is already reported elsewhere
+            # (JSONQuestionnaire.create_db_class raises at startup); skip
+            # the reference check rather than producing a noisy second
+            # warning on top.
+            continue
+
+        unknown = sorted(referenced_fields(calc_ast) - known_in_scope)
         if unknown:
             results.append(ValidationResult(
                 "warning", filename,
                 f"Calculated field '{calc_name}' references unknown identifiers: "
-                f"{', '.join(sorted(unknown))}.",
-                f"Known field IDs in this questionnaire: {', '.join(sorted(known_ids)) or '(none)'}. "
+                f"{', '.join(unknown)}.",
+                f"Known field IDs in this questionnaire: "
+                f"{', '.join(sorted(known_ids)) or '(none)'}. "
                 f"Check for typos in your calculation expression."
             ))
 
@@ -1037,8 +1056,12 @@ def validate_db_schema(questionnaire, filename: str) -> list[ValidationResult]:
 
     for col_info in orphaned:
         col_name = col_info['name']
+        # Informational: BOFS preserves the old data and writes NULL
+        # for new submissions. Nothing is broken — the column is just
+        # carrying historical data that the current JSON no longer
+        # describes. Surface so the researcher knows, but don't flag.
         results.append(ValidationResult(
-            "warning", filename,
+            "info", filename,
             f"Column '{col_name}' exists in the database but is no longer defined "
             f"in the questionnaire. It was likely renamed or removed.",
             f"Old data in this column is preserved. New submissions will have NULL "
@@ -1369,4 +1392,253 @@ def validate_page_list_references(page_list_data: list,
                 f"'{q_name}.json' file in your questionnaires/ folder."
             ))
 
+    return results
+
+
+# ---------------------------------------------------------------------------
+# Post-load (cross-file) validation passes
+# ---------------------------------------------------------------------------
+#
+# These checks run after every questionnaire and table has been loaded so
+# they can reason about the global namespace of field IDs, table exports,
+# and project asset directories. The per-file ``validate_questionnaire`` /
+# ``validate_table`` passes can't see across files, so they would either
+# false-positive (cross-questionnaire ``show_if`` references) or miss the
+# check entirely (missing image assets, empty files).
+
+
+def validate_table_not_empty(table, filename: str) -> list:
+    """Warn when a loaded table defines zero columns. Same rationale as
+    :func:`validate_questionnaire_not_empty`."""
+    json_data = getattr(table, "json_data", None) or {}
+    columns = json_data.get("columns")
+    if not isinstance(columns, dict) or len(columns) == 0:
+        return [ValidationResult(
+            "warning", filename,
+            f"Table '{filename}' has no columns defined.",
+            "Add at least one entry to the 'columns' object, or remove "
+            "the table if it isn't needed."
+        )]
+    return []
+
+
+def _collect_image_asset_refs(json_data: dict) -> list[tuple[int, str, str]]:
+    """Return ``(question_index, question_type, src)`` tuples for every
+    image referenced by an ``image_select`` or ``image_click`` question.
+
+    ``image_select`` has a list of ``{src, value, label}`` images; the
+    src of each is extracted. ``image_click`` has a single top-level
+    ``src``.
+    """
+    refs: list[tuple[int, str, str]] = []
+    questions = json_data.get("questions", [])
+    if not isinstance(questions, list):
+        return refs
+    for i, q in enumerate(questions):
+        if not isinstance(q, dict):
+            continue
+        qtype = q.get("questiontype")
+        if qtype == "image_select":
+            images = q.get("images")
+            if isinstance(images, list):
+                for img in images:
+                    if isinstance(img, dict):
+                        src = img.get("src")
+                        if isinstance(src, str) and src:
+                            refs.append((i, qtype, src))
+        elif qtype == "image_click":
+            src = q.get("src")
+            if isinstance(src, str) and src:
+                refs.append((i, qtype, src))
+    return refs
+
+
+def _resolve_asset_candidate_paths(src: str, project_root: str,
+                                   bofs_path: str) -> list[str]:
+    """Build the list of on-disk paths to probe for an image reference.
+
+    BOFS serves images via Flask's static system. A researcher writes
+    ``/static/foo.png`` (project static) or ``/BOFS_static/foo.png``
+    (BOFS-bundled static) in their JSON, plus a few historical forms.
+    Anything starting with ``http(s)://`` or ``//`` is treated as an
+    external URL and not checked.
+    """
+    if not src:
+        return []
+    if src.startswith(("http://", "https://", "//", "data:")):
+        return []  # Remote / data URI — out of scope for an asset check.
+
+    # Normalise the leading slash before mapping to a filesystem prefix.
+    clean = src.lstrip("/")
+
+    candidates: list[str] = []
+    # /static/foo.png -> <project>/static/foo.png
+    if clean.startswith("static/"):
+        candidates.append(os.path.join(project_root, clean))
+    # /BOFS_static/foo.png -> <bofs_path>/static/foo.png
+    if clean.startswith("BOFS_static/"):
+        candidates.append(os.path.join(
+            bofs_path, "static", clean[len("BOFS_static/"):]
+        ))
+    # Bare path: try project root first, then BOFS static.
+    if not (clean.startswith("static/") or clean.startswith("BOFS_static/")):
+        candidates.append(os.path.join(project_root, clean))
+        candidates.append(os.path.join(project_root, "static", clean))
+        candidates.append(os.path.join(bofs_path, "static", clean))
+
+    return candidates
+
+
+def validate_image_assets(questionnaire, filename: str,
+                          project_root: str, bofs_path: str) -> list:
+    """For every ``image_select`` / ``image_click`` reference, check that
+    the file actually exists on disk in one of the locations BOFS would
+    serve from.
+
+    External URLs (``http://``, ``https://``, protocol-relative ``//``,
+    ``data:``) are skipped — BOFS doesn't fetch them, so the check can't
+    apply, and false-positives here would be noisy on every startup.
+    """
+    results = []
+    json_data = getattr(questionnaire, "json_data", None) or {}
+    for i, qtype, src in _collect_image_asset_refs(json_data):
+        candidates = _resolve_asset_candidate_paths(src, project_root, bofs_path)
+        if not candidates:
+            continue  # Remote / non-checkable
+        if any(os.path.isfile(p) for p in candidates):
+            continue
+        results.append(ValidationResult(
+            "warning", filename,
+            f"Question #{i+1} ({qtype}) references image {src!r} but no "
+            f"matching file was found.",
+            "Check the path against your project's static/ folder. "
+            f"Looked in: {', '.join(repr(p) for p in candidates)}."
+        ))
+    return results
+
+
+def _build_global_field_namespace(questionnaires, tables) -> set:
+    """Union of every identifier a page-level ``show_if`` predicate may
+    legally reference as a bare name.
+
+    Includes: questionnaire field IDs (from every loaded questionnaire),
+    participant_calculations names, RESERVED_PARTICIPANT_BARE_NAMES
+    (``condition``, ``source``, ``end_reason``), and the literal name
+    ``tables`` (so a predicate that references ``tables.x.y`` without
+    being parsed via the dotted-replacement path can still resolve).
+    """
+    from .expressions.participant_env import RESERVED_PARTICIPANT_BARE_NAMES
+
+    names: set = set(RESERVED_PARTICIPANT_BARE_NAMES)
+    names.add("tables")
+    for qname, q in (questionnaires or {}).items():
+        try:
+            for f in q.fetch_fields():
+                names.add(f.id)
+        except Exception:
+            # Questionnaire may not be DB-ready yet (e.g. skipped because
+            # of fatal validation errors). Pull from json_data as a
+            # fallback so the namespace stays inclusive.
+            for fid, _ in _collect_field_ids(getattr(q, "json_data", {}) or {}):
+                names.add(fid)
+        calcs = (getattr(q, "json_data", {}) or {}).get("participant_calculations")
+        if isinstance(calcs, dict):
+            names.update(calcs.keys())
+    return names
+
+
+def validate_page_list_show_if_refs(page_list, questionnaires,
+                                    tables) -> list:
+    """Cross-file check: page-level ``show_if`` predicates and
+    ``conditional_routing`` arm predicates reference identifiers that
+    exist somewhere in the loaded project.
+
+    Page-level predicates can reference fields from any questionnaire
+    the participant has already submitted (or will submit later in the
+    same flow) plus the reserved bare names. The within-questionnaire
+    ``validate_show_if`` pass can't see that broader namespace, so it
+    isn't used for these predicates — this function fills the gap.
+
+    The per-table reference check (``tables.<name>.<column>``) is
+    handled separately by :func:`validate_page_show_if_table_refs`.
+    """
+    results = []
+    known = _build_global_field_namespace(questionnaires, tables)
+
+    def label_for(entry):
+        return entry.get("name", entry.get("path", "<unnamed>"))
+
+    def check_entry(entry, source_label):
+        ast = entry.get("_show_if_ast")
+        if ast is None:
+            return
+        from BOFS.expressions import referenced_fields
+        refs = entry.get("_show_if_refs") or {}
+        all_refs = referenced_fields(ast)
+        bare_refs = all_refs - set(refs)
+        unknown_bare = sorted(bare_refs - known)
+        if unknown_bare:
+            results.append(ValidationResult(
+                "warning", "PAGE_LIST",
+                f"show_if on {source_label} references unknown identifier(s): "
+                f"{', '.join(unknown_bare)}.",
+                "Check for typos. The reference must be a questionnaire "
+                "field ID, a participant_calculations name, or one of "
+                "'condition', 'source', 'end_reason'."
+            ))
+
+        # Validate dotted ``qname.tag.field`` placeholders that resolve
+        # to a specific questionnaire row. Table refs are checked in
+        # validate_page_show_if_table_refs.
+        for placeholder, spec in refs.items():
+            if spec.get("kind") != "questionnaire":
+                continue
+            qname = spec.get("qname")
+            field = spec.get("field")
+            q = (questionnaires or {}).get(qname)
+            if q is None:
+                results.append(ValidationResult(
+                    "warning", "PAGE_LIST",
+                    f"show_if on {source_label} references "
+                    f"'{spec.get('source', qname)}' but no questionnaire "
+                    f"named {qname!r} is loaded.",
+                    f"Known questionnaires: "
+                    f"{', '.join(sorted(questionnaires or {})) or '(none)'}."
+                ))
+                continue
+            try:
+                field_ids = {f.id for f in q.fetch_fields()}
+            except Exception:
+                field_ids = {fid for fid, _ in _collect_field_ids(
+                    getattr(q, "json_data", {}) or {}
+                )}
+            calcs = (getattr(q, "json_data", {}) or {}).get("participant_calculations")
+            if isinstance(calcs, dict):
+                field_ids |= set(calcs.keys())
+            if field not in field_ids:
+                results.append(ValidationResult(
+                    "warning", "PAGE_LIST",
+                    f"show_if on {source_label} references "
+                    f"'{spec.get('source')}', but {field!r} is not a "
+                    f"known field on questionnaire {qname!r}.",
+                    f"Known fields on {qname!r}: "
+                    f"{', '.join(sorted(field_ids)) or '(none)'}."
+                ))
+
+    def visit(entries):
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            if "conditional_routing" in entry:
+                for cr in entry["conditional_routing"]:
+                    check_entry(
+                        cr,
+                        f"conditional_routing arm "
+                        f"(condition={cr.get('condition')!r})",
+                    )
+                    visit(cr.get("page_list", []))
+                continue
+            check_entry(entry, f"page {label_for(entry)!r}")
+
+    visit(page_list)
     return results

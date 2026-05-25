@@ -45,8 +45,9 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
     if 'LOG_GRID_CLICKS' in app.config and 'LOG_QUESTIONNAIRE_INTERACTIONS' not in app.config:
         app.config['LOG_QUESTIONNAIRE_INTERACTIONS'] = app.config['LOG_GRID_CLICKS']
+        # Deprecated alias still functions; no behaviour change yet.
         app.setup_diagnostics.add(
-            "warning", "config",
+            "info", "config",
             "Config key LOG_GRID_CLICKS is deprecated.",
             suggestion="Rename LOG_GRID_CLICKS to LOG_QUESTIONNAIRE_INTERACTIONS in your config.toml.",
             source="LOG_GRID_CLICKS",
@@ -225,8 +226,10 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         app.load_tables()
 
         if app.config.get('USE_BREADCRUMBS', True) and app.page_list.has_branching():
+            # Informational: the trade-off is real but the researcher
+            # may legitimately want the growing breadcrumb behaviour.
             app.setup_diagnostics.add(
-                "warning", "page_list",
+                "info", "page_list",
                 "USE_BREADCRUMBS is enabled and PAGE_LIST contains "
                 "conditional_routing or show_if predicates. The breadcrumb "
                 "only shows pages BOFS knows the participant will visit, "
@@ -238,9 +241,33 @@ def create_app(path, config_name, debug=False, reloader_off=False):
                 source="USE_BREADCRUMBS",
             )
 
-        from .validation import validate_page_show_if_table_refs
+        from .validation import (
+            validate_image_assets,
+            validate_page_list_show_if_refs,
+            validate_page_show_if_table_refs,
+            validate_table_not_empty,
+        )
         for w in validate_page_show_if_table_refs(app.page_list.page_list, app.tables):
-            app.setup_diagnostics.append(w)
+            app.setup_diagnostics.append(w, category="page_list")
+
+        # Post-load (cross-file) checks: empty tables, missing image
+        # assets, cross-questionnaire show_if references. Empty
+        # questionnaires are already caught by validate_structure (see
+        # the per-file pass inside load_questionnaire).
+        for q_key, q in app.questionnaires.items():
+            for w in validate_image_assets(
+                q, q_key, app.root_path, app.bofs_path
+            ):
+                app.setup_diagnostics.append(w, category="asset")
+
+        for t_key, t in app.tables.items():
+            for w in validate_table_not_empty(t, t_key):
+                app.setup_diagnostics.append(w, category="table")
+
+        for w in validate_page_list_show_if_refs(
+            app.page_list.page_list, app.questionnaires, app.tables
+        ):
+            app.setup_diagnostics.append(w, category="page_list")
 
         # Make orphaned DB columns nullable (before db.create_all so the model matches)
         for q_key in app.questionnaires:
@@ -315,20 +342,37 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             for participant in participants:
                 participant.check_useragent_for_crawler()
             app.db.session.commit()
-            print("Checking participants for web scrapers.")
+            app.setup_diagnostics.add(
+                "info", "schema",
+                f"Added isCrawler column and back-filled scraper "
+                f"detection for {len(participants)} existing participant(s).",
+                source="participant.isCrawler",
+            )
 
         # Now user-defined questionnaires (only those that passed validation)
-        # New columns are added as nullable — existing rows will have NULL
+        # New columns are added as nullable — existing rows will have NULL.
+        # Column additions roll up into one info entry per file rather
+        # than one per column, so a questionnaire growing five new
+        # questions produces a single readable notice instead of five.
         for q_key in app.questionnaires:
             q = app.questionnaires[q_key]
             q_fields = q.fetch_fields()
             table_name = q.db_class.__tablename__
             bind_key = getattr(q, 'bind_key', None)
 
+            added_fields = []
             for field in q_fields:
                 if check_and_add_column(table_name, field.id, field.get_type_ddl(),
                                         bind_key=bind_key):
-                    print(f"Added new column to {table_name}: {field.id}")
+                    added_fields.append(field.id)
+            if added_fields:
+                app.setup_diagnostics.add(
+                    "info", "schema",
+                    f"Added {len(added_fields)} new column(s) to "
+                    f"{table_name}: {', '.join(added_fields)}.",
+                    questionnaire=q_key,
+                    source=table_name,
+                )
 
         for t_key in app.tables:
             t = app.tables[t_key]
@@ -336,10 +380,19 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             table_name = t.db_class.__tablename__
             bind_key = getattr(t, 'bind_key', None)
 
+            added_columns = []
             for column in columns:
                 if check_and_add_column(table_name, column.name, column.get_type_ddl(),
                                         column.default, bind_key=bind_key):
-                    print(f"Added new column to {t_key}: {column.name}")
+                    added_columns.append(column.name)
+            if added_columns:
+                app.setup_diagnostics.add(
+                    "info", "schema",
+                    f"Added {len(added_columns)} new column(s) to "
+                    f"{table_name}: {', '.join(added_columns)}.",
+                    questionnaire=t_key,
+                    source=table_name,
+                )
 
         # Check for DB-vs-JSON schema mismatches and generate warnings
         from .validation import validate_db_schema

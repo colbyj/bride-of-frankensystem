@@ -171,6 +171,15 @@ def inject_template_vars():
     configured_binds = current_app.config.get('SQLALCHEMY_BINDS', {}) or {}
     used_binds_in_export = sorted(bind_tables.keys() & set(configured_binds))
 
+    # Setup diagnostics widget (warnings + notices pill, plus modal).
+    # The grouped structure mirrors error.html: section -> subgroup ->
+    # diagnostics. We pass warning+info+error together; the template
+    # decides what to render in the modal.
+    diagnostics = current_app.setup_diagnostics
+    diag_warning_count = len(diagnostics.by_severity("warning"))
+    diag_info_count = len(diagnostics.by_severity("info"))
+    diag_grouped = diagnostics.grouped(severities=("error", "warning", "info"))
+
     return dict(
         additionalAdminPages=additionalAdminPages,
         tableNames=tableNames,
@@ -184,6 +193,9 @@ def inject_template_vars():
         exportBinds=used_binds_in_export,
         condition_num_to_label=condition_num_to_label,
         csrf_token=generate_csrf,
+        diagWarningCount=diag_warning_count,
+        diagInfoCount=diag_info_count,
+        diagGrouped=diag_grouped,
     )
 
 

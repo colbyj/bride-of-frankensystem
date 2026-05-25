@@ -77,11 +77,14 @@ def resolve_secret_key(app) -> None:
         if config_key:
             app.db.session.add(app.db.AppMeta(key='secret_key', value=config_key))
             app.db.session.commit()
-            # First-run migration: informational, not actionable yet.
-            print(
-                "NOTE: SECRET_KEY in your config has been migrated into the project database. "
-                "BOFS now manages SECRET_KEY automatically — you can safely remove the line "
-                "from your .toml config file."
+            # First-run migration: recorded as info so the admin widget
+            # picks it up, plus a warning telling the researcher to
+            # remove the now-redundant config line.
+            app.setup_diagnostics.add(
+                "info", "security",
+                "Your SECRET_KEY was migrated from config.toml into the "
+                "project database during this startup.",
+                source="SECRET_KEY",
             )
             app.setup_diagnostics.add(
                 "warning", "security",
@@ -398,12 +401,18 @@ def warn_about_unused_binds(app) -> None:
     used |= {getattr(t, 'bind_key', None) for t in app.tables.values()}
     used.discard(None)
     for unused in sorted(configured - used):
+        # Informational rather than a warning: a custom blueprint may
+        # use the bind programmatically (its tables won't appear in
+        # ``app.questionnaires`` / ``app.tables``). The notice is here
+        # so a typo in the bind name still gets a chance to be noticed.
         app.setup_diagnostics.add(
-            "warning", "bind",
+            "info", "bind",
             f"SQLALCHEMY_BINDS entry {unused!r} is configured but no "
             f"questionnaire or table references it.",
             suggestion=(
-                f"Set `database: \"{unused}\"` on a JSON file, or remove "
+                f"This may be intentional if a custom blueprint uses "
+                f"the bind directly. Otherwise, set "
+                f"`database: \"{unused}\"` on a JSON file or remove "
                 f"the bind from your config."
             ),
             source=f"SQLALCHEMY_BINDS.{unused}",

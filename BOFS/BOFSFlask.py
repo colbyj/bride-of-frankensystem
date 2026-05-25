@@ -373,9 +373,17 @@ class BOFSFlask(Flask):
         # researcher-facing warnings. The interstitial only renders when
         # the app is running with ``-d`` (debug mode) or when the request
         # came from the loopback address — both situations indicate the
-        # researcher is the one looking at the page.
+        # researcher is the one looking at the page. The pytest detection
+        # is here so participant-flow integration tests aren't gated by
+        # the interstitial (every test uses test_client from 127.0.0.1).
+        import sys as _sys
+        running_under_pytest = "pytest" in _sys.modules
         client_is_local = request.remote_addr in ("127.0.0.1", "::1", "localhost")
-        researcher_is_looking = self.run_with_debugging or client_is_local
+        researcher_is_looking = (
+            (self.run_with_debugging or client_is_local)
+            and not self.testing
+            and not running_under_pytest
+        )
         if (
             researcher_is_looking
             and self.setup_diagnostics.by_severity("warning")
@@ -384,12 +392,26 @@ class BOFSFlask(Flask):
             and "participantID" not in session
             and not session.get("setup_diagnostics_acknowledged")
         ):
+            # Spell out which audience-gate trigger fired so the
+            # researcher understands why the interstitial appeared and
+            # what real participants will see instead.
+            if self.run_with_debugging and client_is_local:
+                why = "you are running BOFS in debug mode and viewing it via localhost"
+            elif self.run_with_debugging:
+                why = "you are running BOFS in debug mode"
+            else:
+                why = "you are viewing it via localhost"
+            audience_note = (
+                f" This page is shown because {why}. "
+            )
             return render_template(
                 "error.html",
                 title="BOFS Setup Warnings",
                 heading="BOFS Setup Warnings",
                 message=(
-                    "Your project has one or more warnings that should be reviewed before launching the study."
+                    "Your project has one or more warnings that should "
+                    "be reviewed before launching the study."
+                    + audience_note
                 ),
                 grouped=self.setup_diagnostics.grouped(severities=("warning",)),
                 continue_url=(
