@@ -9,6 +9,7 @@
     </div>
 
     <div class="p-3">
+        {% if summary_stats %}
         <table class="table table-striped border">
             <thead>
             <tr>
@@ -45,6 +46,9 @@
             {% endfor %}
             </tbody>
         </table>
+        {% else %}
+        <p class="text-muted mb-0">No results to display yet.</p>
+        {% endif %}
     </div>
 
 {% endblock %}

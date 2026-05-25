@@ -422,10 +422,14 @@ class Results(object):
         # cache was written and another was excluded — the IDs differ but
         # the totals match, then the per-ID lookup below raises IndexError
         # on the missing-from-cache row.
-        cached_ids = set(df["participantID"].tolist()) if "participantID" in df.columns else set()
+        has_pid_column = "participantID" in df.columns
+        cached_ids = set(df["participantID"].tolist()) if has_pid_column else set()
         live_ids = set(self.export_data.keys())
 
-        if cached_ids != live_ids:
+        # A cache written when there were zero participants serializes to an
+        # empty frame with no columns; treat that as a miss so the column
+        # access below can't KeyError when live participants are also absent.
+        if not has_pid_column or cached_ids != live_ids:
             self.handle_questionnaires()
             self.handle_custom_exports()
             return
