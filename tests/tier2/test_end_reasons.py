@@ -1,6 +1,6 @@
 """Tier 2 tests for end reasons, the parameterized /end/<reason> route,
 per-PAGE_LIST-entry outgoing_url redirects, and the framework wire-ins
-(bot, no_consent, quota_full, duplicate).
+(bot, quota_full, duplicate).
 
 Companion file to test_lazy_creation_and_cold_end.py — that one covers
 cold-hit safety and lazy creation; this one covers the end_reason column
@@ -515,69 +515,6 @@ class TestBotWireIn:
             assert p.end_reason == "bot"
             assert p.condition == 0
             assert p.excludeFromCount is True
-        finally:
-            _teardown(app, ctx, cwd)
-
-
-class TestNoConsentWireIn:
-
-    def test_decline_consent_creates_minimal_participant(self, tmp_path):
-        """POST to /decline_consent creates a minimal Participant row
-        (condition=None, end_reason='no_consent') and redirects to
-        /end/no_consent."""
-        _write_consent_stub(tmp_path)
-        app, ctx, cwd = _make_app(tmp_path, {
-            "CONDITIONS": [
-                {"label": "Control", "enabled": True},
-                {"label": "Treatment", "enabled": True},
-            ],
-            "PAGE_LIST": [
-                {"name": "Consent", "path": "consent"},
-                {"name": "End", "path": "end"},
-            ],
-        })
-        try:
-            client = app.test_client()
-            response = client.post("/decline_consent", follow_redirects=False)
-
-            assert response.status_code == 302
-            assert response.headers["Location"].endswith("/end/no_consent")
-
-            participants = app.db.session.query(app.db.Participant).all()
-            assert len(participants) == 1
-            p = participants[0]
-            assert p.end_reason == "no_consent"
-            assert p.condition == 0
-            assert p.excludeFromCount is True
-        finally:
-            _teardown(app, ctx, cwd)
-
-    def test_consent_form_consent_zero_routes_to_decline(self, tmp_path):
-        """Defense-in-depth: posting consent=0 to /consent (bypassing the
-        client-side validator) is routed through the decline path."""
-        _write_consent_stub(tmp_path)
-        app, ctx, cwd = _make_app(tmp_path, {
-            "CONDITIONS": [
-                {"label": "Control", "enabled": True},
-                {"label": "Treatment", "enabled": True},
-            ],
-            "PAGE_LIST": [
-                {"name": "Consent", "path": "consent"},
-                {"name": "End", "path": "end"},
-            ],
-        })
-        try:
-            client = app.test_client()
-            response = client.post(
-                "/consent", data={"consent": "0"}, follow_redirects=False,
-            )
-
-            assert response.status_code == 302
-            assert response.headers["Location"].endswith("/end/no_consent")
-
-            participants = app.db.session.query(app.db.Participant).all()
-            assert len(participants) == 1
-            assert participants[0].end_reason == "no_consent"
         finally:
             _teardown(app, ctx, cwd)
 

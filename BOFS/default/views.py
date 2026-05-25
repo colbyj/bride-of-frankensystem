@@ -55,15 +55,6 @@ def route_consent():
             # We caught someone with our honeypot.
             return render_template("consent.html")
 
-        # Defense-in-depth: the default consent form's client-side validator
-        # blocks submission unless "I consent" is selected, and the explicit
-        # Decline button posts to ``/decline_consent``. But a participant who
-        # submits ``consent=0`` directly (custom form, bypassed JS) still
-        # shouldn't slip into the normal flow.
-        if request.form.get('consent') == '0':
-            ParticipantService.provide_no_consent()
-            return redirect("/end/no_consent")
-
         try:
             p = provide_consent(True)
         except ConditionLookupMiss as miss:
@@ -75,25 +66,6 @@ def route_consent():
         return redirect("/redirect_from_page/consent")
 
     return render_template("consent.html")
-
-
-@default.route("/decline_consent", methods=['POST'])
-def route_decline_consent():
-    """
-    ``/decline_consent``
-
-    Endpoint for the consent form's "Decline" button. Creates a minimal
-    Participant row with ``end_reason = "no_consent"`` (so admins can see
-    decline counts) and redirects to ``/end/no_consent``. No condition
-    assignment, no balancer call, no completion code.
-
-    Researchers customize the destination by adding a PAGE_LIST entry
-    with ``path = "end/no_consent"`` and an ``outgoing_url``, or by
-    dropping a ``templates/end/no_consent.html`` for a non-redirect
-    thank-you page.
-    """
-    ParticipantService.provide_no_consent()
-    return redirect("/end/no_consent")
 
 
 # Sets a participant's condition to 0 instead of assigning it as normal
@@ -495,8 +467,8 @@ def route_end(reason="complete"):
     # Legacy top-level OUTGOING_URL applies only to the ``complete`` reason.
     # Other reasons must redirect through a per-entry ``outgoing_url`` or
     # fall through to template rendering — this prevents framework wire-ins
-    # (bot, no_consent, quota_full, duplicate) from inadvertently sending
-    # rejected participants to the happy-path completion URL.
+    # (bot, quota_full, duplicate) from inadvertently sending rejected
+    # participants to the happy-path completion URL.
     if p is not None and reason == "complete":
         outgoing = current_app.config.get('OUTGOING_URL')
         if outgoing and isinstance(outgoing, str):

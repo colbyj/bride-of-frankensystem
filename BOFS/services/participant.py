@@ -139,37 +139,6 @@ class ParticipantService:
         return p
 
     @staticmethod
-    def provide_no_consent():
-        """Create a minimal Participant for someone who clicked Decline on
-        the consent form. Stamps ``end_reason = "no_consent"`` and skips
-        condition assignment / completion code generation; the caller
-        redirects to ``/end/no_consent``.
-
-        A row is created (rather than rendering anonymously) so admins
-        can see decline counts alongside the other reasons.
-        """
-        p = db.Participant()
-        p.ipAddress = get_client_ip()
-        p.userAgent = request.user_agent.string
-        p.timeStarted = utcnow_naive()
-        p.check_useragent_for_crawler()
-        ext_id = get_external_id_from_session()
-        if ext_id:
-            p.externalID = ext_id
-        if session.get('source'):
-            p.source = session['source']
-        # See note in ``provide_quota_full`` — using condition=0 with
-        # ``excludeFromCount=True`` matches the ``consent_nc`` semantics
-        # for "row exists but doesn't participate in the balancer".
-        p.condition = 0
-        p.excludeFromCount = True
-        p.end_reason = "no_consent"
-        db.session.add(p)
-        db.session.commit()
-        session['participantID'] = p.participantID
-        return p
-
-    @staticmethod
     def assign_condition_organic(p) -> None:
         """Run the balancer to pick a condition for *p*, commit, and write session['condition'].
         Wraps Participant.assign_condition() (which mutates p.condition in-place).
