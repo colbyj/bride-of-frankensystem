@@ -99,18 +99,18 @@
                         </div>
                     </div>
                 </div>
-            </div>
-            {% if end_reason_counts and end_reason_counts | length > 0 %}
-            <div style="margin-top: 15px;" class="bg-body-tertiary p-3 rounded">
-                <h4>End Reasons</h4>
-                <div style="display: grid; grid-template-columns: 160px auto;">
-                {% for row in end_reason_counts %}
-                    <b>{{ row.end_reason or 'NULL (abandoned)' }}</b>
-                    <span>{{ row.count }}</span>
-                {% endfor %}
+                {% if end_reason_counts and end_reason_counts | length > 1 %}
+                <div style="flex-grow: 1; margin-left: 15px;" class="bg-body-tertiary p-3 rounded">
+                    <h4>End Reasons</h4>
+                    <div style="display: grid; grid-template-columns: 160px auto;">
+                    {% for row in end_reason_counts %}
+                        <b>{{ row.end_reason or 'NULL (abandoned)' }}</b>
+                        <span>{{ row.count }}</span>
+                    {% endfor %}
+                    </div>
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
