@@ -105,7 +105,7 @@ def route_create_participant():
         return redirect("/end/quota_full")
 
     try:
-        p = provide_consent(True, False)
+        p = provide_consent(True)
     except ConditionLookupMiss as miss:
         return _render_condition_lookup_miss(miss.external_id)
     if p.isCrawler:
@@ -131,7 +131,7 @@ def route_create_participant_nc():
         ParticipantService.provide_quota_full()
         return redirect("/end/quota_full")
 
-    p = provide_consent(False, False)
+    p = provide_consent(False)
     if p.isCrawler:
         return redirect("/end/bot")
     return redirect("/redirect_from_page/create_participant_nc")

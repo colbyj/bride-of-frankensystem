@@ -365,7 +365,7 @@ def fetch_condition_count_db():
     return ParticipantService.max_assigned_condition_db()
 
 
-def provide_consent(assignCondition=True, logDisplaySize=False):
+def provide_consent(assignCondition=True, logDisplaySize=True):
     """
     This needs to be used inside a route, otherwise session and request won't work.
 
