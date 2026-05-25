@@ -28,10 +28,15 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         if is_valid_header_color(header_color):
             app.config['HEADER_COLOR'] = header_color.strip()
         else:
-            print(
-                f"WARNING: HEADER_COLOR={header_color!r} is not a valid CSS color "
-                f"(expected hex like '#8CB737', a named color, or rgb()/rgba()/hsl()/hsla()). "
-                f"Falling back to the default header color."
+            app.setup_diagnostics.add(
+                "warning", "config",
+                f"HEADER_COLOR={header_color!r} is not a valid CSS color. "
+                f"Falling back to the default header color.",
+                suggestion=(
+                    "Use a hex value like '#8CB737', a named color, or "
+                    "rgb()/rgba()/hsl()/hsla() functional notation."
+                ),
+                source="HEADER_COLOR",
             )
             app.config['HEADER_COLOR'] = None
 
@@ -40,9 +45,11 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
     if 'LOG_GRID_CLICKS' in app.config and 'LOG_QUESTIONNAIRE_INTERACTIONS' not in app.config:
         app.config['LOG_QUESTIONNAIRE_INTERACTIONS'] = app.config['LOG_GRID_CLICKS']
-        app.logger.warning(
-            "Config key LOG_GRID_CLICKS is deprecated; rename to "
-            "LOG_QUESTIONNAIRE_INTERACTIONS in your config.toml."
+        app.setup_diagnostics.add(
+            "warning", "config",
+            "Config key LOG_GRID_CLICKS is deprecated.",
+            suggestion="Rename LOG_GRID_CLICKS to LOG_QUESTIONNAIRE_INTERACTIONS in your config.toml.",
+            source="LOG_GRID_CLICKS",
         )
 
     if 'LOG_QUESTIONNAIRE_INTERACTIONS' not in app.config:
@@ -202,31 +209,38 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
     with app.app_context():
         if not app.questionnaire_list_is_safe():
-            print("Error! The same questionnaire was specified twice. Please add a tag to your questionnaire if this "
-                  "was intentional.")
-            return
+            app.setup_diagnostics.add(
+                "error", "page_list",
+                "The same questionnaire was specified twice in PAGE_LIST.",
+                suggestion=(
+                    "Add a `tag` to one of the entries if the duplication "
+                    "is intentional, so the two submissions can be stored "
+                    "and retrieved independently."
+                ),
+            )
+            # Continue construction so the error surfaces on the
+            # fatal-error page instead of crashing the app silently.
 
         app.load_questionnaires()
         app.load_tables()
 
         if app.config.get('USE_BREADCRUMBS', True) and app.page_list.has_branching():
-            print(
-                "WARNING: USE_BREADCRUMBS is enabled and PAGE_LIST contains "
+            app.setup_diagnostics.add(
+                "warning", "page_list",
+                "USE_BREADCRUMBS is enabled and PAGE_LIST contains "
                 "conditional_routing or show_if predicates. The breadcrumb "
-                "only shows pages BOFS knows the participant will visit, so "
-                "it will grow as participants answer gating questions. If "
-                "this is undesirable, set USE_BREADCRUMBS = false in your "
-                "config."
+                "only shows pages BOFS knows the participant will visit, "
+                "so it will grow as participants answer gating questions.",
+                suggestion=(
+                    "If a growing breadcrumb is undesirable, set "
+                    "USE_BREADCRUMBS = false in your config."
+                ),
+                source="USE_BREADCRUMBS",
             )
 
         from .validation import validate_page_show_if_table_refs
-        table_ref_warnings = validate_page_show_if_table_refs(
-            app.page_list.page_list, app.tables
-        )
-        if table_ref_warnings:
-            app.validation_errors.extend(table_ref_warnings)
-            for w in table_ref_warnings:
-                print(w)
+        for w in validate_page_show_if_table_refs(app.page_list.page_list, app.tables):
+            app.setup_diagnostics.append(w)
 
         # Make orphaned DB columns nullable (before db.create_all so the model matches)
         for q_key in app.questionnaires:
@@ -237,15 +251,21 @@ def create_app(path, config_name, debug=False, reloader_off=False):
                 make_columns_nullable(q.db_class.__tablename__, orphaned_names,
                                       bind_key=getattr(q, 'bind_key', None))
 
-        # Print validation summary (JSON-level errors only; schema warnings come later)
-        fatal_errors = [e for e in app.validation_errors if e.severity == "error"]
-        warnings = [e for e in app.validation_errors if e.severity == "warning"]
+        # Print a startup summary banner so the researcher sees totals in
+        # the terminal even when running headless. Individual diagnostics
+        # are already in the collector (and have been mirrored to the
+        # logger). The full structured view is on the landing-page
+        # interstitial and the fatal-error page.
+        fatal_errors = app.setup_diagnostics.by_severity("error")
+        warnings = app.setup_diagnostics.by_severity("warning")
         if fatal_errors:
             print(f"\n{'='*60}")
-            print(f"QUESTIONNAIRE VALIDATION: {len(fatal_errors)} error(s), {len(warnings)} warning(s)")
+            print(f"BOFS SETUP: {len(fatal_errors)} error(s), {len(warnings)} warning(s)")
             print(f"The experiment will NOT be accessible until these errors are fixed.")
             print(f"Open the app in a browser to see detailed error descriptions.")
             print(f"{'='*60}\n")
+        elif warnings:
+            print(f"\nBOFS setup: {len(warnings)} warning(s). Open the app to view details.\n")
 
         # Flask-SQLAlchemy iterates every configured engine (default plus
         # SQLALCHEMY_BINDS) and emits each model against the engine matching
@@ -325,11 +345,8 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         from .validation import validate_db_schema
         for q_key in app.questionnaires:
             q = app.questionnaires[q_key]
-            schema_warnings = validate_db_schema(q, q_key)
-            if schema_warnings:
-                app.validation_errors.extend(schema_warnings)
-                for w in schema_warnings:
-                    print(w)
+            for w in validate_db_schema(q, q_key):
+                app.setup_diagnostics.append(w, category="schema")
 
         # Warn about PAGE_LIST routes missing @verify_correct_page (which
         # enforces ordering and bootstraps session state).

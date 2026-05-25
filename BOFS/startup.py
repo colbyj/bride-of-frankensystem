@@ -77,10 +77,18 @@ def resolve_secret_key(app) -> None:
         if config_key:
             app.db.session.add(app.db.AppMeta(key='secret_key', value=config_key))
             app.db.session.commit()
+            # First-run migration: informational, not actionable yet.
             print(
                 "NOTE: SECRET_KEY in your config has been migrated into the project database. "
                 "BOFS now manages SECRET_KEY automatically — you can safely remove the line "
                 "from your .toml config file."
+            )
+            app.setup_diagnostics.add(
+                "warning", "security",
+                "SECRET_KEY is set in your config; BOFS has migrated it "
+                "into the project database and now manages it automatically.",
+                suggestion="Remove the SECRET_KEY line from your config.toml.",
+                source="SECRET_KEY",
             )
         else:
             new_key = secrets.token_hex(32)
@@ -91,9 +99,13 @@ def resolve_secret_key(app) -> None:
 
     # Stored value already exists — it is the source of truth.
     if config_key and config_key != stored.value:
-        print(
-            "NOTE: SECRET_KEY is set in your config but BOFS is using the value persisted "
-            "in the project database. The config line is ignored and can be removed."
+        app.setup_diagnostics.add(
+            "warning", "security",
+            "SECRET_KEY is set in your config but BOFS is using the "
+            "value persisted in the project database. The config line is "
+            "ignored.",
+            suggestion="Remove the SECRET_KEY line from your config.toml.",
+            source="SECRET_KEY",
         )
     app.config['SECRET_KEY'] = stored.value
 
@@ -214,16 +226,16 @@ def load_table(app, directory: str, filename: str) -> Union[JSONTable, None]:
     if filename in app.tables:
         return None
 
-    from .validation import RESERVED_EXPRESSION_NAMES, ValidationResult
+    from .validation import RESERVED_EXPRESSION_NAMES
     if filename in RESERVED_EXPRESSION_NAMES:
-        app.validation_errors.append(ValidationResult(
-            "error", filename + ".json",
+        app.setup_diagnostics.add(
+            "error", "table",
             f"Table filename '{filename}' conflicts with a reserved "
             f"expression name. Tables and questionnaires cannot be named "
             f"any of: {', '.join(sorted(RESERVED_EXPRESSION_NAMES))}.",
-            f"Rename '{filename}.json' to something else."
-        ))
-        print(app.validation_errors[-1])
+            suggestion=f"Rename '{filename}.json' to something else.",
+            questionnaire=filename + ".json",
+        )
         return None
 
     print(f"Loaded table: {directory}/{filename}.json")
@@ -234,16 +246,13 @@ def load_table(app, directory: str, filename: str) -> Union[JSONTable, None]:
         available_binds = set(app.config.get("SQLALCHEMY_BINDS", {}) or {})
         errors = validate_table(table.json_data, filename, available_binds=available_binds)
         fatal = [e for e in errors if e.severity == "error"]
-        warnings = [e for e in errors if e.severity == "warning"]
-        for w in warnings:
-            print(w)
-        app.validation_errors.extend(warnings)
+        for entry in errors:
+            app.setup_diagnostics.append(entry, category="table")
         if fatal:
-            app.validation_errors.extend(fatal)
-            for err in fatal:
-                print(err)
-            print(f"  Skipping table '{filename}' due to "
-                  f"{len(fatal)} error(s).")
+            app.logger.warning(
+                "Skipping table %r due to %d validation error(s).",
+                filename, len(fatal),
+            )
             return None
 
     table.create_db_class()
@@ -274,7 +283,7 @@ def load_tables(app) -> None:
 
 def load_questionnaire(app, directory: str, filename: str, add_to_db: bool = False,
                        valid_question_types=None) -> Union[JSONQuestionnaire, None]:
-    from .validation import validate_questionnaire, RESERVED_EXPRESSION_NAMES, ValidationResult
+    from .validation import validate_questionnaire, RESERVED_EXPRESSION_NAMES
 
     if "questionnaire_" + filename in app.db.metadata.tables:
         return None
@@ -283,26 +292,27 @@ def load_questionnaire(app, directory: str, filename: str, add_to_db: bool = Fal
         return None
 
     if filename in RESERVED_EXPRESSION_NAMES:
-        app.validation_errors.append(ValidationResult(
-            "error", filename + ".json",
+        app.setup_diagnostics.add(
+            "error", "questionnaire",
             f"Questionnaire filename '{filename}' conflicts with a "
             f"reserved expression name. Questionnaires and tables cannot "
             f"be named any of: "
             f"{', '.join(sorted(RESERVED_EXPRESSION_NAMES))}.",
-            f"Rename '{filename}.json' to something else."
-        ))
-        print(app.validation_errors[-1])
+            suggestion=f"Rename '{filename}.json' to something else.",
+            questionnaire=filename + ".json",
+        )
         return None
 
     # Try to load the JSON file
     try:
         questionnaire = JSONQuestionnaire(directory, filename, add_to_db)
     except (SyntaxError, FileNotFoundError, IOError) as e:
-        app.validation_errors.append(ValidationResult(
-            "error", filename, str(e),
-            "Check that the file exists and contains valid JSON syntax."
-        ))
-        print(f"  ERROR loading questionnaire '{filename}': {e}")
+        app.setup_diagnostics.add(
+            "error", "questionnaire",
+            str(e),
+            suggestion="Check that the file exists and contains valid JSON syntax.",
+            questionnaire=filename,
+        )
         return None
 
     # Validate the questionnaire JSON before creating the DB class
@@ -312,17 +322,14 @@ def load_questionnaire(app, directory: str, filename: str, add_to_db: bool = Fal
         available_binds=available_binds,
     )
     fatal_errors = [e for e in errors if e.severity == "error"]
-    warnings = [e for e in errors if e.severity == "warning"]
-
-    for w in warnings:
-        print(w)
-    app.validation_errors.extend(warnings)
+    for entry in errors:
+        app.setup_diagnostics.append(entry, category="questionnaire")
 
     if fatal_errors:
-        app.validation_errors.extend(fatal_errors)
-        for err in fatal_errors:
-            print(err)
-        print(f"  Skipping questionnaire '{filename}' due to {len(fatal_errors)} error(s).")
+        app.logger.warning(
+            "Skipping questionnaire %r due to %d validation error(s).",
+            filename, len(fatal_errors),
+        )
         return None
 
     # Validation passed — create the DB class
@@ -360,13 +367,8 @@ def load_questionnaires(app) -> None:
             load_questionnaire(app, path, questionnaire_filename, add_to_db, valid_question_types)
 
     # Check that all PAGE_LIST questionnaire references have matching files
-    page_list_errors = validate_page_list_references(
-        app.config['PAGE_LIST'], app.questionnaire_paths
-    )
-    if page_list_errors:
-        app.validation_errors.extend(page_list_errors)
-        for err in page_list_errors:
-            print(err)
+    for err in validate_page_list_references(app.config['PAGE_LIST'], app.questionnaire_paths):
+        app.setup_diagnostics.append(err, category="page_list")
 
 
 def get_questionnaire_path(app, questionnaire_to_find: str) -> Union[str, None]:
@@ -396,11 +398,15 @@ def warn_about_unused_binds(app) -> None:
     used |= {getattr(t, 'bind_key', None) for t in app.tables.values()}
     used.discard(None)
     for unused in sorted(configured - used):
-        app.logger.warning(
-            "SQLALCHEMY_BINDS entry %r is configured but no questionnaire "
-            "or table references it. Set `database: %r` on a JSON file or "
-            "remove the bind from your config.",
-            unused, unused,
+        app.setup_diagnostics.add(
+            "warning", "bind",
+            f"SQLALCHEMY_BINDS entry {unused!r} is configured but no "
+            f"questionnaire or table references it.",
+            suggestion=(
+                f"Set `database: \"{unused}\"` on a JSON file, or remove "
+                f"the bind from your config."
+            ),
+            source=f"SQLALCHEMY_BINDS.{unused}",
         )
 
 
@@ -490,15 +496,19 @@ def warn_about_orphan_participants(app) -> None:
             sample = ", ".join(str(p) for p in shown)
             if more > 0:
                 sample += f", ... (+{more} more)"
-            app.logger.warning(
-                "Table %r on bind %r has %d row(s) referencing participantID "
-                "values that don't exist in the default-bind participant "
-                "table: %s. These are orphans — most likely from a partial "
-                "DB restore or out-of-band editing. A new participant who "
-                "is assigned a reused ID will silently inherit the orphan "
-                "row's data; rotate or delete the orphans before letting "
-                "new participants sign up.",
-                table_name, bind_key, len(orphans), sample,
+            app.setup_diagnostics.add(
+                "warning", "bind",
+                f"Table {table_name!r} on bind {bind_key!r} has "
+                f"{len(orphans)} row(s) referencing participantID values "
+                f"that don't exist in the default-bind participant table: "
+                f"{sample}. These are orphans — most likely from a partial "
+                f"DB restore or out-of-band editing.",
+                suggestion=(
+                    "A new participant assigned a reused ID will silently "
+                    "inherit the orphan row's data. Rotate or delete the "
+                    "orphans before letting new participants sign up."
+                ),
+                source=f"{bind_key}.{table_name}",
             )
 
 
@@ -515,10 +525,15 @@ def warn_undecorated_pages(app) -> None:
         try:
             endpoint, _ = adapter.match('/' + path)
         except Exception:
-            app.logger.warning(
-                "PAGE_LIST entry %r doesn't match any registered route. "
-                "Participants navigating to this page will see a 404.",
-                path,
+            app.setup_diagnostics.add(
+                "warning", "route",
+                f"PAGE_LIST entry {path!r} doesn't match any registered route.",
+                suggestion=(
+                    "Participants navigating to this page will see a 404. "
+                    "Add a matching route in a blueprint, or fix the path "
+                    "in PAGE_LIST."
+                ),
+                source=path,
             )
             continue
 
@@ -528,10 +543,14 @@ def warn_undecorated_pages(app) -> None:
         if getattr(view_func, '_bofs_suppress_activity_polling', False):
             continue  # Researcher is managing this route manually.
         if not getattr(view_func, '_bofs_verify_correct_page', False):
-            app.logger.warning(
-                "PAGE_LIST entry %r maps to view %s which is missing "
-                "@verify_correct_page. The decorator enforces page-list "
-                "ordering and bootstraps session state; without it, "
-                "participants can navigate to this page out of order.",
-                path, endpoint,
+            app.setup_diagnostics.add(
+                "warning", "route",
+                f"PAGE_LIST entry {path!r} maps to view {endpoint} which is "
+                f"missing @verify_correct_page.",
+                suggestion=(
+                    "The decorator enforces page-list ordering and "
+                    "bootstraps session state; without it, participants "
+                    "can navigate to this page out of order."
+                ),
+                source=path,
             )

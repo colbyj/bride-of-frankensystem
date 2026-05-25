@@ -5,7 +5,7 @@ import json
 import os
 import random
 from typing import Union
-from flask import Flask, send_from_directory, Response, url_for, render_template, session
+from flask import Flask, send_from_directory, Response, url_for, render_template, session, request, redirect
 from flask_sqlalchemy import SQLAlchemy
 from flask_compress import Compress
 from markupsafe import Markup
@@ -15,6 +15,19 @@ from .BOFSSession import BOFSSessionInterface
 from .JSONQuestionnaire import JSONQuestionnaire
 from .JSONTable import JSONTable
 from .PageList import PageList
+from .setup_diagnostics import DiagnosticCollector
+
+
+# Participant entry-point paths. The non-fatal-warning interstitial fires
+# on a fresh GET to any of these, before a participantID exists in the
+# session. Keeping the set tight ensures the interstitial can't appear in
+# the middle of an experiment flow (it would be confusing) and never on
+# admin or static routes (it would be annoying).
+_LANDING_PATHS = frozenset({
+    "", "consent", "consent_nc",
+    "create_participant", "create_participant_nc",
+    "external_id", "startMTurk", "start_mturk",
+})
 
 
 class BOFSFlask(Flask):
@@ -58,11 +71,21 @@ class BOFSFlask(Flask):
         self.crawler_detect = CrawlerDetect()
         """Used to detect when search engines, etc. are viewing the project."""
 
-        self.validation_errors: list = []
-        """Questionnaire validation errors collected during startup."""
+        self.setup_diagnostics = DiagnosticCollector(self)
+        """Central collector for all setup-time warnings, errors, and notices.
+
+        Surfaces on the landing-page interstitial, on the fatal-error
+        page, and (planned) on an admin diagnostics page. Replaces the
+        older ``validation_errors`` list, which now reads from this
+        collector via the property below."""
 
         self.add_url_rule("/BOFS_static/<path:filename>", endpoint="BOFS_static", view_func=self.route_BOFS_static)
         self.add_url_rule("/consent.html", endpoint="consent_html", view_func=self.route_consent)
+        self.add_url_rule(
+            "/acknowledge_setup_diagnostics",
+            endpoint="acknowledge_setup_diagnostics",
+            view_func=self.route_acknowledge_setup_diagnostics,
+        )
         self.register_error_handler(404, self.page_not_found)
 
         if not self.run_with_debugging:
@@ -126,6 +149,18 @@ class BOFSFlask(Flask):
         except KeyboardInterrupt:
             pass
 
+    @property
+    def validation_errors(self):
+        """Back-compat shim for the older list of validation findings.
+
+        Returns the error+warning subset of :attr:`setup_diagnostics`.
+        New code should write to ``setup_diagnostics`` directly. This
+        property is read-only — historical writers (``.append`` /
+        ``.extend``) have been migrated to the collector; mutating the
+        returned list has no effect on the collector.
+        """
+        return self.setup_diagnostics.actionable()
+
     # ---- Pass-through methods to BOFS.startup ----
     # The implementations live in BOFS/startup.py so the BOFSFlask class
     # stays focused on Flask-subclass concerns. These thin wrappers preserve
@@ -172,6 +207,19 @@ class BOFSFlask(Flask):
 
     def route_consent(self) -> Response:
         return send_from_directory(self.root_path, "consent.html")
+
+    def route_acknowledge_setup_diagnostics(self):
+        """Set the session flag and bounce back to the requested landing
+        URL. The flag is per-session, so each fresh browser session sees
+        the warnings once."""
+        session["setup_diagnostics_acknowledged"] = True
+        target = request.args.get("next", "/")
+        # Defend against open-redirect: only allow same-origin relative
+        # paths starting with a single '/'. Anything else falls back to
+        # the project root.
+        if not isinstance(target, str) or not target.startswith("/") or target.startswith("//"):
+            target = "/"
+        return redirect(target)
 
     def page_not_found(self, e) -> tuple[str, int]:
         return render_template('error.html',
@@ -293,26 +341,71 @@ class BOFSFlask(Flask):
                 brute_force.record_probe(ip, "hostile_ua", notes=ua)
                 return self._too_many_requests_response(brute_force.seconds_until_unban(ip))
 
-        # If there are fatal validation errors, redirect all non-static routes to the error page
-        if self.validation_errors and not request.path.startswith('/BOFS_static'):
-            has_fatal = any(e.severity == "error" for e in self.validation_errors)
-            if has_fatal:
-                return render_template('error.html',
-                    title="Questionnaire Configuration Errors",
-                    heading="Questionnaire Configuration Errors",
-                    message="BOFS found issues with your questionnaire definitions that must be fixed before the experiment can run.",
-                    details=self.validation_errors,
-                    help_text=Markup(
-                        "<h3>How to fix</h3>"
-                        "<ol>"
-                        "<li>Check each error above and follow the suggestion.</li>"
-                        "<li>Save your questionnaire JSON file(s).</li>"
-                        "<li>Restart BOFS to re-validate.</li>"
-                        "</ol>"
-                        '<p>If you need help with questionnaire format, see the '
-                        '<a href="https://bride-of-frankensystem.readthedocs.io/">BOFS documentation</a>.</p>'
-                    )
+        # If setup diagnostics include any errors, block every non-static route
+        # until the researcher fixes them. The fatal-error page also lists
+        # any warnings alongside, since the researcher is already looking.
+        if self.setup_diagnostics.has_fatal() and not request.path.startswith('/BOFS_static'):
+            return render_template('error.html',
+                title="Configuration Errors",
+                heading="BOFS Configuration Errors",
+                message="Your project has issues that must be fixed before it can run.",
+                grouped=self.setup_diagnostics.grouped(),
+                help_text=Markup(
+                    "<h3>How to fix</h3>"
+                    "<ol>"
+                    "<li>Check each error above and follow the suggestion.</li>"
+                    "<li>Save your configuration / questionnaire / table file(s).</li>"
+                    "<li>Restart BOFS to re-validate.</li>"
+                    "</ol>"
+                    '<p>If you need help, see the '
+                    '<a href="https://bride-of-frankensystem.readthedocs.io/">BOFS documentation</a>.</p>'
                 )
+            )
+
+        # Non-fatal warnings: show a one-time interstitial on the participant
+        # entry routes so the researcher sees them while testing. The
+        # interstitial only fires before a participant has been created
+        # (no participantID in session yet) and is acknowledged with a
+        # session flag so subsequent loads, retries, and real participants
+        # never re-encounter it.
+        #
+        # Audience gate: in production, real participants should not see
+        # researcher-facing warnings. The interstitial only renders when
+        # the app is running with ``-d`` (debug mode) or when the request
+        # came from the loopback address — both situations indicate the
+        # researcher is the one looking at the page.
+        client_is_local = request.remote_addr in ("127.0.0.1", "::1", "localhost")
+        researcher_is_looking = self.run_with_debugging or client_is_local
+        if (
+            researcher_is_looking
+            and self.setup_diagnostics.by_severity("warning")
+            and request.method == "GET"
+            and request.path.lstrip("/") in _LANDING_PATHS
+            and "participantID" not in session
+            and not session.get("setup_diagnostics_acknowledged")
+        ):
+            return render_template(
+                "error.html",
+                title="BOFS Setup Warnings",
+                heading="BOFS Setup Warnings",
+                message=(
+                    "Your project has one or more warnings that should be reviewed before launching the study."
+                ),
+                grouped=self.setup_diagnostics.grouped(severities=("warning",)),
+                continue_url=(
+                    "/acknowledge_setup_diagnostics?next="
+                    + request.full_path.rstrip("?")
+                ),
+                help_text=Markup(
+                    "<h3>What to do</h3>"
+                    "<ol>"
+                    "<li>Review each warning above and follow the suggestion.</li>"
+                    "<li>Save your file(s) and restart BOFS to re-validate.</li>"
+                    "<li>If you intend to leave a warning unresolved, you can "
+                    "continue to the study below.</li>"
+                    "</ol>"
+                ),
+            )
 
         # Participant progress tracking. Runs for every request when the
         # request is for the page the participant is supposed to be on. This
