@@ -16,6 +16,9 @@ Required Settings
    * - ``SQLALCHEMY_DATABASE_URI``
      - string
      - Database connection string. Use ``sqlite:///filename.db`` for SQLite or ``postgresql://user:pass@host/db`` for PostgreSQL.
+   * - ``SQLALCHEMY_BINDS``
+     - table
+     - Optional. Additional databases the project can route questionnaires / custom tables into. Each entry maps a bind name to a connection string. A questionnaire or table opts into a bind by adding a ``"database": "<bind-name>"`` field to its JSON. See :doc:`/framework/database_layer` for the trade-offs (no cross-bind FK, separate backup discipline).
    * - ``TITLE``
      - string
      - Study title shown in browser tab and page headers.
@@ -254,11 +257,11 @@ These settings control the ``/external_id`` page for collecting participant IDs 
    * - ``EXTERNAL_ID_LABEL``
      - string
      - ``"Mechanical Turk Worker ID"``
-     - Label for the external ID field.
+     - Label used to describe the external ID field.
    * - ``EXTERNAL_ID_PROMPT``
      - string
      - ``"Please enter your MTurk Worker ID. You can find this on your MTurk dashboard."``
-     - Instructions shown above the ID input field.
+     - Instructions to fully override the external ID prompt.
 
 Completion Settings
 -------------------

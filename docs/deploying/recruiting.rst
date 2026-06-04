@@ -54,9 +54,9 @@ Customise the label and prompt shown on the manual entry page:
     EXTERNAL_ID_LABEL = "Your Platform Participant ID"
     EXTERNAL_ID_PROMPT = "Please enter the participant ID provided by the research platform."
 
-The defaults are ``"Mechanical Turk Worker ID"`` and a matching MTurk-specific
-prompt, so you will want to override both when using Prolific or a generic
-platform.
+The defaults provide a MTurk-specific prompt, so you will want to override
+both when using Prolific or a generic platform. If you override `EXTERNAL_ID_PROMPT`, then
+`EXTERNAL_ID_LABEL` will not be used.
 
 .. image:: /examples/quickstart/page_external_id.png
    :width: 800

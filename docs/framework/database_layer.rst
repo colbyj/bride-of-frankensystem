@@ -268,10 +268,54 @@ Limitations
 - Models are loaded at startup. Adding a new model means restarting the project.
 - The ``db.<ModelName>`` registration uses the class name, so two models with the same name across different blueprints will collide.
 
-Switching from SQLite to PostgreSQL
------------------------------------
+Splitting data across multiple databases
+----------------------------------------
 
-For development, SQLite is built in and requires nothing. For production with many concurrent participants, PostgreSQL is an option — it handles concurrent writers cleanly where SQLite serialises them.
+A questionnaire or custom table can write to a database other than the project's main one, for example, to keep personally identifiable information (follow-up emails, contact details) in a file separate from the experiment data.
+
+Define the additional database in ``config.toml`` using TOML dotted keys:
+
+.. code-block:: toml
+
+   SQLALCHEMY_DATABASE_URI = "sqlite:///study.db"
+   SQLALCHEMY_BINDS.pii = "sqlite:///pii.db"
+   SQLALCHEMY_BINDS.archive = "sqlite:///archive.db"
+
+Then opt a questionnaire or table into that bind by adding a top-level ``"database"`` field to its JSON:
+
+.. code-block:: json
+
+   {
+     "database": "pii",
+     "questions": [
+       {"questiontype": "field", "id": "email", "title": "Email"}
+     ]
+   }
+
+Without the field, the questionnaire or table writes to the main DB.
+
+Limitations and Considerations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``Participant`` row stays in the main DB regardless of any per-bind config. Rows in a non-default bind link to ``Participant`` by integer ``participantID``, but there is no database-level foreign key across binds. When deleting/clearing databases, failure to clear out/delete any secondary databases may result in data loss, errors, or data integrity issues (i.e., it won't be clear if the stored data is truly associated with your participants).
+
+When writing custom blueprints, ``Participant.questionnaire('contact')`` and ``has_questionnaire('contact')`` still work, however, without a valid foreign key, accessing the questionnaire via SQLAlchemy's ``participant.questionnaire_<name>`` backref will not work.
+
+Each SQLite bind is a separate file. The admin panel's "Download Database" button (under the Database dropdown) bundles every SQLite bind into a single zip. "Delete Database" similarly clears rows from every bind in one shot, after writing a timestamped backup zip to the project root.
+
+Partial state from out-of-band editing (a researcher restoring ``main.db`` from an old snapshot while ``pii.db`` keeps the current data, for example) leaves rows on the bound DB whose ``participantID`` values may no longer exist on the default bind. SQLAlchemy can't enforce a FK across engines, so the framework can't reject the orphan rows outright. Instead, BOFS scans every cross-bind table with a ``participantID`` column at startup and logs a warning naming any orphan IDs. Rotate or delete the orphans before letting new participants sign up; otherwise the next participant assigned a reused ID will silently inherit the orphan row's data.
+
+Export endpoints are per-bind
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The admin ``/admin/export/download`` endpoint still produces today's single CSV (with everything merged via outer joins). For each bind referenced by at least one questionnaire or table, the export page adds a ``/admin/export/download/<bind>`` button — that endpoint emits a CSV containing only that bind's questionnaire / table columns, leading with ``participantID`` as the join key. The PII CSV does not contain the experiment data, and the experiment-only CSV at ``/admin/export/download`` does not contain PII (when the researcher consumes the per-bind endpoints separately).
+
+Mixing dialects works — the main DB can be SQLite while a bind is Postgres, or vice versa. Each engine is independent, so type compatibility is the researcher's problem; the framework just routes queries.
+
+Switching from SQLite to PostgreSQL (or another DBMS)
+-----------------------------------------------------
+
+For development, SQLite is built in and easy to use. For production with many concurrent participants, PostgreSQL is an option. It handles concurrent writers cleanly where SQLite serialises them.
 
 The only change is the connection string in ``config.toml``:
 
@@ -284,6 +328,8 @@ The only change is the connection string in ``config.toml``:
    SQLALCHEMY_DATABASE_URI = "postgresql://user:password@host:5432/dbname"
 
 Schema creation runs at startup either way. Migrating live data between databases is a separate operation — typically a ``pg_dump``/``pg_restore`` after exporting the SQLite content with ``sqlalchemy``-native or third-party tools.
+
+The main limitation of this is that from the admin panel you cannot download the entire database as a file, nor can you delete the database.
 
 See :doc:`/deploying/server` for production deployment context.
 

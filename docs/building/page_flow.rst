@@ -76,7 +76,7 @@ The four variants and when to pick which are covered in :doc:`consent`.
    * - Path format
      - What it shows
    * - ``external_id``
-     - A page asking the participant to enter their external ID (MTurk Worker ID, Prolific PID, etc.). Configurable via ``EXTERNAL_ID_LABEL`` and ``EXTERNAL_ID_PROMPT``.
+     - A page asking the participant to enter their external ID (MTurk Worker ID, Prolific PID, etc.). Configurable via ``EXTERNAL_ID_LABEL`` or ``EXTERNAL_ID_PROMPT``.
    * - ``questionnaire/<name>``
      - The questionnaire from ``questionnaires/<name>.json``.
    * - ``questionnaire/<name>/<tag>``

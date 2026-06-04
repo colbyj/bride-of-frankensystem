@@ -34,6 +34,9 @@ Top-level properties
    * - ``participant_calculations``
      - No
      - Object mapping calculated column names to expression strings. See `participant_calculations`_ below.
+   * - ``database``
+     - No
+     - Name of a ``SQLALCHEMY_BINDS`` entry from ``config.toml``. Routes this questionnaire's table to that database instead of the default. See :doc:`/framework/database_layer` for the trade-offs.
 
 BOFS ignores unrecognised top-level keys, so you can add metadata fields for your own reference.
 

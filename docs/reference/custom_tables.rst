@@ -82,6 +82,24 @@ Every custom table automatically receives two additional columns that you do not
 - ``participantID`` — foreign key to the ``participant`` table, populated from the current session.
 - ``timeSubmitted`` — ``DATETIME``, set to the server's current UTC time on each insert.
 
+When the table is routed to a non-default database via the ``"database"`` field (see below), ``participantID`` is a plain indexed integer column rather than a foreign key, since SQLAlchemy can't enforce a FK across separate engines.
+
+Routing a Table to a Different Database
+---------------------------------------
+
+A custom table can write to a database other than the project's main one. Add a top-level ``"database"`` field naming an entry from ``[SQLALCHEMY_BINDS]`` in ``config.toml``:
+
+.. code-block:: json
+
+   {
+     "database": "pii",
+     "columns": {
+       "follow_up_email": {"type": "string"}
+     }
+   }
+
+The same option is available on questionnaire JSON files. Trade-offs and the per-bind admin export endpoint are covered in :doc:`/framework/database_layer`.
+
 Naming Rules
 ------------
 

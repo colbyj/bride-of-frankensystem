@@ -10,7 +10,11 @@
 
             <div class="bofs-question" style="">
                 <div class="bofs-padding">
-                    <h3>Please enter your {{ config['EXTERNAL_ID_LABEL'] }}.</h3>
+                    {% if config['EXTERNAL_ID_PROMPT'] %}
+                        <h3>{{ config['EXTERNAL_ID_PROMPT'] }}</h3>
+                    {% else %}
+                         <h3>Please enter your {{ config['EXTERNAL_ID_LABEL'] }}.</h3>
+                    {% endif %}
                     <div>
                         <input class="bofs-form-control"
                                type="text"
