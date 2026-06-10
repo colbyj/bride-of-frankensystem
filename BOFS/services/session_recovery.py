@@ -14,6 +14,14 @@ class SessionRecoveryService:
 
     _LOOP_BLOCKED_PATHS = ('startMTurk', 'start_mturk', 'external_id', 'consent')
 
+    # Keys that grant admin privileges and must never be carried over from a
+    # recovered (different-participant) session blob. Without this guard, a
+    # stored session that happened to contain an admin flag — e.g. a researcher
+    # who tested the study while logged into the admin panel under a worker ID
+    # later reused as a participant — would escalate the recovering participant
+    # to admin.
+    _PRIVILEGE_KEYS = frozenset({'loggedIn', 'adminIp'})
+
     @staticmethod
     def try_restore(p, mturk_id: str) -> Optional[str]:
         """
@@ -125,8 +133,14 @@ class SessionRecoveryService:
         the live Flask session. Callers that need to make decisions based on
         the recovered URL should inspect ``dict_data`` themselves before
         invoking this — once it runs, ``session['currentUrl']`` reflects the
-        recovered value."""
+        recovered value.
+
+        Privilege keys (see ``_PRIVILEGE_KEYS``) are never copied: the recovered
+        blob belongs to a different participant and must not be able to confer
+        admin access on the current session."""
         for key in dict_data.keys():
+            if key in SessionRecoveryService._PRIVILEGE_KEYS:
+                continue
             session[key] = dict_data[key]
 
     @staticmethod

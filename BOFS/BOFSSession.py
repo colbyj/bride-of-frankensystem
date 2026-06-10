@@ -120,11 +120,14 @@ class BOFSSessionInterface(SessionInterface):
         # Looks like the session was deleted... delete the cookie.
         # We can't delete stuff from the DB as we don't know the ID.
         if not session:
-            response.delete_cookie(cookie_name, domain=domain, path=path)
+            response.delete_cookie(cookie_name, domain=domain, path=path,
+                                   secure=self.get_cookie_secure(app),
+                                   samesite=self.get_cookie_samesite(app))
             return
 
         httpOnly = self.get_cookie_httponly(app)
         secure = self.get_cookie_secure(app)
+        samesite = self.get_cookie_samesite(app)
 
         storedSession = app.db.session.get(app.db.SessionStore, session.sessionID)
 
@@ -163,7 +166,8 @@ class BOFSSessionInterface(SessionInterface):
         if session.new or session.modified:
             response.set_cookie(cookie_name, session.sessionID,
                                 expires=cookie_expires, httponly=httpOnly,
-                                domain=domain, path=path, secure=secure)
+                                domain=domain, path=path, secure=secure,
+                                samesite=samesite)
 
 
 class BOFSSession(CallbackDict, SessionMixin):
