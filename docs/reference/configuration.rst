@@ -15,7 +15,7 @@ Required Settings
      - Description
    * - ``SQLALCHEMY_DATABASE_URI``
      - string
-     - Database connection string. Use ``sqlite:///filename.db`` for SQLite or ``postgresql://user:pass@host/db`` for PostgreSQL.
+     - A URL-style address telling BOFS where your database file or server is. Use ``sqlite:///filename.db`` for SQLite or ``postgresql://user:pass@host/db`` for PostgreSQL.
    * - ``SQLALCHEMY_BINDS``
      - table
      - Optional. Additional databases the project can route questionnaires / custom tables into. Each entry maps a bind name to a connection string. A questionnaire or table opts into a bind by adding a ``"database": "<bind-name>"`` field to its JSON. See :doc:`/framework/database_layer` for the trade-offs (no cross-bind FK, separate backup discipline).
@@ -62,7 +62,7 @@ Application Settings
    * - ``WAITRESS_THREADS``
      - integer
      - ``16``
-     - Number of Waitress worker threads used in production (non-debug) mode. See :doc:`/deploying/server`.
+     - How many simultaneous requests the production (non-debug) server can handle; Waitress is the server BOFS uses in that mode. See :doc:`/deploying/server`.
    * - ``SECRET_KEY``
      - string
      - *(auto-generated)*

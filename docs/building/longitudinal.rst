@@ -27,7 +27,7 @@ How returning participants are recognized
 
 Both patterns need a stable identifier the participant brings back with them. BOFS supports three sources:
 
-- **A URL parameter.** When a participant arrives at ``http://your-study.example/?external_id=abc123``, BOFS captures the value in the session as ``externalID`` (also accessible as ``mTurkID``, an alias kept for backward compatibility — both keys are written together). Recruitment platforms like Prolific append the participant ID automatically — Prolific's ``PROLIFIC_PID`` parameter is also captured.
+- **A URL parameter.** When a participant arrives at ``http://your-study.example/?external_id=abc123``, BOFS captures the value in the session as ``externalID`` (older projects may refer to it as ``mTurkID`` — the two names are aliases for the same value). Recruitment platforms like Prolific append the participant ID automatically — Prolific's ``PROLIFIC_PID`` parameter is also captured.
 - **A manual entry page.** Adding ``{name="Enter ID", path="external_id"}`` to ``PAGE_LIST`` shows a form asking the participant to type their ID. Customizable via ``EXTERNAL_ID_LABEL`` and ``EXTERNAL_ID_PROMPT``. With URL-parameter capture in place this page is optional — include it only as a fallback for participants who arrive without a platform-provided ID.
 - **A blueprint route you write.** For custom recruitment flows, a Python view can call ``set_external_id_in_session(value)`` (from ``BOFS.util``) to populate the external ID. Existing code that writes ``session['mTurkID']`` directly still works.
 

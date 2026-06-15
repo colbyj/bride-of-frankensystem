@@ -18,7 +18,7 @@ Set ``CONDITIONS`` in ``config.toml`` to enable condition assignment:
 
 A few rules to keep in mind:
 
-- **Participants are assigned to whichever enabled condition has the fewest participants** at the moment of assignment. This produces approximately balanced groups even with rolling recruitment.
+- **Participants are assigned to whichever enabled condition has the fewest participants** at the moment of assignment, with ties going to the condition listed first. This keeps group sizes close even with rolling recruitment. Note that this is deterministic minimization, not simple random assignment — if your protocol or method section describes the randomization procedure, describe it as minimization.
 - **Condition numbers start at 1**, in the order they appear in the list. ``Control`` is condition ``1``, ``High Reward`` is ``2``, ``Low Reward`` is ``3``.
 - **Participants who haven't been assigned yet have condition ``0``.** This includes participants in projects with no ``CONDITIONS`` block at all.
 - **Abandoned participants aren't counted when balancing.** "Abandoned" means inactive longer than ``ABANDONED_MINUTES`` (default 5 minutes). To include them, set ``COUNTS_INCLUDE_ABANDONED = true``.
@@ -48,7 +48,7 @@ The full longitudinal pattern, including how the participant arrives back at the
 Conditional routing
 -------------------
 
-The ``conditional_routing`` block in ``PAGE_LIST`` shows different page sequences to different conditions. Each branch has a ``condition`` number (and/or a ``show_if`` predicate) plus a nested ``page_list``:
+The ``conditional_routing`` block in ``PAGE_LIST`` shows different page sequences to different conditions. Each branch has a ``condition`` number (and/or a ``show_if`` expression) plus a nested ``page_list``:
 
 .. code-block:: toml
 
@@ -95,7 +95,7 @@ Both fields are optional. A branch matches when its ``condition`` matches (when 
 Page-level ``show_if``
 ----------------------
 
-Any single PAGE_LIST entry — outside or inside a ``conditional_routing`` block — can carry a ``show_if`` predicate. When the predicate is false against the participant's stored answers, that page is skipped:
+Any single PAGE_LIST entry — outside or inside a ``conditional_routing`` block — can carry a ``show_if`` expression. When it evaluates false against the participant's stored answers, that page is skipped:
 
 .. code-block:: toml
 
@@ -111,6 +111,8 @@ The expression has access to all of the participant's stored questionnaire field
 Accessing the condition in templates and routes
 ------------------------------------------------
 
+This section applies only if you are writing your own templates or Python routes — ``conditional_routing`` and ``show_if`` cover condition-dependent flow without any code.
+
 Inside a Jinja template:
 
 .. code-block:: html
@@ -121,7 +123,7 @@ Inside a Jinja template:
      <p>High-reward instructions go here.</p>
    {% endif %}
 
-Inside a Python blueprint route, the condition is on the participant object passed to your view:
+Inside a Python blueprint route, read it from the session:
 
 .. code-block:: python
 
@@ -133,7 +135,7 @@ For more on the participant object and template variables, see :doc:`/framework/
 A note on breadcrumbs
 ---------------------
 
-If ``USE_BREADCRUMBS`` is enabled (the default) and the project uses ``conditional_routing`` or page-level ``show_if``, BOFS prints a startup warning. Breadcrumbs show every page in ``PAGE_LIST`` to every participant, which can leak the structure of conditions or hidden follow-up pages. Either disable breadcrumbs (``USE_BREADCRUMBS = false``) or accept that participants will see entries for pages they won't actually visit.
+If ``USE_BREADCRUMBS`` is enabled (the default) and the project uses ``conditional_routing`` or page-level ``show_if``, BOFS prints a startup warning. Breadcrumbs show every page in ``PAGE_LIST`` to every participant, which can reveal the structure of conditions or hidden follow-up pages — a participant who sees entries for other branches may infer the manipulation (demand characteristics). Either disable breadcrumbs (``USE_BREADCRUMBS = false``) or accept that participants will see entries for pages they won't actually visit.
 
 See also
 --------

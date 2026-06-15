@@ -78,8 +78,9 @@ existing participants, loads the previous session if it is incomplete, resumes
 from the last completed page, and preserves the original condition assignment.
 ``ALLOW_RETAKES = false`` blocks a participant whose session is already marked
 finished from starting again. These two together are the standard configuration
-for crowdsourced studies: workers who closed their browser can return, but
-repeat submissions are rejected.
+for crowdsourced studies: workers who closed their browser accidentally can
+return and finish instead of being lost to attrition, but repeat submissions
+are rejected.
 
 For a deeper look at how session recovery works, see :doc:`/framework/sessions`.
 
@@ -96,7 +97,9 @@ There are three options for how a participant's run ends.
     COMPLETION_CODE_MESSAGE = "Please copy this completion code and paste it into the HIT to receive payment:"
 
 BOFS generates a UUID-derived code automatically. Use this for MTurk, where
-each worker pastes the code into the HIT form to claim payment.
+each worker pastes the code into the HIT form to claim payment. Because each
+code is unique per participant, you can verify that a submitted code came from
+someone who actually reached the end page.
 
 **Static completion code** — the same code for everyone:
 
@@ -251,7 +254,8 @@ For multi-session studies (e.g., a day-0 and day-1 wave), the standard
 pattern is to capture ``PROLIFIC_PID`` on day 0 via ``RETRIEVE_SESSIONS``
 and then look up the same participant on day 1 using ``CONDITIONS_FROM_DB``,
 which reads the prior study's database to assign the returning participant
-to the same condition they were in before.
+to the same condition they were in before — keeping the manipulation
+consistent across waves.
 
 See :doc:`/building/longitudinal` for a full walkthrough of this pattern,
 including example TOML for both waves and how ``CONDITIONS_FROM_DB`` and

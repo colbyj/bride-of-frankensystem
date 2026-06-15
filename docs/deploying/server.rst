@@ -4,7 +4,7 @@ Deploying to a Server
 This page covers production deployment: choosing a web server, configuring a reverse proxy with HTTPS, selecting a database, and securing the admin panel. For local development setup, see :doc:`/getting_started/installation`. For crowdsourcing-platform integration (MTurk, Prolific), see :doc:`/deploying/recruiting`.
 
 .. warning::
-   Production servers hold participant data. Use a strong admin password, terminate TLS, and back up the database regularly.
+   Production servers hold participant data and may be subject to IRB requirements, GDPR, HIPAA, or institutional policy — consult your institution's IT and compliance teams before collecting data. Use a strong admin password, terminate TLS, and back up the database regularly.
 
 Why Not the Development Server?
 --------------------------------
@@ -38,6 +38,8 @@ Setting Up the Server
 
 This is not a complete server administration tutorial; it covers the BOFS-specific steps. Adapt commands to your distribution and hosting environment.
 
+Before starting, you'll need: SSH access to a Linux server (from your department's IT group or a cloud provider), permission to run commands as administrator (``sudo``), and — for HTTPS — a domain name pointing at the server.
+
 Install BOFS in a Virtual Environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -51,7 +53,7 @@ Install BOFS in a Virtual Environment
 Copy Your Experiment to the Server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use ``scp``, ``rsync``, or ``git clone`` from a private repository:
+Use ``scp`` or ``rsync`` (command-line tools that copy files to a server over SSH), or ``git clone`` from a private repository:
 
 .. code-block:: bash
 
@@ -80,7 +82,7 @@ BOFS ships with a Waitress-based production server that handles concurrent reque
 
     BOFS run production.toml
 
-This binds to ``0.0.0.0`` on the port specified in your config, so the project is reachable at ``http://your-ip-address:<PORT>``. The connection is unencrypted at this point — anything participants submit travels in plaintext. For studies recruiting real participants, put a reverse proxy in front of BOFS so traffic is encrypted under HTTPS.
+This binds to ``0.0.0.0`` — meaning BOFS accepts connections from any network interface, not just the local machine — on the port specified in your config, so the project is reachable at ``http://your-ip-address:<PORT>``. The connection is unencrypted at this point — anything participants submit travels in plaintext. For studies recruiting real participants, put a reverse proxy in front of BOFS so traffic is encrypted under HTTPS.
 
 Run BOFS Under systemd
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -105,7 +107,7 @@ A systemd unit ensures BOFS starts on boot and restarts on failure. Create ``/et
     [Install]
     WantedBy=multi-user.target
 
-Enable, start, and inspect the service:
+Enable, start, and inspect the service (``journalctl`` streams the service's log in real time — useful for catching startup errors):
 
 .. code-block:: bash
 
@@ -381,10 +383,7 @@ Troubleshooting
 After Deployment
 -----------------
 
-Run a small pilot study before opening the project to real participants. Walk through the experiment yourself, verify rows appear in the database, and confirm the logs are clean. For recruiting participants via crowdsourcing platforms, see :doc:`/deploying/recruiting`.
-
-.. warning::
-   Production servers handling research data may need to comply with IRB requirements, GDPR, HIPAA, or other regulations. Consult your institution's IT and compliance teams before collecting data.
+Run a small pilot study before opening the project to real participants. Walk through the experiment yourself, verify rows appear in the database, confirm the completion code or redirect fires at the end page, check that external IDs are being captured, and confirm the logs are clean. For recruiting participants via crowdsourcing platforms, see :doc:`/deploying/recruiting`.
 
 .. toctree::
    :hidden:

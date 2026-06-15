@@ -36,7 +36,7 @@ Every BOFS project needs at least these:
    * - ``PORT``
      - The port the project runs on (e.g., ``5000`` for ``http://localhost:5000``).
    * - ``SQLALCHEMY_DATABASE_URI``
-     - Database connection string (see :ref:`database-choice` below).
+     - A URL-style address telling BOFS where to store participant data. ``sqlite:///study.db`` means "a SQLite file named ``study.db`` in the project folder" (see :ref:`database-choice` below).
    * - ``ADMIN_PASSWORD``
      - Password for ``/admin``.
    * - ``PAGE_LIST``
@@ -90,7 +90,7 @@ The four variants and when to pick which are covered in :doc:`consent`.
    * - ``assign_condition``
      - Triggers condition assignment if the participant doesn't have one yet. Useful when consent was collected via ``consent_nc`` or ``create_participant_nc``.
    * - ``<blueprint_endpoint>``
-     - A custom Python route from one of your blueprints. See :doc:`/framework/blueprints_routes`.
+     - A custom Python route from one of your blueprints — only relevant if you're writing Python. See :doc:`/framework/blueprints_routes`.
 
 **A complete example:**
 
@@ -108,7 +108,7 @@ The four variants and when to pick which are covered in :doc:`consent`.
        {name="End",                path="end"}
    ]
 
-For conditional routing (different page sequences per condition) and per-page ``show_if`` predicates, see :doc:`conditions_branching`.
+For conditional routing (different page sequences per condition) and per-page ``show_if`` expressions, see :doc:`conditions_branching`.
 
 .. _repeated-questionnaires:
 
@@ -127,7 +127,7 @@ Pre-test/post-test designs and longitudinal studies often need the same question
        {name="End",          path="end"}
    ]
 
-Each tagged submission is stored as a separate row. Reading back a tagged response from a template or blueprint route uses ``participant.questionnaire("mood", "pre")`` and ``participant.questionnaire("mood", "post")``. See :doc:`/framework/participant_data` for the full API. Longitudinal studies that reuse questionnaires across separate sessions are covered in :doc:`longitudinal`.
+Each tagged submission is stored as a separate row and exported separately by the admin panel — no code needed. If you write your own templates or Python routes, a tagged response is read back with ``participant.questionnaire("mood", "pre")``; see :doc:`/framework/participant_data` for the full API. Longitudinal studies that reuse questionnaires across separate sessions are covered in :doc:`longitudinal`.
 
 Multiple config files
 ---------------------
@@ -154,7 +154,7 @@ The ``SQLALCHEMY_DATABASE_URI`` setting tells BOFS which database to use:
 
 **SQLite** is the recommended default: ``sqlite:///study.db``. It's a single-file database with no setup, and is good for development, piloting, and small or medium studies (i.e., dozens of concurrent users, not hundreds; the total participant count is not a factor).
 
-If you need to handle a larger volume of participants, consider using PostgreSQL or MySQL. These can be hosted on a separate server to spread server load. BOFS uses SQLAlchemy to generate the database schema and interact with the database, so any database supported by SQLAlchemy is also supported by BOFS.
+If you need to handle a larger volume of participants, consider using PostgreSQL or MySQL. These can be hosted on a separate server to spread server load. BOFS interacts with the database through SQLAlchemy (a Python database library), so any database SQLAlchemy supports is also supported by BOFS.
 
 .. warning::
 

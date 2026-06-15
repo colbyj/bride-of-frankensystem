@@ -1,7 +1,7 @@
 Customizing the Appearance
 ==========================
 
-BOFS pages use a default stylesheet defined with CSS custom properties. Two levels of customization are available without touching templates: a single config setting for the header color, and a full stylesheet override for broader changes. Template-level customization is covered in :doc:`/framework/templates_jinja`.
+BOFS pages use a default stylesheet defined with CSS custom properties — reusable named values declared once at the top of the stylesheet, so changing one updates it everywhere it's used. Two levels of customization are available without editing any page templates: a single config setting for the header color, and a full stylesheet override for broader changes. Template-level customization (changing the HTML itself) is covered in :doc:`/framework/templates_jinja`.
 
 Quick: header color from config
 --------------------------------
@@ -40,7 +40,7 @@ Then edit ``./static/style.css`` and restart BOFS (``BOFS run config.toml -d``).
 CSS custom properties
 ---------------------
 
-The BOFS stylesheet uses CSS custom properties (variables) declared on ``:root``. Overriding a subset of them in your ``style.css`` is the most targeted way to restyle colors, fonts, and layout.
+The BOFS stylesheet declares its custom properties on ``:root``, the stylesheet's top level, where they apply to every page. Overriding a subset of them in your ``style.css`` is the most targeted way to restyle colors, fonts, and layout. When changing colors, keep the contrast between text and its background high — participants complete studies on a wide range of screens, and low-contrast text affects readability.
 
 The full set of variables from the default stylesheet:
 
@@ -68,7 +68,7 @@ The full set of variables from the default stylesheet:
         --question-instructions-font-size: 0.9375rem;
     }
 
-To change only a few values, import the default and redeclare the variables you want to change:
+To change only a few values, have your ``static/style.css`` import the default and redeclare just the variables you want to change:
 
 .. code-block:: css
 

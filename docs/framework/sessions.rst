@@ -1,7 +1,7 @@
 Sessions and Participant State
 ==============================
 
-Web frameworks use *sessions* to remember who a user is across requests. BOFS uses sessions to track each participant's place in ``PAGE_LIST``, their assigned condition, the external ID they arrived with, and a few other fields. This page covers what's in a session, how it's created and torn down, and the configuration knobs around recovery and IP binding.
+Web frameworks use *sessions* to remember who a user is across requests. BOFS uses sessions to track each participant's place in ``PAGE_LIST``, their assigned condition, the external ID they arrived with, and a few other fields. This page covers what's in a session, how it's created and torn down, and the configuration knobs around recovery and IP binding. Read it when configuring session recovery for a crowdsourced or longitudinal study, troubleshooting participants who lose their place, or deciding on IP-binding settings before going live.
 
 Database-backed, not file-based
 -------------------------------
@@ -42,7 +42,7 @@ After creation, every page navigation:
 The session ends in one of three ways:
 
 - The participant reaches the ``end`` page; ``session['code']`` is populated and the participant's ``finished`` flag is set.
-- ``ABANDONED_MINUTES`` of silence go by without an activity ping; the participant is treated as abandoned. The session row remains in the database but is not counted for condition balancing (unless ``COUNTS_INCLUDE_ABANDONED = true``).
+- ``ABANDONED_MINUTES`` of silence go by without an activity ping; the participant is treated as abandoned. The session row remains in the database but is not counted for condition balancing (unless ``COUNTS_INCLUDE_ABANDONED = true``). Abandoned participants still appear in data exports — filter on the ``finished`` flag when analysing completed sessions only.
 - The participant explicitly visits ``/restart``, which clears the session and routes them back to the first page.
 
 Session recovery

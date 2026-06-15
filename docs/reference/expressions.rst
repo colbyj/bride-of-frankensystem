@@ -1,7 +1,7 @@
 Expressions: Calculations and Conditional Display
 ==================================================
 
-Three places in BOFS take a small expression written over a participant's responses: the ``participant_calculations`` block on a questionnaire and per-question ``show_if`` predicates (both described in :doc:`/reference/questionnaire_properties`), and per-page ``show_if`` predicates inside ``PAGE_LIST`` (described in :doc:`/building/conditions_branching`). They all accept the same syntax, so this page is the canonical reference for the syntax itself.
+Three places in BOFS take a small expression written over a participant's responses: the ``participant_calculations`` block on a questionnaire and per-question ``show_if`` expressions (both described in :doc:`/reference/questionnaire_properties`), and per-page ``show_if`` expressions inside ``PAGE_LIST`` (described in :doc:`/building/conditions_branching`). They all accept the same syntax, so this page is the canonical reference for the syntax itself.
 
 The same syntax is also available from templates and custom blueprint code via ``participant.evaluate(expression)`` — see :doc:`/framework/participant_data` for that surface.
 
@@ -55,7 +55,7 @@ A field name on its own — ``age``, ``q1``, ``01_inv`` (field IDs that start wi
 * Inside a question-level ``show_if``, it is another field on the same page, read live from the browser as the participant types or clicks.
 * Inside a page-level ``show_if``, it is looked up across every questionnaire the participant has already submitted; the most recent matching submission wins.
 
-Inside a page-level ``show_if`` the bare name ``condition`` is reserved and resolves to the participant's assigned condition number. A predicate like ``show_if = "condition == 1"`` keeps the page only for participants in condition 1. Because ``condition`` is reserved, you cannot use it as a questionnaire field ID or as a key in ``participant_calculations``.
+Inside a page-level ``show_if`` the bare name ``condition`` is reserved and resolves to the participant's assigned condition number. An expression like ``show_if = "condition == 1"`` keeps the page only for participants in condition 1. Because ``condition`` is reserved, you cannot use it as a questionnaire field ID or as a key in ``participant_calculations``.
 
 Referring to table values
 -------------------------
@@ -71,7 +71,7 @@ Page-level ``show_if`` can also reference per-participant aggregates exported by
         {name="End", path="end"}
     ]
 
-The aggregate is computed once per evaluation by running the same query the data export uses, restricted to the current participant. If the participant has no rows in the table, the value resolves to ``None`` and the page stays visible (the predicate is treated as undecided).
+The aggregate is computed once per evaluation by running the same query the data export uses, restricted to the current participant. If the participant has no rows in the table, the value resolves to ``None`` and the page stays visible (the expression is treated as undecided).
 
 Only the columns listed under a table's ``exports`` block are reachable this way — raw rows are not. ``tables`` is reserved at the top of an expression: a questionnaire or table file cannot be named ``tables``, and questionnaire field IDs and ``participant_calculations`` keys cannot be named ``tables`` either.
 
@@ -91,7 +91,7 @@ Form                                              Resolves to
 
 A missed key (no matching level) makes the expression undecided — page-level ``show_if`` keeps the page visible, and inline ``{{ }}`` substitution renders empty.
 
-Multi-column ``group_by`` (a list of grouping columns, e.g. ``"group_by": ["phase", "block"]``) produces a dict keyed by Python tuples. Tuple literals are not part of the expression syntax, so multi-column group_by exports cannot be subscripted from an expression. Either declare separate scalar exports per cell or read the dict from ``participant.table('foo').col`` in a Jinja template or custom blueprint.
+Multi-column ``group_by`` (a list of grouping columns, e.g. ``"group_by": ["phase", "block"]``) produces a dict keyed by Python tuples (one value per grouping column). Tuple literals are not part of the expression syntax, so multi-column group_by exports cannot be subscripted from an expression. Either declare separate scalar exports per cell or read the dict from ``participant.table('foo').col`` in a Jinja template or custom blueprint.
 
 Page-level ``show_if`` also accepts more specific reference forms when the same questionnaire appears in ``PAGE_LIST`` multiple times under different tags (for example, a wellbeing questionnaire filled in once before an intervention and once after):
 
@@ -132,7 +132,7 @@ Each key under ``participant_calculations`` becomes an export column with the co
 Hiding a question
 -----------------
 
-A question inside a questionnaire (see :doc:`/reference/questionnaire_properties`) can declare a ``show_if`` predicate that branches on the participant's other answers on the same page. The expression is checked live in the browser as the participant fills out the page; when it is false, the question is hidden and the form treats its inputs as if they weren't there — including any required fields, which won't block submission.
+A question inside a questionnaire (see :doc:`/reference/questionnaire_properties`) can declare a ``show_if`` expression that branches on the participant's other answers on the same page. The expression is checked live in the browser as the participant fills out the page; when it is false, the question is hidden and the form treats its inputs as if they weren't there — including any required fields, which won't block submission.
 
 .. code-block:: json
 
@@ -154,7 +154,7 @@ When a question is hidden at submission time, no value is sent and the database 
 Skipping a page
 ---------------
 
-Any entry in ``PAGE_LIST`` (including entries inside a ``conditional_routing`` block) can carry a ``show_if`` predicate that branches on the participant's stored answers. When the predicate is false, the page is removed from that participant's flow — the next/back navigation skips past it and it does not appear in their breadcrumb. ``PAGE_LIST`` itself lives in your project's configuration file (see :doc:`/building/conditions_branching`).
+Any entry in ``PAGE_LIST`` (including entries inside a ``conditional_routing`` block) can carry a ``show_if`` expression that branches on the participant's stored answers. When it evaluates false, the page is removed from that participant's flow — the next/back navigation skips past it and it does not appear in their breadcrumb. ``PAGE_LIST`` itself lives in your project's configuration file (see :doc:`/building/conditions_branching`).
 
 .. code-block:: toml
 
@@ -178,7 +178,7 @@ For repeated-measures designs that fill in the same questionnaire more than once
         {name="End", path="end"}
     ]
 
-When a page-level ``show_if`` references a questionnaire the participant has not yet submitted, the page stays visible — the predicate is treated as undecided rather than removing a page on the basis of data that hasn't been collected.
+When a page-level ``show_if`` references a questionnaire the participant has not yet submitted, the page stays visible — the expression is treated as undecided rather than removing a page on the basis of data that hasn't been collected.
 
 Errors and validation
 ---------------------

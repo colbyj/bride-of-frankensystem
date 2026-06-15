@@ -1,6 +1,8 @@
 Built-in Routes
 ===============
 
+For a guided introduction to the page flow these routes plug into, see :doc:`/building/page_flow`.
+
 Routes For Use in ``PAGE_LIST``
 -------------------------------
 

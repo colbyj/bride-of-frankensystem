@@ -1,6 +1,8 @@
 Initialize Your First Project
 ==============================
 
+This page assumes BOFS is installed — and, if you used pip + venv, that the virtual environment is active. See :doc:`installation` if not.
+
 Step 1: Create a project with ``BOFS init``
 --------------------------------------------
 
@@ -62,7 +64,7 @@ Step 2: What the wizard generated
        {name='End', path='end'},
    ]
 
-``PAGE_LIST`` defines what participants see and in what order. See :doc:`/building/page_flow` to add or rearrange pages, and :doc:`/reference/configuration` for every available setting.
+``PAGE_LIST`` defines what participants see and in what order. ``SQLALCHEMY_DATABASE_URI`` tells BOFS where to store participant data — the default is SQLite, a database kept in a single file (here ``my_experiment.db``) inside your project folder. See :doc:`/building/page_flow` to add or rearrange pages, and :doc:`/reference/configuration` for every available setting.
 
 **consent.html** holds the consent text:
 
@@ -107,7 +109,7 @@ If the wizard didn't start the project for you, start it manually:
    cd my_experiment
    BOFS run config.toml -d
 
-The ``-d`` flag enables debug mode, which adds a debug toolbar at the bottom of every page and surfaces more detailed error messages. You'll see output like:
+The ``-d`` flag enables debug mode, which adds a debug toolbar at the bottom of every page and surfaces more detailed error messages. You'll see startup output like the following — the "blueprint" lines are BOFS loading its internal components:
 
 .. code-block:: text
 
@@ -117,7 +119,7 @@ The ``-d`` flag enables debug mode, which adds a debug toolbar at the bottom of 
    Listening on http://0.0.0.0:5000
    Preview locally at http://127.0.0.1:5000
 
-Open http://localhost:5000 in your browser. To stop the server, press **Ctrl+C** in the terminal.
+Open http://localhost:5000 in your browser — ``localhost`` and ``127.0.0.1`` both mean "this computer," so the address only works on the machine running BOFS. To stop the server, press **Ctrl+C** in the terminal.
 
 Step 4: Walk through the experiment
 ------------------------------------
@@ -168,7 +170,7 @@ The admin panel shows live participant progress, exports the collected data as C
 Development tips
 ----------------
 
-- **Replay the experiment.** Use a private/incognito window, or visit ``/restart`` to clear your session and start over.
+- **Replay the experiment.** Use a private/incognito window, or visit ``/restart`` to clear your session (BOFS's record of your progress through the study) and start over.
 - **Debug toolbar.** The ``-d`` flag adds a toolbar at the bottom of every page with navigation controls and session information.
 - **What restarts.** HTML and JSON changes reflect on the next page load. Editing ``config.toml`` requires restarting the server (Ctrl+C, then ``BOFS run config.toml -d`` again).
 
@@ -186,4 +188,4 @@ When you're ready to put the project in front of real participants, see :doc:`/d
 Troubleshooting
 ---------------
 
-- **"Address already in use"** — Another program is using the same port. Edit ``config.toml`` and set a different ``PORT``.
+- **"Address already in use"** — Another program is using the same port (the numbered channel a server listens on; BOFS defaults to 5000). Edit ``config.toml`` and set a different ``PORT``.

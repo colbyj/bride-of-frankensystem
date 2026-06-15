@@ -1,7 +1,7 @@
 Templates and Jinja2
 ====================
 
-Every page BOFS renders — built-in pages (consent, end, questionnaires) and your own custom ones — goes through `Jinja2 <https://jinja.palletsprojects.com/>`_, the template engine that comes with Flask. This page covers what BOFS does with Jinja2: the lookup order, the base template and its blocks, the variables every template has access to, and the patterns for overriding any of it.
+Every page BOFS renders — built-in pages (consent, end, questionnaires) and your own custom ones — goes through `Jinja2 <https://jinja.palletsprojects.com/>`_, the template engine that comes with Flask. This page covers what BOFS does with Jinja2: the lookup order, the base template and its blocks, the variables every template has access to, and the patterns for overriding any of it. Read it when you want to change what participants see beyond content — adding an IRB number or institutional logo to every page, showing condition-specific text, or overriding the consent form layout.
 
 Lookup order
 ------------

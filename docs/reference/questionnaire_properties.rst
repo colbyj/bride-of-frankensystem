@@ -30,13 +30,13 @@ Top-level properties
      - Text rendered above the questions. Accepts HTML. Also participates in ``{{ }}`` substitution (see below).
    * - ``code``
      - No
-     - A string of JavaScript inserted into the page at render time, after the question inputs. Useful for task-specific logic. The value of ``code`` is never HTML-sanitised or ``{{ }}``-substituted — literal ``{{ }}`` in third-party templates is not affected.
+     - A string of JavaScript inserted into the page when it loads in the participant's browser, after the question inputs. Useful for task-specific logic. The value of ``code`` is never HTML-sanitised or ``{{ }}``-substituted — literal ``{{ }}`` in third-party templates is not affected.
    * - ``participant_calculations``
      - No
      - Object mapping calculated column names to expression strings. See `participant_calculations`_ below.
    * - ``database``
      - No
-     - Name of a ``SQLALCHEMY_BINDS`` entry from ``config.toml``. Routes this questionnaire's table to that database instead of the default. See :doc:`/framework/database_layer` for the trade-offs.
+     - Name of a ``SQLALCHEMY_BINDS`` entry from ``config.toml``. Saves this questionnaire's responses to that database instead of the project's main one. See :doc:`/framework/database_layer` for the trade-offs.
 
 BOFS ignores unrecognised top-level keys, so you can add metadata fields for your own reference.
 
@@ -228,7 +228,7 @@ Some built-in types also use this pattern (``radiogrid``, ``checklist``). The ``
 Question ID naming rules
 -------------------------
 
-Question IDs become column names in the questionnaire's database table and are read back as Python attributes (e.g. ``participant.questionnaire('demographics').age``). The following rules apply to both question field IDs and ``participant_calculations`` keys:
+Question IDs become column names in the questionnaire's database table — and therefore the column headers in your exported CSV — and are read back as Python attributes (e.g. ``participant.questionnaire('demographics').age``). The following rules apply to both question field IDs and ``participant_calculations`` keys:
 
 - Must match the pattern ``[A-Za-z_][A-Za-z0-9_]*`` — a letter or underscore, then any mix of letters, digits, and underscores.
 - Must not be a Python keyword (``class``, ``return``, ``for``, etc.). Keywords are syntax errors when used as attribute names in templates and custom code.

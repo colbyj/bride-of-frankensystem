@@ -1,6 +1,8 @@
 Built-in Question Types
 =======================
 
+For a guided introduction to building questionnaires, see :doc:`/building/adding_survey_questions`.
+
 The following attributes are common to every type of question.
 
 -  ``id``: string - Your field's unique id.
@@ -35,7 +37,7 @@ Currently, the following types of input are supported:
 -  ``drop_down`` - Select one option from a drop-down list
 -  ``image_select`` - Select one option from a set of images
 -  ``image_click`` - Click on an image to record one or more (x, y)
-   positions in the image's natural pixel space
+   positions, measured in the image's original (unscaled) pixels
 -  ``textview`` - Display plain text (HTML syntax is supported)
 -  ``video`` - Embed an HTML5 video, optionally requiring the participant to
    watch it before continuing
@@ -59,7 +61,8 @@ radiogrid
    radiogrid (optional, string)
 -  ``required``: whether or not responses to this radio grid are required to submit form
    (optional, boolean: ``true`` or ``false``, default is ``false``)
--  ``shuffle``: should the question order be shuffled? (optional,
+-  ``shuffle``: should the question order be shuffled? Randomising row
+   order controls for item-order effects. (optional,
    boolean: ``true`` or ``false``, default ``false``)
 -  ``labels``: list of strings that represent column headers (required,
    list of strings)
@@ -75,10 +78,10 @@ radiogrid
 -  ``na_label``: header text for the N/A column. (optional, string,
    default ``"N/A"``)
 -  ``store_labels``: store the chosen column's label string (e.g.
-   ``"Strongly agree"``) instead of its 1-based index. Calculated fields
-   that reference rows in this grid are rejected at questionnaire load
-   time, since label values are not numeric. (optional, boolean,
-   default ``false``)
+   ``"Strongly agree"``) instead of its 1-based index. When set,
+   ``participant_calculations`` entries cannot reference this grid's
+   rows — label text cannot be used in arithmetic, so BOFS reports an
+   error at startup. (optional, boolean, default ``false``)
 
 .. note::
 
@@ -378,10 +381,10 @@ thumbnail; the participant's selection is stored as the chosen image's
    boolean: ``true`` or ``false``, default is ``true``)
 -  ``width``: explicit width (in pixels) applied to every image
    (optional, integer). Ignored when ``auto_resize`` is ``true``.
--  ``auto_resize``: normalize the rendered image dimensions on the client
-   so they all match the smallest image in the group. With
-   ``horizontal: false`` all widths are matched to the smallest natural
-   width; otherwise all heights are matched to the smallest natural
+-  ``auto_resize``: resize the images in the browser so they all display
+   at matching sizes, based on the smallest image in the group. With
+   ``horizontal: false`` all widths are matched to the smallest image's
+   width; otherwise all heights are matched to the smallest image's
    height (optional, boolean: ``true`` or ``false``, default is
    ``false``).
 -  ``images``: list of image entries (required). Each entry is an object:

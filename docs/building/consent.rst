@@ -1,7 +1,7 @@
 Consent Forms
 =============
 
-BOFS provides four first-page route variants (with and without consent display, with and without condition assignment), a wrapper template you can override, and support for multi-stage consent. The consent response itself is not persisted — only the existence of a ``Participant`` row indicates that consent was given.
+BOFS provides four first-page route variants (with and without consent display, with and without condition assignment), a wrapper template you can override, and support for multi-stage consent. Two facts about the default flow matter for IRB protocols: the consent response itself is not persisted — only the existence of a ``Participant`` row indicates that consent was given — and declines leave no record at all. If your protocol requires a stored consent record or a reportable refusal rate, see `What happens on decline`_.
 
 The default consent flow
 ------------------------
@@ -28,7 +28,7 @@ The radios and Continue button are added by BOFS — your file holds only the co
 Choosing a first-page route
 ---------------------------
 
-Four routes can sit at the top of ``PAGE_LIST``. They differ on two axes: whether ``consent.html`` is displayed, and whether a condition is assigned.
+Four routes can sit at the top of ``PAGE_LIST``. They differ on two axes: whether ``consent.html`` is displayed, and whether a condition is assigned. The ``_nc`` suffix stands for "no condition."
 
 .. list-table::
    :header-rows: 1
@@ -55,7 +55,7 @@ Four routes can sit at the top of ``PAGE_LIST``. They differ on two axes: whethe
      - No
      - Consent collected externally and no conditions, or conditions assigned later via ``assign_condition``.
 
-The ``_nc`` suffix stands for "no condition." For all four, the Participant row is created on first arrival (or first agreement, for the consent-displaying variants).
+For all four, the Participant row is created on first arrival (or first agreement, for the consent-displaying variants).
 
 Picking the variant is a one-line change in ``PAGE_LIST``:
 
@@ -72,10 +72,10 @@ What happens on decline
 
 Declining the consent radio fails the form's required-field validation. The participant sees the form re-rendered with an error message ("You must provide your consent to continue"). They cannot advance, and closing the tab is their exit.
 
-- **No participant row is created** for someone who declines. The consent flow is gated on agreement; there is no "declined" record to inspect later.
+- **No participant row is created** for someone who declines. The consent flow is gated on agreement; there is no "declined" record to inspect later, so a consent or refusal rate cannot be computed from BOFS data alone.
 - **The consent value itself is not persisted.** BOFS uses the radio choice to gate the form submission; once a participant agrees and the row is created, only the existence of the row indicates consent. The participant's ``timeStarted`` is the closest equivalent to a "consent timestamp."
 
-If your IRB requires an explicit decline log or a stored consent record, you can collect it as a one-question questionnaire after consent (e.g., ``questionnaire/explicit_consent``).
+If your IRB requires a stored record of each consent, collect it as a one-question questionnaire after the consent page (see `Multi-stage consent`_). If you also need to record declines, the built-in consent page cannot do it — decliners never advance past it. Instead, start the study with ``create_participant_nc``, present the consent text as a questionnaire whose answer *is* stored, and use ``conditional_routing`` (see :doc:`/building/conditions_branching`) to send decliners to an exit page.
 
 Writing consent.html
 --------------------
@@ -113,7 +113,7 @@ Studies that record additional consents (media release, debrief acknowledgement,
        {name="End",            path="end"}
    ]
 
-The secondary response *is* recorded (questionnaire submissions persist, unlike the primary consent radios) and is accessible via ``participant.questionnaire("media_release")``. This is the practical workaround if you need an audit trail for a specific consent decision.
+The secondary response *is* recorded (questionnaire submissions persist, unlike the primary consent radios) and appears in the admin export like any other questionnaire — no code needed. From templates or Python it is accessible via ``participant.questionnaire("media_release")``. This is the practical workaround if you need an audit trail for a specific consent decision.
 
 Customizing the consent wrapper
 -------------------------------

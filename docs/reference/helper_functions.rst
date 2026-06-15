@@ -1,7 +1,7 @@
 Helper Functions
 ================
 
-The ``BOFS.util`` package contains several functions that you might find useful.
+Functions from the ``BOFS.util`` package, available to custom blueprint code. For how blueprints fit into a project, see :doc:`/framework/blueprints_routes`.
 
 .. autofunction:: BOFS.util.verify_correct_page
 

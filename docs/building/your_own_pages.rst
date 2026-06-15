@@ -7,7 +7,7 @@ BOFS supports three kinds of custom pages that don't require any Python:
 - **Simple pages** — HTML rendered inside the BOFS chrome (header, breadcrumbs, project styling), but no automatic Continue button.
 - **Custom pages** — the template is the entire HTML document with no BOFS wrapping.
 
-All three are HTML files placed in your project's ``templates/`` directory and referenced in ``PAGE_LIST`` by their path.
+All three are HTML files placed in your project's ``templates/`` directory and referenced in ``PAGE_LIST`` by their path. Typical uses: instruction pages for task instructions or debriefing text, simple pages for gated progression (a timed reading period, a comprehension check), and custom pages for hosting JavaScript-based tasks.
 
 Instruction pages
 -----------------
@@ -44,7 +44,7 @@ Then add the page to your configuration:
        {name="End", path="end"}
    ]
 
-Instruction pages are Jinja2 templates, so you can embed session variables and conditional logic. See :doc:`/framework/templates_jinja` for details.
+Instruction pages are Jinja2 templates — HTML files that can include placeholders BOFS fills in when the page is served — so you can embed session variables and conditional logic. See :doc:`/framework/templates_jinja` for details.
 
 Simple pages
 ------------
@@ -53,7 +53,7 @@ A simple page is rendered inside the BOFS chrome — the participant sees the sa
 
 Place the file in ``templates/simple/`` and reference it in ``PAGE_LIST`` as ``simple/<filename>``.
 
-To advance the participant, link or redirect to one of these routes:
+To advance the participant, link or redirect to one of these routes (URL paths BOFS responds to):
 
 - ``/redirect_next_page`` — go to the next page in ``PAGE_LIST``.
 - ``/redirect_to_page/<path>`` — go to a specific page (e.g., ``/redirect_to_page/questionnaire/demographics``).
@@ -114,7 +114,7 @@ Place the file in ``templates/custom/`` and reference it in ``PAGE_LIST`` as ``c
    </body>
    </html>
 
-Custom pages are still Jinja2 templates and have access to the same template variables (``session``, ``participant``, ``config``, ``debug``) as instruction and simple pages. The same redirect routes apply: ``/redirect_next_page``, ``/redirect_to_page/<path>``, or a POST to the page's own route.
+Custom pages are still Jinja2 templates and have access to the same template variables (``session``, ``participant``, ``config``, ``debug``) as instruction and simple pages — for example, ``{{ session['condition'] }}`` anywhere in the HTML is replaced with the participant's condition number when the page is served. The same redirect routes apply: ``/redirect_next_page``, ``/redirect_to_page/<path>``, or a POST to the page's own route.
 
 See :doc:`/getting_started/quickstart_custom_task` for a worked example of a JavaScript task using a custom page.
 

@@ -3,7 +3,7 @@ The Database Layer
 
 BOFS uses `SQLAlchemy <https://www.sqlalchemy.org/>`_ — Python's standard ORM — for everything that touches the database: built-in tables (Participant, Progress, response rows), questionnaire-derived tables (one per JSON file), and custom tables (one per ``tables/*.json``). This page covers how those layers fit together and how to read or write from Python.
 
-The exhaustive reference for custom-table JSON syntax (column types, exports, naming rules) is at :doc:`/reference/custom_tables`. This page is the conceptual orientation.
+The exhaustive reference for custom-table JSON syntax (column types, exports, naming rules) is at :doc:`/reference/custom_tables`. This page is the conceptual orientation — it's for researchers writing Python routes that query or insert data directly; if you work only with JSON and TOML, you can skip it.
 
 How BOFS uses SQLAlchemy
 ------------------------

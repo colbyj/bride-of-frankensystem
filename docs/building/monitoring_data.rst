@@ -19,7 +19,7 @@ This password protects all participant data and any destructive controls (such a
 Progress Monitoring
 -------------------
 
-``/admin/progress`` shows each active participant's position in the experiment. The page updates every 5 seconds via HTMX and includes per-participant exclusion checkboxes.
+``/admin/progress`` shows each active participant's position in the experiment. The page updates every 5 seconds automatically and includes per-participant exclusion checkboxes.
 
 .. image:: /examples/quickstart/page_admin.png
   :width: 800
@@ -34,7 +34,7 @@ The same page reports summary statistics, broken down by experimental condition:
     Metric                   Description
     ======================== ==================
     Total Participants       Count by experimental condition
-    Abandoned Participants   Those who haven't progressed within the configured time limit
+    Abandoned Participants   Those inactive longer than ``ABANDONED_MINUTES``; not counted when balancing conditions by default (see :doc:`/building/conditions_branching`)
     In-Progress Participants Currently active participants
     Finished Participants    Those who have completed all pages
     Average Duration         Mean completion time by condition
@@ -61,9 +61,10 @@ Each timeline card shows:
     participant's response, plus any calculated fields defined on the
     questionnaire.
   - *Custom pages* writing to a JSONTable — the calculated export fields
-    from the table's ``exports`` block, scoped to this participant. To opt
-    a custom page in, decorate its view function with ``@page_tables``;
-    see :doc:`/reference/custom_tables` for details.
+    from the table's ``exports`` block, scoped to this participant. Opting
+    a page in applies only to blueprint-defined Python pages: decorate the
+    view function with ``@page_tables``; see :doc:`/reference/custom_tables`
+    for details.
 
 The page header also shows the participant's external ID (e.g. Prolific PID),
 assigned condition, total duration, last-active timestamp, and an Excluded
@@ -74,7 +75,7 @@ Data Export
 
 ``/admin/export`` downloads questionnaire responses as CSV. Options include excluding unfinished or excluded participants, previewing the table in HTML before downloading, and automatic timestamping of the filename.
 
-For questionnaire interaction data (only collected when ``LOG_QUESTIONNAIRE_INTERACTIONS`` is enabled), use ``/admin/export_item_timing``. This exports a flat event log — one row per event — with participantID, mTurkID, questionnaire, tag, questionID, eventType (focus, blur, change, paste, visibility), timestamp, and value.
+For questionnaire interaction data (only collected when ``LOG_QUESTIONNAIRE_INTERACTIONS`` is enabled), use ``/admin/export_item_timing``. This exports a flat event log — one row per event — with participantID, mTurkID, questionnaire, tag, questionID, eventType, timestamp, and value. The event types record how participants interacted with each question: ``focus`` and ``blur`` (entering and leaving an input), ``change`` (a response edit), ``paste``, and ``visibility`` (the browser tab being hidden or shown) — useful for response-timing or answer-revision analyses.
 
 Any database table — built-in (``Participant``, ``Progress``, ``Response``) or defined by a custom blueprint — can be exported individually via ``/admin/table_csv/<table_name>``.
 
@@ -95,12 +96,12 @@ Questionnaire Management
   Plain HTML rendering with no admin chrome — useful for embedding, printing, or sharing.
 
 ``/admin/preview_procedure``
-  Generates a Mermaid flowchart of your ``PAGE_LIST``, including the per-condition routes from any ``conditional_routing`` blocks.
+  Generates a flowchart of your ``PAGE_LIST``, including the per-condition routes from any ``conditional_routing`` blocks — useful for checking the flow against your protocol, or for a figure in an ethics application.
 
 Database Management
 -------------------
 
-``/admin/table_view/<table_name>`` shows the live contents of any database table with AJAX-driven refresh and automatic column-type detection.
+``/admin/table_view/<table_name>`` shows the live contents of any database table with automatic refresh and column-type detection.
 
 For SQLite databases only:
 

@@ -38,7 +38,7 @@ Each column in the ``"columns"`` object specifies a ``"type"`` and an optional `
      - Default type when ``"type"`` is absent. Default value is ``""`` unless overridden.
    * - ``datetime``
      - ``DATETIME``
-     - No ``"default"`` is accepted; the column defaults to ``datetime.min``. Send ISO 8601 strings from JavaScript.
+     - No ``"default"`` is accepted; the column defaults to ``datetime.min``. Send ISO 8601 strings from JavaScript (a standard date-time format, e.g. ``2026-03-15T14:30:00``).
    * - ``json``
      - ``TEXT``
      - No ``"default"`` is accepted; the column defaults to ``NULL``. Stores arrays, objects, or any JSON-serialisable structure. The HTTP API serialises and deserialises transparently — JavaScript always receives a native object or array.
@@ -79,7 +79,7 @@ Auto-added Columns
 
 Every custom table automatically receives two additional columns that you do not declare and should not include in POST payloads:
 
-- ``participantID`` — foreign key to the ``participant`` table, populated from the current session.
+- ``participantID`` — foreign key (a link to the participant's record), populated from the current session.
 - ``timeSubmitted`` — ``DATETIME``, set to the server's current UTC time on each insert.
 
 When the table is routed to a non-default database via the ``"database"`` field (see below), ``participantID`` is a plain indexed integer column rather than a foreign key, since SQLAlchemy can't enforce a FK across separate engines.
@@ -103,7 +103,7 @@ The same option is available on questionnaire JSON files. Trade-offs and the per
 Naming Rules
 ------------
 
-Column names and export field names must be valid Python identifiers: they must start with a letter or underscore and contain only letters, digits, and underscores. Python keywords (``class``, ``return``, ``for``, etc.) are not allowed.
+Column names and export field names must start with a letter or underscore and contain only letters, digits, and underscores. Python keywords (``class``, ``return``, ``for``, etc.) are not allowed.
 
 Within a single table, no export field name may duplicate a column name. The ``TableAccessor`` (returned by ``participant.table('name')``) resolves attribute access to exports; a collision would shadow the raw column.
 
@@ -124,7 +124,7 @@ Export Object Keys
      - Description
    * - ``fields``
      - Yes
-     - A dict mapping output column names to SQL expressions. Values may be bare column names (``"my_column"``) or aggregate expressions (``"sum(my_column)"``). When there is more than one row per participant, include an aggregate function (``MIN``, ``MAX``, ``SUM``, ``COUNT``, or ``AVG``).
+     - A dict mapping output column names to SQL expressions. Values may be bare column names (``"my_column"``) or aggregate expressions (``"sum(my_column)"``). When there is more than one row per participant, include an aggregate (summary) function: ``MIN``, ``MAX``, ``SUM``, ``COUNT``, or ``AVG``.
    * - ``filter``
      - No
      - A SQL ``WHERE`` expression restricting which rows are included (e.g. ``"my_column > 1"`` or ``"levelName IN ('Intro1', 'Intro2')"``) .

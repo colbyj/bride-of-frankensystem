@@ -195,7 +195,7 @@ You can also run BOFS as a Python module:
     python -m BOFS run config.toml
     python -m BOFS run config.toml -d
 
-This is particularly useful in environments where the ``BOFS`` command is not in your PATH.
+This is particularly useful when your terminal does not recognize the ``BOFS`` command.
 
 Integration with Development Workflow
 --------------------------------------
@@ -282,11 +282,10 @@ On some systems, you may need to use ``python -m BOFS`` instead of the ``BOFS`` 
 
 **Config file not found:**
 
-Ensure your configuration file path is correct and the file exists:
+Check that the file exists in your current directory (``dir`` on Windows, ``ls`` on Mac/Linux) and that you are running the command from the folder containing it:
 
 .. code-block:: bash
 
-    ls -la config.toml  # Check if file exists
     BOFS run ./config.toml  # Use relative path
 
 **Port already in use:**

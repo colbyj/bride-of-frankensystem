@@ -10,7 +10,7 @@ If you already know your way around Python:
 2. **Install the framework:** ``pip install bride-of-frankensystem``
 3. **Test it:** run ``BOFS`` — you should see a help message.
 
-That's the whole installation. The rest of this page walks through virtual-environment setup in detail. Once BOFS is installed, :doc:`initialize_project` covers creating and running your first project.
+That's the whole installation. If terms like ``pip`` or "virtual environment" are new to you, skip the short version — Steps 1 and 2 below walk through the same process and explain each command as it appears. Once BOFS is installed, :doc:`initialize_project` covers creating and running your first project.
 
 BOFS runs on Windows, Mac, and Linux.
 
@@ -21,7 +21,7 @@ BOFS runs on Windows, Mac, and Linux.
 Step 1: Install Python
 ----------------------
 
-BOFS requires Python 3.9 or newer. Check what's already installed:
+BOFS requires Python 3.9 or newer. The commands in this guide are typed into a terminal — a text window where you type a command and press Enter to run it. Check what's already installed:
 
 - **Windows**: Open Command Prompt (search "cmd") and run ``python --version``.
 - **Mac/Linux**: Open Terminal and run ``python3 --version``.
@@ -86,7 +86,7 @@ Install BOFS into an isolated environment so its dependencies don't conflict wit
 
          uv tool install bride-of-frankensystem
 
-      This creates a dedicated environment for BOFS behind the scenes and makes the ``BOFS`` command available globally. Open a new terminal afterwards so the updated PATH takes effect.
+      This creates a dedicated environment for BOFS behind the scenes and makes the ``BOFS`` command available globally. Open a new terminal afterwards so the updated PATH (the list of folders your system searches when you type a command) takes effect.
 
       **2.3 Test the installation.** Run ``BOFS``. You should see a help message listing the available commands.
 
@@ -98,7 +98,7 @@ Continue to :doc:`initialize_project` to create your first project with ``BOFS i
 Troubleshooting
 ---------------
 
-- **"python not found"** — Make sure Python is installed and added to your system PATH.
+- **"python not found"** — Make sure Python is installed and added to your system PATH (the list of folders your system searches when you type a command; the Python installer on Windows has an "Add to PATH" checkbox).
 - **"pip not found"** — On Windows, allow the installer to add Python to your PATH. On Linux, ``pip`` may be a separate package.
 - **"BOFS not found"** — If you used pip + venv, make sure the virtual environment is activated. As a fallback, ``python -m BOFS run config.toml`` is equivalent to ``BOFS run config.toml``.
-- **"Permission denied"** — Try your command line as administrator (Windows) or with ``sudo`` (Mac/Linux).
+- **"Permission denied"** — Try your command line as administrator (Windows) or prefix the command with ``sudo``, which runs it with administrator privileges (Mac/Linux).

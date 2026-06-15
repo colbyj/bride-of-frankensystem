@@ -1,7 +1,7 @@
 What is BOFS?
 =============
 
-Bride of Frankensystem (BOFS) is an open-source framework for building online behavioral experiments and surveys. Instead of a drag-and-drop editor, you describe your study in plain-text files — a configuration file for settings and page flow, JSON files for questionnaires, and HTML files for custom pages. BOFS handles participant routing, condition assignment, consent forms, data storage, and provides an admin panel for monitoring and export.
+Bride of Frankensystem (BOFS) is an open-source framework for building online behavioral experiments and surveys. Instead of a drag-and-drop editor, you describe your study in plain-text files — a configuration file for settings and page flow, JSON files (a structured plain-text format) for questionnaires, and HTML files for custom pages. BOFS handles participant routing, condition assignment, consent forms, data storage, and provides an admin panel for monitoring and export.
 
 Where BOFS fits
 ---------------
@@ -10,7 +10,7 @@ If you have used other tools for online studies, BOFS sits at a specific spot in
 
 - **Survey platforms (Qualtrics, SurveyMonkey, Google Forms)** handle questionnaires with point-and-click editing on hosted infrastructure. They cannot embed a JavaScript task or open the data layer for custom logic. If your study is questionnaires only and your institution already provides Qualtrics, that may be a simpler choice.
 - **JavaScript experiment libraries (jsPsych, lab.js, PsychoJS)** handle in-browser trial logic — precise timing, key capture, randomization. They do not host the surrounding study (consent, condition assignment, sessions, admin panel). A jsPsych, lab.js, or PsychoJS task can run inside a BOFS custom page; the two are complementary.
-- **Custom Flask, Django, or Express applications** give you full control of every detail, and full responsibility for everything else. When BOFS's built-in patterns are not enough, it exposes the same Flask underneath — custom routes drop into the same project.
+- **Custom Flask, Django, or Express applications** (general-purpose web frameworks) give you full control of every detail, and full responsibility for everything else. When BOFS's built-in patterns are not enough, it exposes the same Flask underneath — custom routes drop into the same project.
 
 BOFS sits in the middle: research-specific scaffolding (consent, conditions, sessions, data storage, admin panel) plus an open boundary for questionnaires, JavaScript tasks, or Python where each is the right fit.
 
@@ -111,7 +111,7 @@ The diagram above shows all available page types, organized into three tiers:
 
     .. grid-item-card::  Blueprint-Defined Pages
 
-        Require an additional directory and specific files to add to your project. For when the built-in and scaffolded options are not enough. You write Python routes (Flask) and BOFS auto-discovers them.
+        Require an additional directory and specific files to add to your project. For when the built-in and scaffolded options are not enough. You write Python code that responds at URLs you define — and BOFS auto-discovers them.
 
         Knowledge of Python, HTML, and JavaScript is an asset.
 
@@ -199,7 +199,8 @@ The simple project's three files cover questionnaire-based studies. To go past t
            def task():
                return render_template('my_blueprint/task.html')
 
-        A blueprint is a folder at your project root containing
+        A blueprint — Flask's term for a self-contained bundle of
+        routes — is a folder at your project root containing
         ``views.py`` (and optionally its own ``templates/``, ``static/``,
         or ``tables/``). BOFS auto-discovers it and loads the routes
         you define — for when you need server-side logic, custom

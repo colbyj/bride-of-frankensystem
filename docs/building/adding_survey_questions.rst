@@ -1,7 +1,7 @@
 Adding Survey Questions
 =======================
 
-Questionnaires in BOFS are JSON files stored in your project's ``questionnaires/`` directory. Each file is one questionnaire and renders as one page in the experiment. For multiple pages of questions, create multiple files.
+Questionnaires in BOFS are JSON files — plain text in a structured ``"name": value`` format, editable in any text editor — stored in your project's ``questionnaires/`` directory. Each file is one questionnaire and renders as one page in the experiment. For multiple pages of questions, create multiple files.
 
 Questionnaires can also live inside a blueprint at ``<blueprint_name>/questionnaires/``. See :doc:`/framework/blueprints_routes` for how blueprint-scoped questionnaires are discovered.
 
@@ -33,7 +33,7 @@ The following file — ``questionnaires/demographics.json`` — collects age and
 
 Every question has three required properties:
 
-- ``id`` — a unique identifier that becomes a column name in the database. Use lowercase letters and underscores (e.g. ``my_question``); avoid SQL reserved words and Python keywords.
+- ``id`` — a unique identifier that becomes a column name in the database and the column header in your exported CSV data. Use lowercase letters and underscores (e.g. ``my_question``); avoid words that have special meaning in databases or Python, such as ``order``, ``select``, ``class``, or ``return``.
 - ``questiontype`` — which question type to render (see below).
 - ``instructions`` — the question text shown to participants (HTML is accepted).
 
@@ -98,7 +98,7 @@ Renders a table where each row is an item and each column is a point on the scal
         "required": true
     }
 
-``shuffle: true`` randomises the row order each time the page loads. ``required: true`` on a ``radiogrid`` requires every row to have a response before the participant can continue.
+``shuffle: true`` randomises the row order each time the page loads, controlling for item-order effects. ``required: true`` on a ``radiogrid`` requires every row to have a response before the participant can continue.
 
 The full list of question types — checklists, dropdowns, sliders, multi-line text, and more — with every supported property, is in :doc:`/reference/question_types`.
 
@@ -180,7 +180,7 @@ The preview renders the questionnaire as participants would see it, reports any 
 
     **Modifying questionnaires with existing data**
 
-    The database schema for a questionnaire is derived from its question IDs. Changing the questionnaire after responses have been collected requires care.
+    The database schema for a questionnaire is derived from its question IDs. Changing the questionnaire after responses have been collected — adding an item once pilot data exists, or revising an instrument mid-study — requires care.
 
     *During development*, the simplest approach is to delete the ``.db`` file and restart BOFS — the schema is recreated from scratch on the next run.
 

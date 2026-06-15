@@ -1,9 +1,9 @@
 Storing Custom Data
 ===================
 
-Questionnaire responses are stored automatically — BOFS creates the database columns from your question IDs and writes each submission for you. Task data (trial results, reaction times, event logs) doesn't have that automatic path. Custom tables give it one.
+Questionnaire responses are stored automatically — BOFS creates the database columns from your question IDs and writes each submission for you. Task data — the trial-level measurements an embedded task produces, such as reaction times, accuracy, scores, or event sequences — doesn't have that automatic path. Custom tables give it one.
 
-A custom table is a JSON file that describes the columns you want. BOFS creates the corresponding database table at startup and exposes an HTTP endpoint your JavaScript can POST to.
+A custom table is a JSON file that describes the columns you want. BOFS creates the corresponding database table at startup and accepts rows at the address ``/table/<name>``. The JavaScript running your task sends each row there as a standard web request (a POST); the examples below use JavaScript's built-in ``fetch`` function.
 
 Defining a Table
 ----------------
@@ -41,7 +41,7 @@ Save this as ``tables/trials.json`` and BOFS creates the table the next time the
 Two columns are added automatically to every custom table and should not appear in your file or in POST payloads:
 
 - ``participantID`` — links the row to the participant who submitted it.
-- ``timeSubmitted`` — the server's UTC time at the moment of insert.
+- ``timeSubmitted`` — the server's UTC time at the moment of insert. Timestamps come from the server, not the participant's machine, so they are comparable across participants regardless of time zone or clock settings.
 
 The full list of column types, default-value rules, and naming constraints is in :doc:`/reference/custom_tables`.
 
@@ -58,7 +58,9 @@ POST a JSON object to ``/table/<name>`` from your task code. The server attaches
         body: JSON.stringify({score: 42, reaction_time: 312.5})
     });
 
-On success the endpoint returns ``204 No Content``. On a validation error it returns ``400 Bad Request``.
+This code goes wherever your task logic runs — typically inside the ``<script>`` block of a simple or custom page (see :doc:`/building/your_own_pages`). Call it whenever you have a row to record: once per trial for trial-level data, or once at the end of the task for summary data.
+
+On success the request returns status ``204 No Content`` — the row was stored and there is nothing to send back. A malformed payload returns ``400 Bad Request``.
 
 The ``"json"`` column type accepts a JavaScript object or array directly in the payload — useful for per-trial event logs, mouse trajectories, or keystroke timings where a flat column per measurement would be impractical:
 
@@ -75,12 +77,12 @@ The ``"json"`` column type accepts a JavaScript object or array directly in the 
 
 When you later read the row back, ``events`` is already a JavaScript array — no ``JSON.parse`` needed.
 
-For sending multiple rows in one request (batch insert) and for form-encoded POSTs, see :doc:`/reference/custom_tables`.
+For fast-paced tasks, you can also collect rows locally and send them in one request at the end (batch insert); see :doc:`/reference/custom_tables` for batch inserts and form-encoded POSTs.
 
 Reading Data Back
 -----------------
 
-A GET request to ``/table/<name>`` returns a JSON array of all rows belonging to the current participant:
+Reading is useful when a page needs the participant's earlier rows — to display a score, show performance feedback, or check whether a practice block met a threshold before continuing. A GET request to ``/table/<name>`` returns a JSON array of all rows belonging to the current participant:
 
 .. code-block:: javascript
 
@@ -106,9 +108,9 @@ Query-string parameters are applied as exact-match filters:
 Calculated Export Fields
 -------------------------
 
-The admin panel's per-table CSV export gives you raw rows. Calculated export fields let you define per-participant aggregations alongside the table itself. Once defined, they appear as columns on the admin **Export** page (see :doc:`/building/monitoring_data`) and are accessible from Jinja2 templates.
+The admin panel's per-table CSV export gives you raw rows. Calculated export fields let you define per-participant summary values — a trial count, a mean reaction time — computed from those rows. Once defined, they appear as columns on the admin **Export** page (see :doc:`/building/monitoring_data`) and are accessible from page templates.
 
-Add an ``"exports"`` block to the table's JSON file. Each entry in the array defines one set of fields using a SQL aggregate expression:
+Add an ``"exports"`` block to the table's JSON file. Each entry in the array defines one set of fields, each computed by a summary (aggregate) function over the participant's rows:
 
 .. code-block:: json
 
@@ -127,9 +129,9 @@ Add an ``"exports"`` block to the table's JSON file. Each entry in the array def
       ]
     }
 
-The supported aggregate functions are ``MIN``, ``MAX``, ``SUM``, ``COUNT``, and ``AVG``. Optional ``filter``, ``group_by``, ``order_by``, and ``having`` keys are available for more complex exports.
+The supported aggregate functions are ``MIN``, ``MAX``, ``SUM``, ``COUNT``, and ``AVG`` — smallest, largest, total, number of rows, and mean. Optional ``filter``, ``group_by``, ``order_by``, and ``having`` keys are available for more complex exports.
 
-Calculated fields are reachable in templates via the ``TableAccessor``:
+Calculated fields are reachable in page templates through ``participant.table('<name>')``:
 
 .. code-block:: html+jinja
 
@@ -137,7 +139,7 @@ Calculated fields are reachable in templates via the ``TableAccessor``:
     <p>Trials completed: {{ trials.trial_count }}</p>
     <p>Average RT: {{ trials.avg_rt }}</p>
 
-Scalar export fields are also reachable in ``show_if`` predicates via the ``tables.<name>.<column>`` reference form. See :doc:`/reference/expressions` for expression syntax.
+Scalar export fields are also reachable in ``show_if`` conditions via the ``tables.<name>.<column>`` reference form — for example, to skip a page unless the participant's average reaction time crossed a threshold. See :doc:`/reference/expressions` for expression syntax.
 
 The complete reference — all export keys, ``group_by`` behaviour, the ``@page_tables`` decorator for the participant detail view, and the Python ``db`` API — is in :doc:`/reference/custom_tables`.
 

@@ -11,7 +11,7 @@ Reference for the ``participant`` object and all template variables BOFS injects
 Template Variables
 ------------------
 
-BOFS registers a context processor that adds the following variables to every template it renders.
+BOFS makes the following variables available inside every template it renders (via a Flask context processor).
 
 .. list-table::
    :header-rows: 1
@@ -22,7 +22,7 @@ BOFS registers a context processor that adds the following variables to every te
    * - ``participant``
      - The current :ref:`Participant object <participant-object>`. ``None`` when no participant is in session (admin previews, the consent page before submission, error pages). Guard with ``{% if participant %}`` in templates that may render in those contexts.
    * - ``session``
-     - The Flask session dictionary. Contains the :ref:`session fields <session-fields>` described below. Populated progressively as the participant moves through the experiment.
+     - Data tied to the current participant's visit (Flask's session dictionary). Contains the :ref:`session fields <session-fields>` described below. Populated progressively as the participant moves through the experiment.
    * - ``debug``
      - ``True`` when BOFS is running with the ``-d`` flag.
    * - ``config``
@@ -263,4 +263,4 @@ The ``config`` variable provides access to all TOML configuration settings. Read
 
 All keys defined in the project's ``.toml`` file are available, including custom keys you define for your own project logic. Built-in keys are documented in :doc:`/reference/configuration`.
 
-The ``config`` object is Flask's application config, a dict-like object. It does not raise on missing keys when accessed with ``.get()``, but bracket access raises ``KeyError`` for undefined keys.
+The ``config`` object is Flask's application config, a dict-like object. Accessing a missing key with ``.get()`` returns ``None``, but bracket access raises ``KeyError`` (an error) for undefined keys.
