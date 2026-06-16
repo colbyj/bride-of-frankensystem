@@ -12,6 +12,9 @@
              text_entry_width (int): Pixel width of the text input.
        shuffle (bool, optional): Randomise the item order on each render.
            Defaults to False.
+       disable_paste (bool, optional): When true, block paste and drag-drop
+           into every free-text (text_entry) input in this checklist.
+           Defaults to False.
 
    Example:
        {
@@ -50,6 +53,7 @@
             name="{{ check_question.id }}"
             id="{{ check_question.id }}"
             {% if is_filled %}value="{{ check_question.value|e }}"{% endif %}
+            {% if question.disable_paste %}data-bofs-no-paste{% endif %}
             aria-label="custom text entry">
     {% else %}
         <label class="bofs-form-check-label">

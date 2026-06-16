@@ -18,6 +18,9 @@
            input.
        required_selection (str, optional): If set, the participant must pick
            this specific option to submit; any other selection is rejected.
+       disable_paste (bool, optional): When true, block paste and drag-drop
+           into the "Other" free-text input. Only has an effect when
+           other_enabled is true. Defaults to False.
 
    Example:
        {
@@ -71,6 +74,7 @@
             name="{{ question.id }}_other_text_prompt"
             id="{{ question.id }}_other_text_prompt"
             {% if is_other %}value="{{ question.value|e }}"{% endif %}
+            {% if question.disable_paste %}data-bofs-no-paste{% endif %}
             onchange="{ $('#{{ question.id }}_other').val($('#{{ question.id }}_other_text_prompt').val()); }"
             aria-label="custom text entry">
         {% if question.other_input_hides %}

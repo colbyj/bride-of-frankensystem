@@ -148,6 +148,12 @@ BOFS parses every ``show_if`` predicate at startup. A parse error or a reference
 For expression syntax, see :doc:`/reference/expressions`.
 
 
+Disabling paste
+---------------
+
+Text-entry question types (``field``, ``num_field``, ``multi_field``, and the free-text inputs of ``checklist`` and ``radiolist``) accept a ``disable_paste`` property. When ``true``, paste and drag-drop into that question's input are blocked so the answer has to be typed. To disable paste for every text input in the study at once, set ``DISABLE_PASTE = true`` in your config instead. See :doc:`/reference/question_types` for the per-type property and :doc:`/building/data_quality` for how this fits with interaction logging.
+
+
 Custom question types
 ----------------------
 

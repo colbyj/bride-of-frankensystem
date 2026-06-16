@@ -27,6 +27,7 @@
                 return {
                     keystrokes: 0, backspaces: 0,
                     pastes: 0, pastedChars: 0,
+                    drops: 0, droppedChars: 0,
                     focusedAt: null, firstKeyAt: null
                 };
             }
@@ -70,6 +71,17 @@
                             s.pastedChars += chars;
                             log_interaction(qid, 'paste', 'chars=' + chars);
                         });
+                        el.addEventListener('drop', function(e) {
+                            var s = get_state(el);
+                            s.drops += 1;
+                            var chars = 0;
+                            try {
+                                var dropped = e.dataTransfer ? e.dataTransfer.getData('text') : '';
+                                chars = dropped ? dropped.length : 0;
+                            } catch (err) { /* dataTransfer read may be blocked */ }
+                            s.droppedChars += chars;
+                            log_interaction(qid, 'drop', 'chars=' + chars);
+                        });
                     }
 
                     el.addEventListener('focus', function() {
@@ -98,6 +110,8 @@
                                 'backspaces=' + s.backspaces,
                                 'pastes=' + s.pastes,
                                 'pasted_chars=' + s.pastedChars,
+                                'drops=' + s.drops,
+                                'dropped_chars=' + s.droppedChars,
                                 'length=' + len,
                                 'duration_ms=' + duration,
                                 'first_key_ms=' + firstKeyDelay

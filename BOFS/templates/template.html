@@ -58,5 +58,32 @@
 {{ adminControls() }}
 {{ checkUserActive() }}
 
+<script type="text/javascript">
+    // Blocks paste/drag-drop into text inputs when DISABLE_PASTE is set globally, or
+    // for individual inputs carrying the data-bofs-no-paste marker (per-question flag).
+    (function () {
+        var disablePasteGlobal = {{ 'true' if config['DISABLE_PASTE'] else 'false' }};
+
+        function isTypingInput(el) {
+            if (!el || !el.tagName) return false;
+            if (el.tagName === 'TEXTAREA') return true;
+            if (el.tagName !== 'INPUT') return false;
+            return /^(text|number|email|tel|search|password|url|)$/i.test(el.type);
+        }
+        function shouldBlock(el) {
+            if (!isTypingInput(el)) return false;
+            if (disablePasteGlobal) return true;
+            return el.hasAttribute && el.hasAttribute('data-bofs-no-paste');
+        }
+        ['paste', 'drop'].forEach(function (evtName) {
+            document.addEventListener(evtName, function (e) {
+                if (shouldBlock(e.target)) {
+                    e.preventDefault();   // block the action; do NOT stopPropagation,
+                }                          // so the bubble-phase logger still records it
+            }, true);                      // capture phase: guarantees the block fires
+        });
+    })();
+</script>
+
 </body>
 </html>

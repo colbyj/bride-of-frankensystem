@@ -5,6 +5,8 @@
            empty.
        width (int, optional): Pixel width of the input. Defaults to the
            project's DEFAULT_FIELD_WIDTH config value.
+       disable_paste (bool, optional): When true, block paste and drag-drop
+           into this question's text input. Defaults to False.
 #}
 <input class="bofs-form-control"
        type="text"
@@ -13,4 +15,5 @@
        placeholder="{{ question.placeholder }}"
        {% if question.has_value %}value="{{ question.value|e }}"{% endif %}
        style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: 36px;"
+       {% if question.disable_paste %}data-bofs-no-paste{% endif %}
        {{ "required" if question.required }}>

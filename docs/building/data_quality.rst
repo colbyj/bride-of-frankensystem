@@ -32,6 +32,7 @@ With logging on, BOFS records a timestamped event each time a participant intera
 - ``focus`` and ``blur`` — entering and leaving an input.
 - ``change`` — a changed answer.
 - ``paste`` — text pasted into a field (rather than typed).
+- ``drop`` — text dragged and dropped into a field (rather than typed).
 - ``visibility`` — the browser tab being hidden or shown, which happens when the participant switches away to another tab or window.
 
 Together these let you measure how much time participants spent on each item, whether they revised answers, whether they pasted responses in, and whether they left the page mid-questionnaire. These signals can be used to gauge attentiveness and effort.
@@ -54,6 +55,7 @@ Two questionnaire features help ensure participants actually engage with what yo
 
 - **Required questions** (``"required": true``) prevent a participant from advancing past a question they have left blank. See :doc:`adding_survey_questions`.
 - **Force-watch media** (``"force_watch": true`` on a ``video`` or ``audio`` question) keeps the Continue button disabled until a video clip has been played. See :doc:`/reference/question_types`.
+- **Disabling paste** stops participants from pasting (or dragging) text into a field, so free-text answers have to be typed. Set ``DISABLE_PASTE = true`` in your config to apply this to every text input across the study, or set ``"disable_paste": true`` on an individual text question to apply it to just that question. When interaction logging is on, blocked paste and drop attempts are still recorded.
 
 Reviewing and excluding participants
 ------------------------------------

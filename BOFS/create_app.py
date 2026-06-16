@@ -56,6 +56,9 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     if 'LOG_QUESTIONNAIRE_INTERACTIONS' not in app.config:
         app.config['LOG_QUESTIONNAIRE_INTERACTIONS'] = False
 
+    if 'DISABLE_PASTE' not in app.config:
+        app.config['DISABLE_PASTE'] = False
+
     if 'ADDITIONAL_ADMIN_PAGES' not in app.config:
         app.config['ADDITIONAL_ADMIN_PAGES'] = []
 

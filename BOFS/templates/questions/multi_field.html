@@ -6,10 +6,13 @@
        width (int, optional): Pixel width. Defaults to the project's
            DEFAULT_FIELD_WIDTH config value.
        height (int, optional): Pixel height. Defaults to 80.
+       disable_paste (bool, optional): When true, block paste and drag-drop
+           into this question's text input. Defaults to False.
 #}
 <textarea class="bofs-form-control"
           placeholder="{{ question.placeholder }}"
           name="{{ question.id }}"
           id="{{ question.id }}"
           style="width: {{ question.width if question.width else config['DEFAULT_FIELD_WIDTH'] }}px; height: {{ question.height if question.height else 80 }}px;"
+          {% if question.disable_paste %}data-bofs-no-paste{% endif %}
           {{ "required" if question.required }}>{% if question.has_value %}{{ question.value|e }}{% endif %}</textarea>
