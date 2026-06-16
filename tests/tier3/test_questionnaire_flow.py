@@ -186,7 +186,7 @@ class TestQuestionTypes:
         pid = create_participant_via_consent(client, app)
 
         events = (
-            '{"questionID":"g1_q1","eventType":"change","timestamp":1704110400.123,"value":"3"};'
+            '{"questionID":"g1_q1","eventType":"change","timestamp":1704110400.123,"value":"3"}\n'
             '{"questionID":"g1_q2","eventType":"change","timestamp":1704110401.456,"value":"5"}'
         )
 

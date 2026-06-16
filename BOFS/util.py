@@ -98,6 +98,15 @@ def verify_correct_page(f):
         if ensure_response is not None:
             return ensure_response
 
+        # Content pages (questionnaire/instructions/simple/custom) dereference
+        # session['participantID']. ensure_participant_for_first_page only
+        # creates one when the *first* page is a content route, so a deeper
+        # content page reached with a corrupted session (currentUrl set but
+        # participantID gone) would otherwise 500 here.
+        require_response = service.require_participant(currentUrl)
+        if require_response is not None:
+            return require_response
+
         return f(*args, **kwargs)
 
     decorated_function._bofs_verify_correct_page = True

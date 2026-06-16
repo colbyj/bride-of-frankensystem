@@ -716,9 +716,9 @@ class TestHandleQuestionnaire:
         pid = self._create_participant(bofs_app)
 
         events = (
-            '{"questionID":"g_q1","eventType":"focus","timestamp":1704110400.000,"value":""};'
-            '{"questionID":"g_q1","eventType":"change","timestamp":1704110400.500,"value":"2"};'
-            '{"questionID":"g_q1","eventType":"blur","timestamp":1704110401.000,"value":"2"};'
+            '{"questionID":"g_q1","eventType":"focus","timestamp":1704110400.000,"value":""}\n'
+            '{"questionID":"g_q1","eventType":"change","timestamp":1704110400.500,"value":"2"}\n'
+            '{"questionID":"g_q1","eventType":"blur","timestamp":1704110401.000,"value":"2"}\n'
             '{"questionID":"g_q2","eventType":"change","timestamp":1704110402.000,"value":"3"}'
         )
 
@@ -756,8 +756,8 @@ class TestHandleQuestionnaire:
 
         # Middle event is broken JSON; the surrounding events should still persist.
         events = (
-            '{"questionID":"g_q1","eventType":"change","timestamp":1704110400.000,"value":"2"};'
-            '{this is not valid json};'
+            '{"questionID":"g_q1","eventType":"change","timestamp":1704110400.000,"value":"2"}\n'
+            '{this is not valid json}\n'
             '{"questionID":"g_q2","eventType":"change","timestamp":1704110402.000,"value":"3"}'
         )
 
@@ -783,6 +783,50 @@ class TestHandleQuestionnaire:
 
         assert len(rows) == 2
         assert [r.questionID for r in rows] == ["g_q1", "g_q2"]
+
+    def test_interaction_value_with_delimiter_chars(self, bofs_app):
+        # Regression: a free-text value containing semicolons (the old
+        # delimiter) and apostrophes must survive intact. The client
+        # serializes each event with JSON.stringify and joins with newlines,
+        # which escapes any literal newline, so the value is delimiter-safe.
+        bofs_app.config["LOG_QUESTIONNAIRE_INTERACTIONS"] = True
+        q = write_questionnaire_file(bofs_app, "grid_q", RADIOGRID_QUESTIONNAIRE)
+        pid = self._create_participant(bofs_app)
+
+        free_text = (
+            "I liked him a lot for his personality and attitude; "
+            "he was pretty much what I expected; I didn't mind."
+        )
+        events = "\n".join([
+            json.dumps({"questionID": "g_q1", "eventType": "blur",
+                        "timestamp": 1704110400.000, "value": free_text}),
+            json.dumps({"questionID": "g_q2", "eventType": "change",
+                        "timestamp": 1704110401.000, "value": "3"}),
+        ])
+
+        with bofs_app.test_request_context(
+            "/questionnaire/grid_q",
+            method="POST",
+            data={
+                "timeStarted": "2024-01-01 12:00:00",
+                "g_q1": "2",
+                "g_q2": "3",
+                "questionnaireInteractions": events,
+            },
+        ):
+            from flask import session
+            session["participantID"] = pid
+            ParticipantQuestionnaireService(pid).handle_submission(q)
+
+        rows = bofs_app.db.session.query(
+            bofs_app.db.QuestionnaireInteraction
+        ).filter(
+            bofs_app.db.QuestionnaireInteraction.participantID == pid,
+        ).order_by(bofs_app.db.QuestionnaireInteraction.timestamp).all()
+
+        assert len(rows) == 2
+        assert rows[0].value == free_text
+        assert rows[1].value == "3"
 
     def test_interaction_logging_disabled(self, bofs_app):
         # Default config has LOG_QUESTIONNAIRE_INTERACTIONS = False

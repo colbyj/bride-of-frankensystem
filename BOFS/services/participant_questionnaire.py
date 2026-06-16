@@ -60,7 +60,11 @@ class ParticipantQuestionnaireService:
 
         if current_app.config.get('LOG_QUESTIONNAIRE_INTERACTIONS', False):
             raw = request.form.get('questionnaireInteractions', '')
-            for event_str in raw.split(';'):
+            # Events are newline-delimited JSON (see questionnaire_macro.html):
+            # JSON.stringify escapes literal newlines, so splitting on them is
+            # safe even when a free-text value contains the line separator.
+            for event_str in raw.splitlines():
+                event_str = event_str.strip()
                 if not event_str:
                     continue
                 try:

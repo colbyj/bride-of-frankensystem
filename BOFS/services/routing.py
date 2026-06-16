@@ -200,6 +200,41 @@ class ParticipantRoutingService:
 
         return None
 
+    def require_participant(self, current_url):
+        """Return a redirect to the study start when *current_url* is a page
+        that needs a participant in session but none exists.
+
+        :meth:`ensure_participant_for_first_page` only lazy-creates a
+        participant when the *first* PAGE_LIST entry is a content route. A
+        participant who reaches a deeper content page
+        (questionnaire/instructions/simple/custom) with a session that still
+        has ``currentUrl`` but has lost ``participantID`` (a corrupted or
+        partially-cleared session) would otherwise fall through to the view,
+        which dereferences ``session['participantID']`` and 500s. Clear the
+        broken session and send them back to the start so it re-bootstraps
+        onto the first page — the same recovery ``verify_session_valid`` and
+        ``route_debug_pick_condition`` already use for a missing/invalid
+        participant.
+
+        Returns ``None`` when a participant exists or when *current_url* is a
+        route that legitimately runs without one (the consent/creation
+        variants, the index, and the ``end`` terminus).
+        """
+        if "participantID" in self.session:
+            return None
+
+        from BOFS.services.participant import CREATION_ROUTES
+
+        path = urlsplit(current_url or "").path.strip("/")
+        if (path == "" or path in CREATION_ROUTES
+                or path == "end" or path.startswith("end/")):
+            return None
+
+        # Stale currentUrl would bounce an index redirect straight back here
+        # (enforce_current_page), so clear it for a clean re-bootstrap.
+        self.session.clear()
+        return redirect(self.application_root + "/")
+
     # ----- Progress tracking -------------------------------------------
 
     def track_progress(self, path):

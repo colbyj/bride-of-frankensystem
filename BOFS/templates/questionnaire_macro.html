@@ -39,12 +39,16 @@
             }
 
             function log_interaction(question_id, event_type, value) {
+                // Newline-delimited JSON: JSON.stringify always escapes literal
+                // newlines (to "\n"), so a newline can never appear inside a
+                // serialized event and is a collision-free separator. (A ';'
+                // separator broke on free-text values that contained ';'.)
                 interactions_el.value += JSON.stringify({
                     questionID: question_id,
                     eventType: event_type,
                     timestamp: Date.now() / 1000.0,
                     value: (value === undefined || value === null) ? '' : String(value)
-                }) + ';';
+                }) + '\n';
             }
 
             document.addEventListener('DOMContentLoaded', function() {

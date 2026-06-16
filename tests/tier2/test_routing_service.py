@@ -207,6 +207,53 @@ class TestVerifyCorrectPageHelpers:
             assert ParticipantRoutingService.from_app().enforce_current_page("consent") is None
 
 
+class TestRequireParticipant:
+
+    def test_passes_when_participant_present(self, bofs_app_with_questionnaires):
+        app = bofs_app_with_questionnaires
+        with app.test_request_context("/questionnaire/survey"):
+            session["currentUrl"] = "questionnaire/survey"
+            session["participantID"] = 1
+            assert ParticipantRoutingService.from_app().require_participant(
+                "questionnaire/survey") is None
+
+    def test_redirects_on_content_page_without_participant(self, bofs_app_with_questionnaires):
+        # currentUrl points at a deep content page but participantID is gone:
+        # a corrupted session that would otherwise 500 in the view.
+        app = bofs_app_with_questionnaires
+        with app.test_request_context("/questionnaire/survey"):
+            session.clear()
+            session["currentUrl"] = "questionnaire/survey"
+            response = ParticipantRoutingService.from_app().require_participant(
+                "questionnaire/survey")
+            assert response is not None
+            assert response.status_code == 302
+            assert response.location.endswith("/")
+            # Stale session must be cleared so the index redirect doesn't
+            # bounce straight back to the questionnaire.
+            assert "currentUrl" not in session
+
+    @pytest.mark.parametrize("path", [
+        "", "consent", "consent_nc", "create_participant",
+        "create_participant_nc", "end", "end/quota_full",
+    ])
+    def test_passes_for_participant_free_routes(self, bofs_app_with_questionnaires, path):
+        app = bofs_app_with_questionnaires
+        with app.test_request_context("/" + path):
+            session.clear()
+            session["currentUrl"] = path
+            assert ParticipantRoutingService.from_app().require_participant(path) is None
+
+    def test_strips_query_string(self, bofs_app_with_questionnaires):
+        # First-visit URLs can carry ?PROLIFIC_PID/?source; the route check
+        # must look at the path, not the raw query-bearing string.
+        app = bofs_app_with_questionnaires
+        with app.test_request_context("/consent?source=prolific"):
+            session.clear()
+            assert ParticipantRoutingService.from_app().require_participant(
+                "consent?source=prolific") is None
+
+
 class TestProgressTracking:
 
     def test_track_progress_creates_row(self, bofs_app_with_questionnaires):
