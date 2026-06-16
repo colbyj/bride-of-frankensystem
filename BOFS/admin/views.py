@@ -895,7 +895,32 @@ def _find_table(tableName):
     return None, None
 
 
-def table_data(tableName):
+# Row-count options offered in the table viewer's "rows per page" selector.
+# The first entry is the default applied when no (or an unrecognised)
+# ``page_size`` query argument is supplied.
+_TABLE_PAGE_SIZES = (50, 100, 250, 500)
+
+
+def _table_columns(table):
+    columns = []
+    for c in table.columns:
+        type = str(c.type)
+        if type.startswith("VARCHAR") or type.startswith("TEXT"):
+            type = u"string"
+
+        columns.append({'name': c.description, 'type': type.lower()})
+
+    return columns
+
+
+def table_data(tableName, page=None, page_size=None):
+    """Return ``(columns, rows, total)`` for *tableName*.
+
+    When *page* is given (1-based) only that slice of rows is fetched via a
+    stably-ordered ``LIMIT``/``OFFSET`` query and *total* is the full row
+    count. When *page* is ``None`` every row is returned (the CSV export
+    path) and *total* equals ``len(rows)``.
+    """
     if tableName in _TABLE_VIEW_BLOCKED:
         abort(404)
     table, bind_key = _find_table(tableName)
@@ -906,43 +931,59 @@ def table_data(tableName):
     # bind information (only models carry ``__bind_key__``), so the
     # session would default to the main engine and 'no such table' for
     # cross-bind tables. Execute against the engine that actually owns it.
-    from sqlalchemy import select
+    from sqlalchemy import select, func
     engine = db.engine if bind_key is None else db.engines[bind_key]
+    columns = _table_columns(table)
+
     with engine.connect() as conn:
-        rows = list(conn.execute(select(table)))
+        if page is None:
+            rows = list(conn.execute(select(table)))
+            return columns, rows, len(rows)
 
-    columns = []
+        total = conn.execute(select(func.count()).select_from(table)).scalar() or 0
+        # A stable ORDER BY keeps page boundaries consistent across
+        # requests; without it LIMIT/OFFSET may repeat or skip rows. Order
+        # by the primary key when present, otherwise by the first column.
+        order_cols = list(table.primary_key.columns) or [next(iter(table.columns))]
+        stmt = (select(table).order_by(*order_cols)
+                .limit(page_size).offset((page - 1) * page_size))
+        rows = list(conn.execute(stmt))
+        return columns, rows, total
 
-    for c in table.columns:
-        type = str(c.type)
-        if type.startswith("VARCHAR") or type.startswith("TEXT"):
-            type = u"string"
 
-        column = {'name': c.description, 'type': type.lower()}
-
-        columns.append(column)
-
-    return columns, rows
+def _table_page_args():
+    """Parse and clamp the ``page`` / ``page_size`` query args for the viewer."""
+    page_size = int_or_0(request.args.get('page_size'))
+    if page_size not in _TABLE_PAGE_SIZES:
+        page_size = _TABLE_PAGE_SIZES[0]
+    page = max(1, int_or_0(request.args.get('page')))
+    return page, page_size
 
 
 @admin.route("/table_view/<tableName>")
 @verify_admin
 def route_table_view(tableName):
-    columns, rows = table_data(tableName)
-    return render_template("table_view.html", tableName=tableName, rows=rows, columns=columns)
+    page, page_size = _table_page_args()
+    columns, rows, total = table_data(tableName, page=page, page_size=page_size)
+    return render_template("table_view.html", tableName=tableName, rows=rows,
+                           columns=columns, page=page, page_size=page_size,
+                           total=total, page_sizes=_TABLE_PAGE_SIZES)
 
 
 @admin.route("/table_ajax/<tableName>")
 @verify_admin
 def route_table_ajax(tableName):
-    columns, rows = table_data(tableName)
-    return render_template("table_ajax.html", rows=rows, columns=columns)
+    page, page_size = _table_page_args()
+    columns, rows, total = table_data(tableName, page=page, page_size=page_size)
+    return render_template("table_ajax.html", tableName=tableName, rows=rows,
+                           columns=columns, page=page, page_size=page_size,
+                           total=total, page_sizes=_TABLE_PAGE_SIZES)
 
 
 @admin.route("/table_csv/<tableName>")
 @verify_admin
 def route_table_csv(tableName):
-    columns, rows = table_data(tableName)
+    columns, rows, _ = table_data(tableName)
 
     headers = [c['name'] for c in columns]
     body_rows = [[row[i] for i in range(len(columns))] for row in rows]

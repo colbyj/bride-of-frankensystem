@@ -1,4 +1,5 @@
-<table class="table table-striped border">
+<div class="table-responsive">
+<table class="table table-striped border data-table">
     <thead>
     <tr>
         {% for c in columns %}
@@ -26,10 +27,60 @@
                     <td style="text-align: center;"><input type="checkbox" disabled
                                                            readonly {{ 'checked' if r[loop.index0] }}></td>
                 {% else %}
-                    <td>{{ r[loop.index0] }}</td>
+                    <td title="{{ r[loop.index0] }}">{{ r[loop.index0] }}</td>
                 {% endif %}
             {% endfor %}
         </tr>
     {% endfor %}
     </tbody>
 </table>
+</div>
+
+{% set total_pages = ((total - 1) // page_size + 1) if total > 0 else 1 %}
+<nav class="d-flex align-items-center justify-content-between flex-wrap gap-2 px-3 pb-3" aria-label="Table pages">
+    <div class="text-muted small">
+        {% if total > 0 %}
+            Showing {{ (page - 1) * page_size + 1 }}&ndash;{{ [page * page_size, total] | min }} of {{ total }}
+        {% else %}
+            No rows
+        {% endif %}
+    </div>
+
+    <div class="btn-group">
+        {% if page > 1 %}
+        <a class="btn btn-outline-dark btn-sm"
+           hx-get="{{ url_for('admin.route_table_ajax', tableName=tableName, page=page - 1, page_size=page_size) }}"
+           hx-target="#table-container" hx-swap="innerHTML">
+            <i class="fas fa-chevron-left"></i> Previous
+        </a>
+        {% else %}
+        <button class="btn btn-outline-dark btn-sm" disabled><i class="fas fa-chevron-left"></i> Previous</button>
+        {% endif %}
+
+        <span class="btn btn-light btn-sm disabled">Page {{ page }} of {{ total_pages }}</span>
+
+        {% if page < total_pages %}
+        <a class="btn btn-outline-dark btn-sm"
+           hx-get="{{ url_for('admin.route_table_ajax', tableName=tableName, page=page + 1, page_size=page_size) }}"
+           hx-target="#table-container" hx-swap="innerHTML">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="btn btn-outline-dark btn-sm" disabled>Next <i class="fas fa-chevron-right"></i></button>
+        {% endif %}
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <label class="text-muted small mb-0" for="page-size-select">Rows per page</label>
+        {# htmx fires on change and sends this select's value as ?page_size=;
+           omitting page resets to page 1, which is what we want after a
+           page-size change. #}
+        <select id="page-size-select" name="page_size" class="form-select form-select-sm" style="width: auto;"
+                hx-get="{{ url_for('admin.route_table_ajax', tableName=tableName) }}"
+                hx-target="#table-container" hx-swap="innerHTML">
+            {% for ps in page_sizes %}
+            <option value="{{ ps }}" {{ 'selected' if ps == page_size }}>{{ ps }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</nav>

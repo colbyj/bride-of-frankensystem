@@ -1,10 +1,29 @@
 {% extends "template_admin.html" %}
 {% block head %}
+<style>
+    /* Keep rows scannable when a column holds long free-text or JSON:
+       clip each cell to a single line with an ellipsis. Clicking a cell
+       toggles it open to show the full content. */
+    .data-table td {
+        max-width: 24rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .data-table td.expanded {
+        white-space: normal;
+        overflow: visible;
+        word-break: break-word;
+    }
+    .data-table td:not(:empty) {
+        cursor: pointer;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 
-    {% if (errors | length) > 0 %}
+    {% if errors is defined and (errors | length) > 0 %}
 
     <br>
     <div class="error-box">
@@ -25,23 +44,20 @@
     <div class="p-3">
         <h2>{{ tableName }}</h2>
     </div>
-    <div class="">
+
+    <div id="table-container">
         {% include "table_ajax.html" %}
     </div>
 
+    <script>
+        // Click any non-empty data cell to toggle between the clipped
+        // one-line view and its full content. Bound on document so it
+        // keeps working after htmx swaps the table on a page change.
+        $(document).on('click', '.data-table td:not(:empty)', function () {
+            $(this).toggleClass('expanded');
+        });
+    </script>
 
     {% endif %}
-
-    <script>
-    setInterval(function() {
-        $.ajax({
-            url: "{{ url_for('admin.route_table_ajax', tableName=tableName) }}",
-            dataType: "html",
-            success: function(data) {
-                $("table").html(data);
-            }
-        });
-    }, 15000);
-    </script>
 
 {% endblock %}

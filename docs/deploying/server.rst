@@ -68,7 +68,9 @@ Verify the Installation
     source bofs_production/bin/activate
     BOFS --help
     cd ~/experiments/my_study
-    BOFS run production.toml --check-config
+    BOFS run production.toml
+
+``BOFS --help`` confirms BOFS is installed and on the path. ``BOFS run production.toml`` starts the server; once it prints ``Listening on http://...`` the config has loaded successfully. Stop it with ``Ctrl+C`` — the next sections set it up to run as a managed service behind a reverse proxy.
 
 Web Server Configuration
 -------------------------
