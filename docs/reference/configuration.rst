@@ -90,7 +90,7 @@ Admin Panel Settings
    * - ``LOG_QUESTIONNAIRE_INTERACTIONS``
      - boolean
      - ``false``
-     - Log focus, blur, change, paste, drop, and visibility events for every input on every questionnaire. Text inputs additionally record per-field authenticity signals (keystrokes, backspaces, pastes, pasted character count, drops, dropped character count, final length, total focus duration, time-to-first-keystroke). See :doc:`/building/monitoring_data`.
+     - Log focus, blur, change, paste, drop, and visibility events for every input on every questionnaire (plus ``paste_blocked`` / ``drop_blocked`` events when paste is disabled). Text inputs additionally record per-field authenticity signals (keystrokes, backspaces, pastes, pasted character count, blocked pastes, drops, dropped character count, blocked drops, final length, total focus duration, time-to-first-keystroke). See :doc:`/building/monitoring_data`.
    * - ``DISABLE_PASTE``
      - boolean
      - ``false``

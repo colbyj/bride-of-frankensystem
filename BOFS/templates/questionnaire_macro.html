@@ -26,8 +26,8 @@
             function fresh_state() {
                 return {
                     keystrokes: 0, backspaces: 0,
-                    pastes: 0, pastedChars: 0,
-                    drops: 0, droppedChars: 0,
+                    pastes: 0, pastedChars: 0, pastesBlocked: 0,
+                    drops: 0, droppedChars: 0, dropsBlocked: 0,
                     focusedAt: null, firstKeyAt: null
                 };
             }
@@ -62,25 +62,40 @@
                         });
                         el.addEventListener('paste', function(e) {
                             var s = get_state(el);
-                            s.pastes += 1;
+                            // The DISABLE_PASTE blocker runs first (document, capture
+                            // phase) and calls preventDefault, so defaultPrevented tells
+                            // us whether this paste was actually inserted or blocked.
+                            var blocked = e.defaultPrevented;
                             var chars = 0;
                             try {
                                 var pasted = (e.clipboardData || window.clipboardData).getData('text');
                                 chars = pasted ? pasted.length : 0;
                             } catch (err) { /* clipboard read may be blocked */ }
-                            s.pastedChars += chars;
-                            log_interaction(qid, 'paste', 'chars=' + chars);
+                            if (blocked) {
+                                s.pastesBlocked += 1;
+                                log_interaction(qid, 'paste_blocked', 'chars=' + chars);
+                            } else {
+                                s.pastes += 1;
+                                s.pastedChars += chars;
+                                log_interaction(qid, 'paste', 'chars=' + chars);
+                            }
                         });
                         el.addEventListener('drop', function(e) {
                             var s = get_state(el);
-                            s.drops += 1;
+                            var blocked = e.defaultPrevented;
                             var chars = 0;
                             try {
                                 var dropped = e.dataTransfer ? e.dataTransfer.getData('text') : '';
                                 chars = dropped ? dropped.length : 0;
                             } catch (err) { /* dataTransfer read may be blocked */ }
-                            s.droppedChars += chars;
-                            log_interaction(qid, 'drop', 'chars=' + chars);
+                            if (blocked) {
+                                s.dropsBlocked += 1;
+                                log_interaction(qid, 'drop_blocked', 'chars=' + chars);
+                            } else {
+                                s.drops += 1;
+                                s.droppedChars += chars;
+                                log_interaction(qid, 'drop', 'chars=' + chars);
+                            }
                         });
                     }
 
@@ -110,8 +125,10 @@
                                 'backspaces=' + s.backspaces,
                                 'pastes=' + s.pastes,
                                 'pasted_chars=' + s.pastedChars,
+                                'pastes_blocked=' + s.pastesBlocked,
                                 'drops=' + s.drops,
                                 'dropped_chars=' + s.droppedChars,
+                                'drops_blocked=' + s.dropsBlocked,
                                 'length=' + len,
                                 'duration_ms=' + duration,
                                 'first_key_ms=' + firstKeyDelay
