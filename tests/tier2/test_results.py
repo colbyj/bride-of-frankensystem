@@ -299,6 +299,11 @@ class TestCaching:
         # Load from fresh cache
         r2 = Results(cache_path=cache_path)
         assert r2.df is not None  # Loaded from cache
+        # The cache-load path also rebuilds export_data, keyed by participantID
+        # with each value a per-column record dict.
+        assert len(r2.export_data) == 1
+        pid = next(iter(r2.export_data))
+        assert r2.export_data[pid]["participantID"] == pid
 
     def test_stale_cache_rebuilds(self, bofs_app_with_questionnaires, tmp_path):
         app = bofs_app_with_questionnaires

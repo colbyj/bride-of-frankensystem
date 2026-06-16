@@ -8,7 +8,7 @@ from wtforms.validators import ValidationError
 from .. import BOFSFlask
 from ..globals import db, questionnaires, page_list
 from ..util import fetch_condition_count, display_time, provide_consent, int_or_0, utcnow_naive
-from .util import sqlalchemy_to_json, verify_admin, formula_safe, csv_string, questionnaire_name_and_tag, condition_num_to_label
+from .util import sqlalchemy_to_json, verify_admin, csv_string, questionnaire_name_and_tag, condition_num_to_label
 from ..services.participant_questionnaire import ParticipantQuestionnaireService
 from ..services.data_export import Results
 import json
@@ -690,19 +690,6 @@ def _used_binds_for_export(results):
     })
 
 
-def _df_with_formula_safe_strings(df):
-    """Copy *df* with string-typed cells prefixed against CSV formula
-    injection. Pandas' to_csv handles RFC 4180 quoting; the formula sigils
-    (=+-@\\t) are a spreadsheet-app concern to_csv doesn't know about.
-    """
-    safe = df.copy()
-    for col in safe.select_dtypes(include='object').columns:
-        safe[col] = safe[col].map(
-            lambda v: formula_safe(v) if isinstance(v, str) else v
-        )
-    return safe
-
-
 @admin.route("/export")
 @admin.route("/export/download", endpoint="route_export_download")
 @verify_admin
@@ -738,12 +725,11 @@ def route_export():
         if has_binds:
             # Privacy default once binds exist: even the default-bind
             # download endpoint must not leak PII columns.
-            df = results.build_data_frame_for_bind(None)
+            csv_data = results.build_export_csv_for_bind(None)
         else:
-            df = results.build_data_frame()
-        df_safe = _df_with_formula_safe_strings(df)
+            csv_data = results.build_export_csv()
         return Response(
-            df_safe.to_csv(na_rep="", index=False),
+            csv_data,
             mimetype="text/csv",
             headers={
                 "Content-disposition": "attachment; filename=%s.csv" %
@@ -792,10 +778,8 @@ def route_export_download_bind(bind):
         abort(404)
 
     results = Results(Results.build_filter_from_args(request.args))
-    df = results.build_data_frame_for_bind(bind)
-    df_safe = _df_with_formula_safe_strings(df)
     return Response(
-        df_safe.to_csv(na_rep="", index=False),
+        results.build_export_csv_for_bind(bind),
         mimetype="text/csv",
         headers={
             "Content-disposition": (

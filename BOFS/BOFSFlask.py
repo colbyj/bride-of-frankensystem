@@ -140,9 +140,14 @@ class BOFSFlask(Flask):
     def waitress_run(self, host=None, port=None) -> None:
         from waitress import serve
 
-        # Default of 4 is a bit low for a standalone server when static assets are being
-        # served (as they are in our case). Configurable via WAITRESS_THREADS.
-        threads = self.config.get('WAITRESS_THREADS', 16)
+        # Resolution order: TOML config wins, then a WAITRESS_THREADS env var (lets a
+        # deployment manager set it per-container), then the default.
+        threads = self.config.get('WAITRESS_THREADS')
+        if threads is None:
+            try:
+                threads = int(os.environ.get('WAITRESS_THREADS', 16))
+            except (TypeError, ValueError):
+                threads = 16
 
         try:
             serve(self, host=host, port=port, threads=threads)

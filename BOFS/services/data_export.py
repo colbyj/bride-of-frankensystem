@@ -9,7 +9,7 @@ from BOFS.globals import db, questionnaires, page_list
 import sqlalchemy
 from BOFS.admin.util import csv_string, questionnaire_name_and_tag, condition_num_to_label
 from flask import current_app
-import pandas as pd
+# NOTE: pandas is imported lazily inside the few methods that need it.
 import os
 from datetime import datetime, timezone
 from typing import Union
@@ -414,6 +414,7 @@ class Results(object):
         return levels, fields, baseQuery
 
     def load_data_frame(self):
+        import pandas as pd
         df = pd.read_json(self.cache_path)
         self.handle_participants_table()
 
@@ -437,12 +438,15 @@ class Results(object):
         self.df = df
         self.column_list = self.df.columns.values.tolist()
 
-        for participantID in self.df["participantID"].values.tolist():
-            self.export_data[participantID] = {}
-            for column in self.column_list:
-                self.export_data[participantID][column] = self.df[df["participantID"] == participantID][column].values.tolist()[0]
+        # Build the per-participant dict in a single pass. The previous version
+        # re-filtered the whole frame once per cell (a boolean mask per cell,
+        # O(rows^2 * cols)), which was both slow and memory-heavy on large
+        # studies. to_dict("records") is one pass; key by participantID.
+        for record in df.to_dict(orient="records"):
+            self.export_data[record["participantID"]] = record
 
     def build_data_frame(self) -> "pd.DataFrame":
+        import pandas as pd
         if self.df is not None:
             return self.df
 
@@ -463,6 +467,7 @@ class Results(object):
         configured so the operator sees one DB at a time, not a merged
         cross-bind view that masks the privacy separation.
         """
+        import pandas as pd
         columns = self.column_list_by_bind.get(bind_key, [])
         if bind_key is None:
             pids = list(self.export_data.keys())

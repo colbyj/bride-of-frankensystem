@@ -1,11 +1,18 @@
-import pandas
-from pandas.core.groupby import DataFrameGroupBy
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # Only needed for the type hint; importing it at runtime would pull in pandas
+    # (~60-90 MB) just to load this module. The actual work is done via methods on
+    # the df_grouped object passed in, so no runtime pandas import is required here.
+    from pandas.core.groupby import DataFrameGroupBy
 
 
 class SummaryStats(object):
     def __init__(self, df_grouped: DataFrameGroupBy, field_name: str):
         self.field_name = field_name
-        
+
         n = df_grouped[field_name].count()
         min = df_grouped[field_name].min()
         max = df_grouped[field_name].max()
@@ -24,4 +31,3 @@ class SummaryStats(object):
         self.std = list(std)
         self.sem = list(sem)
         self.var = list(var)
-
