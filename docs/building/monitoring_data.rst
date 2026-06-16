@@ -41,6 +41,8 @@ The same page reports summary statistics, broken down by experimental condition:
     Min/Max Duration         Fastest and slowest completion times
     ======================== ==================
 
+When a study uses more than one end page (see :ref:`multiple-end-pages`), the progress page also breaks participants down by ``end_reason`` — how each one exited — so you can see, for example, how many were screened out versus completed.
+
 Participant Detail View
 ~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -73,7 +75,7 @@ badge when applicable.
 Data Export
 -----------
 
-``/admin/export`` downloads questionnaire responses as CSV. Options include excluding unfinished or excluded participants, previewing the table in HTML before downloading, and automatic timestamping of the filename.
+``/admin/export`` downloads questionnaire responses as CSV. Options include excluding unfinished or excluded participants, previewing the table in HTML before downloading, and automatic timestamping of the filename. The export includes each participant's ``source`` (recruitment-channel tag) and ``end_reason`` (how they exited), so you can filter or group by either in your analysis.
 
 For questionnaire interaction data (only collected when ``LOG_QUESTIONNAIRE_INTERACTIONS`` is enabled), use ``/admin/export_item_timing``. This exports a flat event log — one row per event — with participantID, mTurkID, questionnaire, tag, questionID, eventType, timestamp, and value. The event types record how participants interacted with each question: ``focus`` and ``blur`` (entering and leaving an input), ``change`` (a response edit), ``paste``, and ``visibility`` (the browser tab being hidden or shown) — useful for response-timing or answer-revision analyses.
 

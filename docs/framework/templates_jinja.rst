@@ -52,9 +52,9 @@ Each is detailed in :doc:`/reference/participant_data_api`. The most common patt
 
 .. code-block:: html
 
-   {% if session.condition == 1 %}
+   {% if session['condition'] == 1 %}
        <p>Control instructions go here.</p>
-   {% elif session.condition == 2 %}
+   {% elif session['condition'] == 2 %}
        <p>Treatment instructions go here.</p>
    {% endif %}
 

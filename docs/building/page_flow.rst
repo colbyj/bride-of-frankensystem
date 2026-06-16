@@ -65,7 +65,7 @@ PAGE_LIST: defining the page sequence
 
 The four variants and when to pick which are covered in :doc:`consent`.
 
-**The last page** must be ``end``. This shows the completion message and (if configured) generates a completion code participants can paste back into a recruitment platform.
+**The last page** must be ``end``. This shows the completion message and (if configured) generates a completion code participants can paste back into a recruitment platform. A study can have more than one end page when different participants should finish differently — see `Multiple end pages`_ below.
 
 **Page types between first and last:**
 
@@ -87,6 +87,8 @@ The four variants and when to pick which are covered in :doc:`consent`.
      - The HTML at ``templates/simple/<name>.html``, wrapped in BOFS chrome but with no Continue button — you control navigation. See :doc:`your_own_pages`.
    * - ``custom/<name>``
      - The HTML at ``templates/custom/<name>.html``, served without BOFS chrome (no header, breadcrumbs, or styling). For embedded JS tasks.
+   * - ``end`` / ``end/<reason>``
+     - A study-completion page. ``end`` is the default exit; ``end/<reason>`` is an alternate exit tagged with ``<reason>`` (e.g. ``end/screened_out``). See `Multiple end pages`_ below.
    * - ``assign_condition``
      - Triggers condition assignment if the participant doesn't have one yet. Useful when consent was collected via ``consent_nc`` or ``create_participant_nc``.
    * - ``<blueprint_endpoint>``
@@ -109,6 +111,47 @@ The four variants and when to pick which are covered in :doc:`consent`.
    ]
 
 For conditional routing (different page sequences per condition) and per-page ``show_if`` expressions, see :doc:`conditions_branching`.
+
+.. _multiple-end-pages:
+
+Multiple end pages
+------------------
+
+Not every participant should finish the same way. Someone screened out at the demographics stage, someone who fails an attention check, and someone who completes the full protocol may each need a different closing message — and, when recruiting from a platform, a different completion URL so your records distinguish a full completion from an early exit.
+
+Add more than one end entry to ``PAGE_LIST``. The default exit keeps ``path="end"``; each alternate exit uses ``path="end/<reason>"``, where ``<reason>`` is a short label you choose. Gate the alternate exits with ``show_if`` so a participant reaches the one that applies to them, and put the default ``end`` last as the fallback:
+
+.. code-block:: toml
+
+   PAGE_LIST = [
+       {name="Consent",      path="consent"},
+       {name="Demographics", path="questionnaire/demographics"},
+       {name="Screened out", path="end/screened_out", show_if="demographics.age < 18"},
+       {name="Study",        path="questionnaire/main"},
+       {name="End",          path="end"}
+   ]
+
+Here an under-18 participant skips the study and lands on ``end/screened_out``; everyone else continues to the main questionnaire and finishes at ``end``. Gating works exactly as it does for any other page (see :doc:`conditions_branching`).
+
+When a participant reaches an end page, BOFS records the reason on their ``Participant`` row as ``end_reason`` — ``"complete"`` for the plain ``end`` page, or the ``<reason>`` label otherwise. This column appears in the admin progress page and the data export, so you can count or filter participants by how they exited.
+
+What each end page shows
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default every end page shows the standard completion message. To customise the text for a specific reason, add ``templates/end/<reason>.html`` with just the body content — BOFS wraps it in the usual page chrome, the same way ``simple/`` pages work. A plain ``templates/end.html`` override changes the default exit.
+
+To send participants to an external URL instead of showing a page — a platform completion URL, for instance — add an ``outgoing_url`` to the end entry:
+
+.. code-block:: toml
+
+   PAGE_LIST = [
+       {name="Consent", path="consent"},
+       {name="Screened out", path="end/screened_out", show_if="demographics.age < 18", outgoing_url="https://app.prolific.co/submissions/complete?cc=SCREENOUT1"},
+       {name="Study", path="questionnaire/main"},
+       {name="Complete", path="end", outgoing_url="https://app.prolific.co/submissions/complete?cc=C1ABC123"}
+   ]
+
+``outgoing_url`` is valid only on entries whose path is ``end`` or ``end/<reason>``; BOFS rejects it elsewhere at startup. The string is rendered through Jinja with the ``participant`` object in scope, so it can include participant-specific values (e.g. ``...&pid={{ participant.externalID }}``). A per-entry ``outgoing_url`` takes precedence over the project-wide ``OUTGOING_URL`` setting (see :doc:`/deploying/recruiting`).
 
 .. _repeated-questionnaires:
 

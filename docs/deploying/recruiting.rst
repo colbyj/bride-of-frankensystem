@@ -121,6 +121,13 @@ platform:
    ``GENERATE_COMPLETION_CODE = true`` and ``OUTGOING_URL`` are mutually
    exclusive — only one of them takes effect.
 
+``OUTGOING_URL`` sets one redirect target for the whole study. When different
+participants need different completion URLs — separate codes per recruitment
+source, or a distinct exit for screened-out participants — give each end page
+its own ``outgoing_url`` instead. See :ref:`multiple-end-pages` in the
+page-flow guide; the ``outgoing_url`` string is rendered through Jinja with
+the ``participant`` in scope, so it can carry per-participant values.
+
 .. image:: /examples/quickstart/page_end.png
    :width: 800
    :alt: The end page.

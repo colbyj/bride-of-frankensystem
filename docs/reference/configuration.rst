@@ -291,7 +291,7 @@ These settings control the ``/end`` page behavior. See :doc:`/deploying/recruiti
    * - ``OUTGOING_URL``
      - string
      - *(unset)*
-     - Redirect participants to this URL at study end instead of showing a completion code. Useful for Prolific redirects.
+     - Redirect participants to this URL at study end instead of showing a completion code. Useful for Prolific redirects. Applies only to the default ``end`` page; for per-exit redirects, set ``outgoing_url`` on individual end entries instead (see :ref:`multiple-end-pages`).
 
 Experimental Conditions
 -----------------------
@@ -368,6 +368,10 @@ The ``PAGE_LIST`` defines the sequence of pages participants encounter. See :doc
      - Human-readable name shown in admin panel and progress tracking.
    * - ``path``
      - URL route that determines what content to display.
+   * - ``show_if``
+     - Optional. An expression; the page is shown only when it evaluates true. See :doc:`/reference/expressions`.
+   * - ``outgoing_url``
+     - Optional, valid only on ``end`` / ``end/<reason>`` entries. Redirect the participant to this URL instead of rendering the end page. Rendered through Jinja with the ``participant`` in scope; takes precedence over the project-wide ``OUTGOING_URL``. See :ref:`multiple-end-pages`.
 
 **Required Pages**
 
@@ -400,6 +404,8 @@ The ``PAGE_LIST`` defines the sequence of pages participants encounter. See :doc
      - Show page from ``templates/simple/name.html`` with manual navigation.
    * - ``end``
      - Built-in completion page with code or redirect.
+   * - ``end/name``
+     - An alternate completion page tagged with ``name`` (stamped on the participant as ``end_reason``). See :ref:`multiple-end-pages`.
 
 **Conditional Routing**
 

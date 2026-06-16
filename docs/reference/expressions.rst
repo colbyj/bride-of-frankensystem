@@ -55,7 +55,13 @@ A field name on its own — ``age``, ``q1``, ``01_inv`` (field IDs that start wi
 * Inside a question-level ``show_if``, it is another field on the same page, read live from the browser as the participant types or clicks.
 * Inside a page-level ``show_if``, it is looked up across every questionnaire the participant has already submitted; the most recent matching submission wins.
 
-Inside a page-level ``show_if`` the bare name ``condition`` is reserved and resolves to the participant's assigned condition number. An expression like ``show_if = "condition == 1"`` keeps the page only for participants in condition 1. Because ``condition`` is reserved, you cannot use it as a questionnaire field ID or as a key in ``participant_calculations``.
+Inside a page-level ``show_if``, three bare names are reserved and resolve to columns on the ``Participant`` row rather than to a questionnaire field:
+
+* ``condition`` — the participant's assigned condition number. ``show_if = "condition == 1"`` keeps the page only for participants in condition 1.
+* ``source`` — the recruitment-channel tag captured from the ``?source=`` URL parameter (see :doc:`/deploying/recruiting`). ``show_if = "source == 'reddit'"`` keeps the page only for participants who arrived with ``?source=reddit``.
+* ``end_reason`` — the reason stamped when a participant reaches an ``end`` page (``"complete"`` by default, or the ``<reason>`` from an ``end/<reason>`` entry; see :doc:`/building/page_flow`).
+
+Because these names are reserved, you cannot use any of them as a questionnaire field ID or as a key in ``participant_calculations``.
 
 Referring to table values
 -------------------------

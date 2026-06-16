@@ -112,9 +112,9 @@ Branching on condition is the most common use:
 
 .. code-block:: html
 
-   {% if session.condition == 1 %}
+   {% if session['condition'] == 1 %}
        <p>Control instructions go here.</p>
-   {% elif session.condition == 2 %}
+   {% elif session['condition'] == 2 %}
        <p>Treatment instructions go here.</p>
    {% endif %}
 
@@ -209,7 +209,7 @@ A debrief page combining a questionnaire scale score, a custom-table aggregate, 
        <p>You rated your effort {{ self_report.effort }} out of 7
        and your confidence {{ self_report.confidence }} out of 7.</p>
 
-       {% if session.condition == 1 %}
+       {% if session['condition'] == 1 %}
            <p>Thank you for completing the control task.</p>
        {% else %}
            <p>The training task is part of an ongoing study —

@@ -1,7 +1,7 @@
 Conditions and Branching
 ========================
 
-Most experiments need at least some branching: A/B comparisons assign each participant to one of several conditions; pre-screening studies skip irrelevant follow-up questions; longitudinal studies carry condition assignments across sessions. BOFS handles all three with three primitives — ``CONDITIONS``, ``conditional_routing``, and ``show_if``.
+Most experiments need at least some branching: A/B comparisons assign each participant to one of several conditions; pre-screening studies skip irrelevant follow-up questions; longitudinal studies carry condition assignments across sessions. BOFS handles all three with three primitives — ``CONDITIONS``, ``conditional_routing``, and ``show_if``. Together they support between-subjects designs, where each participant is assigned to one condition and sees only the content meant for it.
 
 Defining conditions
 -------------------
@@ -117,9 +117,9 @@ Inside a Jinja template:
 
 .. code-block:: html
 
-   {% if session.condition == 1 %}
+   {% if session['condition'] == 1 %}
      <p>Control instructions go here.</p>
-   {% elif session.condition == 2 %}
+   {% elif session['condition'] == 2 %}
      <p>High-reward instructions go here.</p>
    {% endif %}
 

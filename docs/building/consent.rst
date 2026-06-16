@@ -1,7 +1,7 @@
 Consent Forms
 =============
 
-BOFS provides four first-page route variants (with and without consent display, with and without condition assignment), a wrapper template you can override, and support for multi-stage consent. Two facts about the default flow matter for IRB protocols: the consent response itself is not persisted — only the existence of a ``Participant`` row indicates that consent was given — and declines leave no record at all. If your protocol requires a stored consent record or a reportable refusal rate, see `What happens on decline`_.
+BOFS provides four first-page route variants (with and without consent display, with and without condition assignment), a wrapper template you can override, and support for multi-stage consent. The consent flow records consent by creating the participant: a ``Participant`` row exists only for someone who agreed, and its ``timeStarted`` marks when. The radio choice itself is not stored separately — it gates the form, and agreement is what creates the row.
 
 The default consent flow
 ------------------------
@@ -70,12 +70,9 @@ Picking the variant is a one-line change in ``PAGE_LIST``:
 What happens on decline
 -----------------------
 
-Declining the consent radio fails the form's required-field validation. The participant sees the form re-rendered with an error message ("You must provide your consent to continue"). They cannot advance, and closing the tab is their exit.
+Declining the consent radio fails the form's required-field validation. The participant sees the form re-rendered with an error message ("You must provide your consent to continue"). They cannot advance, and closing the tab is their exit. No participant row is created for someone who declines — the row exists only once consent is given, which is what makes its presence a record of consent.
 
-- **No participant row is created** for someone who declines. The consent flow is gated on agreement; there is no "declined" record to inspect later, so a consent or refusal rate cannot be computed from BOFS data alone.
-- **The consent value itself is not persisted.** BOFS uses the radio choice to gate the form submission; once a participant agrees and the row is created, only the existence of the row indicates consent. The participant's ``timeStarted`` is the closest equivalent to a "consent timestamp."
-
-If your IRB requires a stored record of each consent, collect it as a one-question questionnaire after the consent page (see `Multi-stage consent`_). If you also need to record declines, the built-in consent page cannot do it — decliners never advance past it. Instead, start the study with ``create_participant_nc``, present the consent text as a questionnaire whose answer *is* stored, and use ``conditional_routing`` (see :doc:`/building/conditions_branching`) to send decliners to an exit page.
+If your IRB wants the consented text captured per participant rather than inferred from the row, repeat the key consent statements as a one-question questionnaire right after the consent page (see `Multi-stage consent`_); the questionnaire response is stored and exported like any other.
 
 Writing consent.html
 --------------------
