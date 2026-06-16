@@ -65,8 +65,8 @@ Each timeline card shows:
   - *Custom pages* writing to a JSONTable — the calculated export fields
     from the table's ``exports`` block, scoped to this participant. Opting
     a page in applies only to blueprint-defined Python pages: decorate the
-    view function with ``@page_tables``; see :doc:`/reference/custom_tables`
-    for details.
+    view function with ``@page_tables('<table_name>')``; see
+    :doc:`/reference/custom_tables` for details.
 
 The page header also shows the participant's external ID (e.g. Prolific PID),
 assigned condition, total duration, last-active timestamp, and an Excluded
@@ -77,7 +77,7 @@ Data Export
 
 ``/admin/export`` downloads questionnaire responses as CSV. Options include excluding unfinished or excluded participants, previewing the table in HTML before downloading, and automatic timestamping of the filename. The export includes each participant's ``source`` (recruitment-channel tag) and ``end_reason`` (how they exited), so you can filter or group by either in your analysis.
 
-For questionnaire interaction data (only collected when ``LOG_QUESTIONNAIRE_INTERACTIONS`` is enabled), use ``/admin/export_item_timing``. This exports a flat event log — one row per event — with participantID, mTurkID, questionnaire, tag, questionID, eventType, timestamp, and value. The event types record how participants interacted with each question: ``focus`` and ``blur`` (entering and leaving an input), ``change`` (a response edit), ``paste``, and ``visibility`` (the browser tab being hidden or shown) — useful for response-timing or answer-revision analyses.
+For questionnaire interaction data (only collected when ``LOG_QUESTIONNAIRE_INTERACTIONS`` is enabled), use ``/admin/export_item_timing``. This exports a flat event log — one row per event — with participantID, externalID, questionnaire, tag, questionID, eventType, timestamp, and value. See :doc:`data_quality` for what the events capture and how to use them.
 
 Any database table — built-in (``Participant``, ``Progress``, ``Response``) or defined by a custom blueprint — can be exported individually via ``/admin/table_csv/<table_name>``.
 

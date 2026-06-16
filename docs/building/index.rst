@@ -16,4 +16,5 @@ If you're building your first study, read :doc:`adding_survey_questions` and :do
    longitudinal
    storing_custom_data
    monitoring_data
+   data_quality
    appearance
