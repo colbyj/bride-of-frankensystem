@@ -2,6 +2,7 @@ import re
 from flask import Blueprint, render_template, render_template_string, current_app, request, make_response, abort
 from jinja2 import TemplateNotFound
 from urllib.parse import urlsplit
+from time import time
 import traceback
 from BOFS.JSONTable import JSONTable
 from BOFS.util import *
@@ -14,6 +15,40 @@ from BOFS.services.condition_lookup import ConditionLookupMiss, ConditionLookupS
 
 
 default = Blueprint('default', __name__)
+
+
+# Minimum seconds a human plausibly needs to read the consent form and submit.
+# A submission faster than this is treated as automated and silently rejected,
+# the same way the honeypot field is handled.
+_CONSENT_MIN_SECONDS = 1.0
+
+
+def _honeypot_triggered():
+    """True if the decoy field was filled in.
+
+    The consent form carries a visually-hidden ``email`` input that a real
+    participant never sees. Some automated bots fill in every field they find,
+    so a non-empty value means the submission is almost certainly a bot.
+    """
+    return request.form.get('email', '') != ''
+
+
+def _stamp_consent_shown():
+    """Record when the consent form was rendered, for the timing trap."""
+    session['consent_shown_at'] = time()
+
+
+def _consent_submitted_too_fast():
+    """True if the consent form came back faster than a human could read it.
+
+    Fails open: if no timestamp is present (e.g. the session was reset or
+    recovered between GET and POST), a legitimate participant must not be
+    blocked, so we do not treat it as a bot.
+    """
+    shown_at = session.get('consent_shown_at')
+    if shown_at is None:
+        return False
+    return (time() - shown_at) < _CONSENT_MIN_SECONDS
 
 
 def _render_condition_lookup_miss(external_id):
@@ -51,8 +86,9 @@ def route_consent():
         return redirect("/end/quota_full")
 
     if request.method == 'POST':
-        if 'email' in request.form and request.form['email'] != '':
-            # We caught someone with our honeypot.
+        if _honeypot_triggered() or _consent_submitted_too_fast():
+            # Caught by the honeypot, or submitted faster than a human could
+            # read the form -> treat as a bot and silently re-render.
             return render_template("consent.html")
 
         try:
@@ -65,6 +101,7 @@ def route_consent():
             return redirect("/debug_pick_condition")
         return redirect("/redirect_from_page/consent")
 
+    _stamp_consent_shown()
     return render_template("consent.html")
 
 
@@ -84,10 +121,17 @@ def route_consent_nc():
         return redirect("/end/quota_full")
 
     if request.method == 'POST':
+        if _honeypot_triggered() or _consent_submitted_too_fast():
+            # Caught by the honeypot, or submitted faster than a human could
+            # read the form -> treat as a bot and silently re-render.
+            return render_template("consent.html")
+
         p = provide_consent(False)
         if p.isCrawler:
             return redirect("/end/bot")
         return redirect("/redirect_from_page/consent_nc")
+
+    _stamp_consent_shown()
     return render_template("consent.html")
 
 

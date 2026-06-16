@@ -61,6 +61,41 @@ class TestConsent:
         count = app.db.session.query(app.db.Participant).count()
         assert count == 0
 
+    def test_consent_timing_trap_blocks_fast_submit(self, bofs_app_with_questionnaires):
+        """GET stamps the render time; an immediate POST is faster than a human
+        could read the form, so no participant is created."""
+        app = bofs_app_with_questionnaires
+        client = app.test_client()
+        client.get("/consent")
+        client.post("/consent", follow_redirects=True)
+
+        count = app.db.session.query(app.db.Participant).count()
+        assert count == 0
+
+    def test_consent_timing_trap_fails_open_without_get(self, bofs_app_with_questionnaires):
+        """A POST with no prior GET has no render timestamp; the trap must fail
+        open so a participant whose session was reset is not blocked."""
+        app = bofs_app_with_questionnaires
+        client = app.test_client()
+        client.post("/consent", follow_redirects=True)
+
+        count = app.db.session.query(app.db.Participant).count()
+        assert count == 1
+
+    def test_consent_nc_honeypot_blocks_bot(self, bofs_app):
+        """The honeypot guards /consent_nc too, not just /consent."""
+        from BOFS.PageList import PageList
+
+        bofs_app.page_list = PageList([
+            {"name": "Consent", "path": "consent_nc"},
+            {"name": "End", "path": "end"},
+        ])
+        client = bofs_app.test_client()
+        client.post("/consent_nc", data={"email": "bot@spam.com"}, follow_redirects=True)
+
+        count = bofs_app.db.session.query(bofs_app.db.Participant).count()
+        assert count == 0
+
     def test_consent_nc_sets_condition_zero(self, bofs_app):
         """POST /consent_nc → condition=0 (requires consent_nc as first page)."""
         from BOFS.PageList import PageList
