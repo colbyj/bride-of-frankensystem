@@ -56,6 +56,7 @@ class BOFSFlask(Flask):
         self.instance_path = os.path.dirname(os.path.abspath(config_name))  # Get the current working path.
 
         self.db = SQLAlchemy(self)
+        self._register_page_list_cache_invalidation()
 
         self.questionnaires : dict[str, JSONQuestionnaire] = {}
         """A generated list of user-defined questionnaires, as found in the config file."""
@@ -112,6 +113,16 @@ class BOFSFlask(Flask):
 
         self.questionnaire_paths = {}
         self.table_paths = {}
+
+    def _register_page_list_cache_invalidation(self):
+        """Clear the request-scoped ``flat_page_list`` cache on every commit,
+        since a committed write can change ``show_if`` page visibility."""
+        from sqlalchemy import event
+        from .PageList import invalidate_flat_page_list_cache
+
+        @event.listens_for(self.db.session, "after_commit")
+        def _clear_flat_page_list_cache(session):
+            invalidate_flat_page_list_cache()
 
     # Overriding Flask.run so production mode uses waitress instead of Flask's dev server.
     def run(self, host=None, port=None, **options) -> None:

@@ -1,5 +1,5 @@
 from typing import Union
-from flask import current_app, request, session
+from flask import current_app, g, has_request_context, request, session
 from BOFS import util
 from BOFS.expressions import (
     ExpressionError,
@@ -17,6 +17,32 @@ from urllib.parse import urlsplit
 # (the default for participant-facing routes) from "the caller explicitly
 # passed None, do not filter by show_if at all" (admin views).
 _RESOLVE_FROM_SESSION = object()
+
+
+# Request-scoped flat_page_list cache, keyed by (condition, participant_id,
+# hide_unresolved) — the inputs that fully determine the result.
+_CACHE_ATTR = "_bofs_flat_page_list_cache"
+
+
+def _flat_page_list_cache():
+    """Per-request cache dict on ``flask.g``, created on first use. ``None``
+    outside a request context so those callers always recompute."""
+    if not has_request_context():
+        return None
+    cache = g.get(_CACHE_ATTR)
+    if cache is None:
+        cache = {}
+        setattr(g, _CACHE_ATTR, cache)
+    return cache
+
+
+def invalidate_flat_page_list_cache():
+    """Drop the cache. Wired to ``after_commit`` because a committed write
+    can change ``show_if`` visibility (e.g. ``route_end`` stamps ``finished``
+    then resolves the filtered page list). No-op outside a request."""
+    if not has_request_context():
+        return
+    g.pop(_CACHE_ATTR, None)
 
 
 class Visibility:
@@ -318,6 +344,14 @@ class PageList(object):
 
         participant_id = self._resolve_participant_id(participant_id)
 
+        # Serve repeated identical builds within a request from cache;
+        # a DB commit invalidates it (invalidate_flat_page_list_cache).
+        # Hand back a copy so a caller mutating the list can't poison it.
+        cache = _flat_page_list_cache()
+        cache_key = (condition, participant_id, hide_unresolved)
+        if cache is not None and cache_key in cache:
+            return list(cache[cache_key])
+
         flat_page_list = list()
 
         for entry in self.page_list:
@@ -356,6 +390,9 @@ class PageList(object):
                 else:
                     if self._page_visible(entry, participant_id):
                         flat_page_list.append(entry)
+
+        if cache is not None:
+            cache[cache_key] = list(flat_page_list)
 
         return flat_page_list
 

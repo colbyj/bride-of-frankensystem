@@ -652,21 +652,27 @@ def route_export_item_timing():
               "questionID", "eventType", "timestamp", "value"]
     rows = [header]
 
-    participants = db.session.query(db.Participant).filter(
-        db.Participant.finished == True
-    ).all()
+    # One JOIN instead of N+1 (was 1 query per finished participant).
+    # Ordering by (participantID, timestamp) keeps the previous row order.
+    interactions = (
+        db.session.query(db.QuestionnaireInteraction, db.Participant.externalID)
+        .join(
+            db.Participant,
+            db.QuestionnaireInteraction.participantID == db.Participant.participantID,
+        )
+        .filter(db.Participant.finished == True)
+        .order_by(
+            db.QuestionnaireInteraction.participantID,
+            db.QuestionnaireInteraction.timestamp,
+        )
+    )
 
-    for p in participants:
-        interactions = db.session.query(db.QuestionnaireInteraction).filter(
-            db.QuestionnaireInteraction.participantID == p.participantID
-        ).order_by(db.QuestionnaireInteraction.timestamp).all()
-
-        mturk = p.externalID.strip() if p.externalID else ""
-        for i in interactions:
-            rows.append([
-                p.participantID, mturk, i.questionnaire, i.tag,
-                i.questionID, i.eventType, i.timestamp.isoformat(), i.value or ""
-            ])
+    for i, external_id in interactions:
+        mturk = external_id.strip() if external_id else ""
+        rows.append([
+            i.participantID, mturk, i.questionnaire, i.tag,
+            i.questionID, i.eventType, i.timestamp.isoformat(), i.value or ""
+        ])
 
     data = csv_string(rows)
 
@@ -929,14 +935,10 @@ def _table_columns(table):
     return columns
 
 
-def table_data(tableName, page=None, page_size=None):
-    """Return ``(columns, rows, total)`` for *tableName*.
-
-    When *page* is given (1-based) only that slice of rows is fetched via a
-    stably-ordered ``LIMIT``/``OFFSET`` query and *total* is the full row
-    count. When *page* is ``None`` every row is returned (the CSV export
-    path) and *total* equals ``len(rows)``.
-    """
+def table_data(tableName, page, page_size):
+    """Return ``(columns, rows, total)`` for one 1-based page of *tableName*
+    via a stably-ordered LIMIT/OFFSET. The CSV export streams instead (see
+    :func:`_stream_table_csv`)."""
     if tableName in _TABLE_VIEW_BLOCKED:
         abort(404)
     table, bind_key = _find_table(tableName)
@@ -952,10 +954,6 @@ def table_data(tableName, page=None, page_size=None):
     columns = _table_columns(table)
 
     with engine.connect() as conn:
-        if page is None:
-            rows = list(conn.execute(select(table)))
-            return columns, rows, len(rows)
-
         total = conn.execute(select(func.count()).select_from(table)).scalar() or 0
         # A stable ORDER BY keeps page boundaries consistent across
         # requests; without it LIMIT/OFFSET may repeat or skip rows. Order
@@ -996,15 +994,35 @@ def route_table_ajax(tableName):
                            total=total, page_sizes=_TABLE_PAGE_SIZES)
 
 
+def _stream_table_csv(table, bind_key, columns):
+    """Yield the table CSV one row at a time, never materialising the whole
+    table. ``stream_results`` avoids buffering rows; the connection is opened
+    inside the generator because Flask consumes it after the view returns."""
+    from sqlalchemy import select
+    engine = db.engine if bind_key is None else db.engines[bind_key]
+    ncols = len(columns)
+
+    yield csv_string([[c['name'] for c in columns]])
+
+    with engine.connect().execution_options(stream_results=True) as conn:
+        result = conn.execute(select(table))
+        for row in result:
+            yield csv_string([[row[i] for i in range(ncols)]])
+
+
 @admin.route("/table_csv/<tableName>")
 @verify_admin
 def route_table_csv(tableName):
-    columns, rows, _ = table_data(tableName)
+    # Validate before streaming — a 404 raised mid-generator is too late.
+    if tableName in _TABLE_VIEW_BLOCKED:
+        abort(404)
+    table, bind_key = _find_table(tableName)
+    if table is None:
+        abort(404)
 
-    headers = [c['name'] for c in columns]
-    body_rows = [[row[i] for i in range(len(columns))] for row in rows]
+    columns = _table_columns(table)
 
-    return Response(csv_string([headers] + body_rows),
+    return Response(_stream_table_csv(table, bind_key, columns),
                     mimetype="text/csv",
                     headers={
                         "Content-disposition": "attachment; filename=%s.csv" % (
