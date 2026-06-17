@@ -794,35 +794,51 @@ def route_export_download_bind(bind):
 @verify_admin
 def route_results():
     cache_path = os.path.join(current_app.root_path, 'cached_results.json')
-    results, df, summary_stats = Results.calculate_results(cache_path)
+    results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
 
-    return render_template("results.html", summary_stats=summary_stats)
+    return render_template("results.html", summary_stats=summary_stats,
+                           categorical_stats=categorical_stats)
 
 
-@admin.route("/results_boxplot/<path:field_name>")
+@admin.route("/results/<path:field_name>")
 @verify_admin
-def route_results_boxplot(field_name: str):
+def route_results_field(field_name: str):
+    """Per-field results detail. Continuous fields (slider, num_field, numeric
+    calculations) get a per-condition boxplot + statistics table; count-style
+    fields (radiolist/checklist/drop_down/radiogrid/text/boolean) get a grouped
+    histogram + counts table. Unknown field names 404."""
     cache_path = os.path.join(current_app.root_path, 'cached_results.json')
-    results, df, summary_stats = Results.calculate_results(cache_path)
+    results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
 
-    unique_conditions = df['condition'].unique().tolist()
-    unique_conditions.sort()
-    plot_data = []
+    if field_name in summary_stats:
+        unique_conditions = df['condition'].unique().tolist()
+        unique_conditions.sort()
+        plot_data = []
+        for condition in unique_conditions:
+            df_part = df.loc[df.condition == condition]
+            plot_data.append({
+                "y": df_part[field_name].to_list(),
+                "name": str(condition),
+                "type": "box",
+                "boxpoints": "Outliers",
+            })
+        return render_template(
+            "results_field.html",
+            field_name=field_name,
+            chart_type="box",
+            plot_data=plot_data,
+            stats=summary_stats[field_name],
+        )
 
-    for condition in unique_conditions:
-        df_part = df.loc[df.condition == condition]
-        #count = df_part.count()
+    if field_name in categorical_stats:
+        return render_template(
+            "results_field.html",
+            field_name=field_name,
+            chart_type="histogram",
+            categorical=categorical_stats[field_name],
+        )
 
-        data = {
-            "y": df_part[field_name].to_list(),
-            #"x": [condition] * count,
-            "name": str(condition),
-            "type": "box",
-            "boxpoints": "Outliers"
-        }
-        plot_data.append(data)
-
-    return render_template("results_boxplot.html", field_name=field_name, plot_data=plot_data)
+    abort(404)
 
 
 @admin.route("/preview_procedure", methods=["GET", "POST"])

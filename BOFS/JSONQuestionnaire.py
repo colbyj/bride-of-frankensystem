@@ -256,6 +256,13 @@ class JSONQuestionnaireColumn(object):
             else:
                 question_type = "string"
 
+        # Remember the originating question type so downstream consumers (the
+        # admin "Preview Results" page) can decide whether a column reads as a
+        # continuous measurement or as category counts. Storage data_type alone
+        # can't distinguish these — a checklist flag and a num_field both store
+        # integers, but one is a count and the other a measurement.
+        self.question_type = question_type.lower()
+
         if question_type.lower() in ["slider", "num_field", "checklist"]:
             self.data_type = "integer"
 

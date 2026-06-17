@@ -84,9 +84,12 @@ Any database table — built-in (``Participant``, ``Progress``, ``Response``) or
 Results Analysis
 ----------------
 
-``/admin/results`` calculates descriptive statistics (N, min/max, mean, median, standard deviation, standard error, variance) for every numeric field, grouped by condition. The page is cached for two minutes.
+``/admin/results`` groups every response field by condition and splits them into two tables, both cached for two minutes:
 
-For each numeric field, ``/admin/results_boxplot/<field_name>`` renders an interactive Plotly.js box plot showing the distribution by condition, with outliers, zoom, pan, and hover tooltips.
+- **Summary Statistics** — continuous measurements (sliders, number fields, numeric calculations). Shows N, min/max, mean, median, standard deviation, standard error, and variance.
+- **Response Counts** — discrete responses (true/false, radio-list and drop-down selections, checklist flags, radio-grid cells, and free text). Shows the number of distinct responses and the total. Free-text "other" answers each appear as their own response.
+
+Selecting a field opens ``/admin/results/<field_name>``, an interactive Plotly.js chart by condition with zoom, pan, and hover tooltips: a box plot (with outliers) for a continuous field, or a grouped bar histogram for a count field, alongside a per-condition table.
 
 Questionnaire Management
 ------------------------

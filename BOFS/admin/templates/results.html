@@ -8,8 +8,18 @@
         <h2>Results</h2>
     </div>
 
+    {% if not summary_stats and not categorical_stats %}
     <div class="p-3">
-        {% if summary_stats %}
+        <p class="text-muted mb-0">No results to display yet.</p>
+    </div>
+    {% endif %}
+
+    {% if summary_stats %}
+    <div class="p-3 border-bottom">
+        <h3 class="h5 mb-0">Summary Statistics</h3>
+        <p class="text-muted mb-0 mt-1">Continuous measurements. Select a field to see its boxplot.</p>
+    </div>
+    <div class="p-3">
         <table class="table table-striped border">
             <thead>
             <tr>
@@ -30,7 +40,7 @@
             {% for n in summary_stats[field_name].n %}
             <tr>
                 {% if loop.first %}
-                <td rowspan="{{ summary_stats[field_name].n | length }}"><a href="{{ url_for('admin.route_results_boxplot', field_name=field_name) }}">{{ field_name }}</a></td>
+                <td rowspan="{{ summary_stats[field_name].n | length }}"><a href="{{ url_for('admin.route_results_field', field_name=field_name) }}">{{ field_name }}</a></td>
                 {% endif %}
                 <td>{{ summary_stats[field_name].condition[loop.index0] }}</td>
                 <td>{{ n }}</td>
@@ -46,9 +56,34 @@
             {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <p class="text-muted mb-0">No results to display yet.</p>
-        {% endif %}
     </div>
+    {% endif %}
+
+    {% if categorical_stats %}
+    <div class="p-3 border-bottom">
+        <h3 class="h5 mb-0">Response Counts</h3>
+        <p class="text-muted mb-0 mt-1">Discrete responses (true/false, selections, free text). Select a field to see its histogram. Free-text "other" answers appear as their own categories.</p>
+    </div>
+    <div class="p-3">
+        <table class="table table-striped border" style="max-width: 640px;">
+            <thead>
+            <tr>
+                <th scope="col">Field</th>
+                <th scope="col">Distinct responses</th>
+                <th scope="col">Total responses</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for field_name in categorical_stats %}
+            <tr>
+                <td><a href="{{ url_for('admin.route_results_field', field_name=field_name) }}">{{ field_name }}</a></td>
+                <td>{{ categorical_stats[field_name].categories | length }}</td>
+                <td>{{ categorical_stats[field_name].total }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
 
 {% endblock %}

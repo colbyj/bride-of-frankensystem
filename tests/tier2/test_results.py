@@ -433,15 +433,15 @@ class TestBuildFilterFromArgs:
 class TestCalculateResults:
     """Unit tests for Results.calculate_results staticmethod."""
 
-    def test_returns_three_tuple(self, bofs_app_with_questionnaires, tmp_path):
-        """calculate_results returns (results, df, summary_stats)."""
+    def test_returns_four_tuple(self, bofs_app_with_questionnaires, tmp_path):
+        """calculate_results returns (results, df, summary_stats, categorical_stats)."""
         app = bofs_app_with_questionnaires
         # Seed one finished, non-excluded participant
         _make_participant(app, finished=True)
         cache_path = str(tmp_path / "cache.json")
 
         result = Results.calculate_results(cache_path)
-        assert len(result) == 3
+        assert len(result) == 4
 
     def test_df_is_non_empty_with_participants(self, bofs_app_with_questionnaires, tmp_path):
         """With qualifying participants, df is non-empty."""
@@ -449,7 +449,7 @@ class TestCalculateResults:
         _make_participant(app, finished=True)
         cache_path = str(tmp_path / "cache.json")
 
-        results, df, summary_stats = Results.calculate_results(cache_path)
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
         assert len(df) > 0
 
     def test_summary_stats_is_dict(self, bofs_app_with_questionnaires, tmp_path):
@@ -458,17 +458,19 @@ class TestCalculateResults:
         _make_participant(app, finished=True)
         cache_path = str(tmp_path / "cache.json")
 
-        results, df, summary_stats = Results.calculate_results(cache_path)
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
         assert isinstance(summary_stats, dict)
+        assert isinstance(categorical_stats, dict)
 
     def test_empty_db_yields_empty_df_and_stats(self, bofs_app_with_questionnaires, tmp_path):
-        """No participants → empty df and empty summary_stats."""
+        """No participants → empty df and empty summary/categorical stats."""
         app = bofs_app_with_questionnaires
         cache_path = str(tmp_path / "cache_empty.json")
 
-        results, df, summary_stats = Results.calculate_results(cache_path)
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
         assert len(df) == 0
         assert summary_stats == {}
+        assert categorical_stats == {}
 
     def test_excludes_unfinished(self, bofs_app_with_questionnaires, tmp_path):
         """Unfinished participants are excluded from results."""
@@ -477,7 +479,7 @@ class TestCalculateResults:
         _make_participant(app, finished=False)
         cache_path = str(tmp_path / "cache_excl.json")
 
-        results, df, summary_stats = Results.calculate_results(cache_path)
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
         assert len(df) == 1
 
     def test_excludes_excluded_from_count(self, bofs_app_with_questionnaires, tmp_path):
@@ -489,7 +491,7 @@ class TestCalculateResults:
         app.db.session.commit()
 
         cache_path = str(tmp_path / "cache_excl2.json")
-        results, df, summary_stats = Results.calculate_results(cache_path)
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
         assert len(df) == 1
         assert p_incl.participantID in results.export_data
         assert p_excl.participantID not in results.export_data
@@ -505,7 +507,62 @@ class TestCalculateResults:
         app.db.session.commit()
 
         cache_path = str(tmp_path / "cache_stats.json")
-        results, df, summary_stats = Results.calculate_results(cache_path)
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
         # summary_stats may be empty if participants are filtered out due to excludeFromCount;
         # just assert it is a dict (content varies by fixture data)
         assert isinstance(summary_stats, dict)
+
+    def test_continuous_questions_summarised_not_counted(self, bofs_app_with_questionnaires, tmp_path):
+        """slider/num_field columns land in summary_stats, never categorical_stats."""
+        app = bofs_app_with_questionnaires
+        p1 = _seed_full_participant(app, condition=1)
+        p2 = _seed_full_participant(app, condition=2)
+        app.db.session.commit()
+
+        cache_path = str(tmp_path / "cache_continuous.json")
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
+
+        # rating is a slider, age is a num_field — both measurements.
+        assert "survey_rating" in summary_stats
+        assert "survey_age" in summary_stats
+        assert "survey_rating" not in categorical_stats
+        assert "survey_age" not in categorical_stats
+
+    def test_text_and_grid_questions_counted(self, bofs_app_with_questionnaires, tmp_path):
+        """Free-text (field) and radiogrid columns become category counts, and
+        the distinct text values — including "other"-style answers — appear as
+        categories rather than being dropped."""
+        app = bofs_app_with_questionnaires
+        p1 = _seed_full_participant(app, condition=1, survey_data={"name": "Robin"})
+        p2 = _seed_full_participant(app, condition=2, survey_data={"name": "Sky"})
+        app.db.session.commit()
+
+        cache_path = str(tmp_path / "cache_categorical.json")
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
+
+        # The free-text name field is summarised as counts, not statistics.
+        assert "survey_name" in categorical_stats
+        assert "survey_name" not in summary_stats
+
+        name_counts = categorical_stats["survey_name"]
+        assert set(name_counts["categories"]) >= {"Robin", "Sky"}
+        # One series entry per condition, each carrying a count per category.
+        for series in name_counts["series"]:
+            assert len(series["counts"]) == len(name_counts["categories"])
+
+        # radiogrid cells are categories too (Likert-style counts).
+        assert "survey_g1_q1" in categorical_stats
+
+    def test_category_counts_drop_blanks(self, bofs_app_with_questionnaires, tmp_path):
+        """Blank/NULL responses are not counted as a category."""
+        app = bofs_app_with_questionnaires
+        _seed_full_participant(app, condition=1, survey_data={"name": "Alex"})
+        _seed_full_participant(app, condition=2, survey_data={"name": ""})
+        app.db.session.commit()
+
+        cache_path = str(tmp_path / "cache_blank.json")
+        results, df, summary_stats, categorical_stats = Results.calculate_results(cache_path)
+
+        name_counts = categorical_stats["survey_name"]
+        assert "Alex" in name_counts["categories"]
+        assert "" not in name_counts["categories"]

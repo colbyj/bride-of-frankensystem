@@ -1,0 +1,108 @@
+{% extends "template_admin.html" %}
+{% block head %}
+    <script src="https://cdn.plot.ly/plotly-2.31.1.min.js" charset="utf-8"></script>
+{% endblock %}
+
+{% block content %}
+
+    <div class="p-3 border-bottom">
+        <h2>{{ field_name }}</h2>
+        <a href="{{ url_for('admin.route_results') }}">&larr; Back to results</a>
+    </div>
+
+    <div class="p-3">
+        <div id="plot" style="width: 100%; max-width: 1000px; height: 500px;"></div>
+    </div>
+
+{% if chart_type == "box" %}
+    <script>
+        var data = {{ plot_data | tojson | safe }};
+        var layout = {
+            yaxis: {title: '{{ field_name }}', zeroline: false},
+            boxmode: 'group',
+            margin: {t: 10}
+        };
+        Plotly.newPlot('plot', data, layout, {responsive: true});
+    </script>
+
+    <div class="p-3">
+        <table class="table table-striped border" style="max-width: 900px;">
+            <thead>
+            <tr>
+                <th scope="col">Condition</th>
+                <th scope="col">N</th>
+                <th scope="col">Min.</th>
+                <th scope="col">Max.</th>
+                <th scope="col">Mean</th>
+                <th scope="col">Median</th>
+                <th scope="col">Std. Dev.</th>
+                <th scope="col">Std. Err.</th>
+                <th scope="col">Variance</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for condition in stats.condition %}
+            <tr>
+                <td>{{ condition }}</td>
+                <td>{{ stats.n[loop.index0] }}</td>
+                <td>{{ stats.min[loop.index0] | round(3) }}</td>
+                <td>{{ stats.max[loop.index0] | round(3) }}</td>
+                <td>{{ stats.mean[loop.index0] | round(3) }}</td>
+                <td>{{ stats.median[loop.index0] | round(3) }}</td>
+                <td>{{ stats.std[loop.index0] | round(3) }}</td>
+                <td>{{ stats.sem[loop.index0] | round(3) }}</td>
+                <td>{{ stats.var[loop.index0] | round(3) }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <script>
+        var stat = {{ categorical | tojson | safe }};
+        var traces = stat.series.map(function (s) {
+            return {x: stat.categories, y: s.counts, name: s.condition, type: 'bar'};
+        });
+        var layout = {
+            barmode: 'group',
+            margin: {t: 10},
+            xaxis: {type: 'category', automargin: true},
+            yaxis: {title: 'Count', zeroline: false, rangemode: 'tozero'}
+        };
+        Plotly.newPlot('plot', traces, layout, {responsive: true});
+    </script>
+
+    <div class="p-3">
+        <table class="table table-striped border" style="max-width: 900px;">
+            <thead>
+            <tr>
+                <th scope="col">Response</th>
+                {% for series in categorical.series %}
+                <th scope="col">{{ series.condition }}</th>
+                {% endfor %}
+                <th scope="col">Total</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for category in categorical.categories %}
+            {% set cat_index = loop.index0 %}
+            <tr>
+                <td>{{ category }}</td>
+                {% for series in categorical.series %}
+                <td>{{ series.counts[cat_index] }}</td>
+                {% endfor %}
+                <td>
+                    {%- set ns = namespace(total=0) -%}
+                    {%- for series in categorical.series -%}
+                        {%- set ns.total = ns.total + series.counts[cat_index] -%}
+                    {%- endfor -%}
+                    {{ ns.total }}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}
+
+{% endblock %}

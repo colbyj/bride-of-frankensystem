@@ -563,13 +563,94 @@ class Results(object):
             return None
         return db.and_(*clauses)
 
+    # Question types whose columns are continuous measurements, best summarised
+    # with descriptive statistics + a boxplot.
+    _CONTINUOUS_QUESTION_TYPES = {"slider", "num_field", "image_click", "audio", "video"}
+    # Question types that read as discrete categories even when stored as
+    # numbers — a checklist row is a 0/1 flag, not a measurement, so it belongs
+    # with the count histograms rather than the statistics table.
+    _CATEGORICAL_QUESTION_TYPES = {
+        "checklist", "radiolist", "drop_down", "radiogrid", "field", "multi_field",
+    }
+    # Participant-level columns that are bookkeeping, not response data.
+    _NON_FIELD_COLUMNS = {"participantID", "condition", "duration", "finished"}
+
+    @staticmethod
+    def _questiontype_by_column() -> dict:
+        """Map each questionnaire export column name (``entry_fieldid``) to the
+        question type it came from. Columns absent here — participant columns,
+        calculated fields, custom exports — fall back to dtype-based
+        classification in :meth:`calculate_results`.
+        """
+        mapping: dict = {}
+        for entry in page_list.get_questionnaire_list(include_tags=True):
+            qname, _ = questionnaire_name_and_tag(entry)
+            if qname not in questionnaires:
+                continue
+            for column in questionnaires[qname].fetch_fields():
+                mapping[entry + "_" + column.id] = getattr(column, "question_type", None)
+        return mapping
+
+    @staticmethod
+    def _sort_categories(categories) -> list:
+        """Sort category labels numerically when they all parse as numbers (so
+        ``"2"`` sorts before ``"10"``), otherwise alphabetically.
+        """
+        labels = list(categories)
+        try:
+            return sorted(labels, key=lambda label: float(label))
+        except (TypeError, ValueError):
+            return sorted(labels)
+
+    @staticmethod
+    def _build_category_counts(df_grouped, column) -> Union[dict, None]:
+        """Per-condition value counts for one categorical column.
+
+        Returns ``{"categories": [...], "series": [{"condition", "counts"}]}``
+        ready for a grouped bar chart, or ``None`` when the column has no
+        non-blank responses. Blank/NULL values are dropped; every other value is
+        counted by its string form, so a radiolist's free-text "other" answers
+        each become their own category instead of being hidden.
+        """
+        categories: set = set()
+        per_condition = []
+        for condition, group in df_grouped:
+            values = group[column].dropna().astype(str).str.strip()
+            values = values[values != ""]
+            counts = values.value_counts()
+            per_condition.append((str(condition), counts))
+            categories.update(counts.index.tolist())
+
+        if not categories:
+            return None
+
+        ordered = Results._sort_categories(categories)
+        series = [
+            {
+                "condition": condition,
+                "counts": [int(counts.get(category, 0)) for category in ordered],
+            }
+            for condition, counts in per_condition
+        ]
+        total = int(sum(int(counts.sum()) for _, counts in per_condition))
+        return {"categories": ordered, "series": series, "total": total}
+
     @staticmethod
     def calculate_results(cache_path):
-        """Build a Results, its DataFrame, and per-numeric-column SummaryStats.
+        """Build a Results, its DataFrame, and per-column summaries.
 
-        Returns (results, df, summary_stats) where summary_stats is a dict keyed
-        by column name, valued by SummaryStats. Filters to finished, non-excluded
-        participants. Used by the admin /results and /results_boxplot routes.
+        Returns ``(results, df, summary_stats, categorical_stats)``:
+          * ``summary_stats`` — dict keyed by continuous column name, valued by
+            :class:`SummaryStats` (min/max/mean/... per condition); these get the
+            statistics table + boxplot.
+          * ``categorical_stats`` — dict keyed by count-style column name, valued
+            by a ``{"categories", "series"}`` dict of per-condition value counts.
+            Covers booleans (true/false), radiolist/drop_down selections,
+            checklist flags, radiogrid cells, and free-text answers — including
+            the "other" entries that descriptive statistics would never surface.
+
+        Filters to finished, non-excluded participants. Used by the admin
+        /results overview and /results/<field> per-field routes.
         """
         from BOFS.admin.SummaryStats import SummaryStats  # avoid circular at module load
         # Match fetch_progress_summary: legacy rows can have NULL excludeFromCount,
@@ -587,11 +668,36 @@ class Results(object):
         df = results.build_data_frame()
 
         summary_stats = {}
+        categorical_stats = {}
         if len(df) > 0:
+            questiontype_by_column = Results._questiontype_by_column()
             df_grouped = df.groupby(by="condition")
             for column in list(df_grouped.head()):
-                dtype = df[column].head().dtype.name
-                if dtype in ['int64', 'float64', 'bool'] and column not in ['participantID', 'condition', 'duration', 'finished']:
-                    summary_stats[column] = SummaryStats(df_grouped, column)
+                if column in Results._NON_FIELD_COLUMNS:
+                    continue
 
-        return results, df, summary_stats
+                question_type = questiontype_by_column.get(column)
+                dtype = df[column].dtype.name
+                is_numeric = dtype in ("int64", "float64")
+
+                # Continuous when the question type is an explicit measurement,
+                # or when the data is numeric and the question type isn't a
+                # known count type (calculated fields, numeric custom exports).
+                continuous = (
+                    question_type in Results._CONTINUOUS_QUESTION_TYPES
+                    or (is_numeric
+                        and question_type not in Results._CATEGORICAL_QUESTION_TYPES)
+                )
+
+                if continuous:
+                    if is_numeric:
+                        summary_stats[column] = SummaryStats(df_grouped, column)
+                    # A continuous question type carrying non-numeric data (e.g.
+                    # an all-NULL slider) has nothing to summarise — skip it.
+                    continue
+
+                counts = Results._build_category_counts(df_grouped, column)
+                if counts is not None:
+                    categorical_stats[column] = counts
+
+        return results, df, summary_stats, categorical_stats
