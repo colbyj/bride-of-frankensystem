@@ -30,8 +30,8 @@ class AdminStatsService:
                  and not p['path'].startswith("end/")]
         progress = db.session.query(db.Participant).filter(db.Participant.isCrawler == False)
 
-        for page in pages:
-            pp = db.aliased(db.Progress, name=page['path'])
+        for idx, page in enumerate(pages):
+            pp = db.aliased(db.Progress, name=f"_pp_{idx}")
             progress = progress.outerjoin(pp, db.and_(
                 pp.participantID == db.Participant.participantID,
                 pp.path == page['path']

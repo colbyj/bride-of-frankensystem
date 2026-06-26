@@ -112,6 +112,30 @@ class TestFetchProgress:
 
         assert paths == ['questionnaire/survey']
 
+    def test_fetch_progress_duplicate_paths_do_not_crash(
+        self, bofs_app_with_questionnaires, monkeypatch
+    ):
+        """Duplicate paths in PAGE_LIST must not crash fetch_progress."""
+        app = bofs_app_with_questionnaires
+        custom = [
+            {'name': 'Consent', 'path': 'consent'},
+            {'name': 'Instructions', 'path': 'instructions/example'},
+            {'name': 'Task', 'path': 'task'},
+            {'name': 'Instructions', 'path': 'instructions/example'},
+            {'name': 'End', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'flat_page_list',
+                            lambda condition=None, participant_id=None: list(custom))
+
+        _make_participant(app)
+        pages, progress = AdminStatsService.fetch_progress()
+
+        paths = [page["path"] for page in pages]
+        assert paths.count("instructions/example") == 2
+        assert "task" in paths
+        assert "consent" not in paths
+        assert "end" not in paths
+
     def test_fetch_progress_includes_progress_entities(self, bofs_app_with_questionnaires):
         """A seeded Progress row appears at the correct column in the result tuple."""
         app = bofs_app_with_questionnaires

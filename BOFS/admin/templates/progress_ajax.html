@@ -27,8 +27,8 @@
             <td style="text-align: center">{{ r.Participant.timeStarted.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             {% for page in pages %}
                 <td style="text-align: center">
-                    {% if r[page['path']] %}
-                        {{ r[page['path']].display_duration() }}
+                    {% if r["_pp_" ~ loop.index0] %}
+                        {{ r["_pp_" ~ loop.index0].display_duration() }}
                     {% endif %}
                 </td>
             {% endfor %}
