@@ -1192,3 +1192,102 @@ class TestHasBranching:
     def test_empty_page_list(self):
         pl = PageList([])
         assert pl.has_branching() is False
+
+
+class TestAutoTagDuplicateQuestionnaires:
+
+    def test_untagged_duplicate_gets_tagged(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example'},
+            {'name': 'B', 'path': 'questionnaire/example'},
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assert assigned == [('example', '2')]
+        assert pl.page_list[0]['path'] == 'questionnaire/example'
+        assert pl.page_list[1]['path'] == 'questionnaire/example/2'
+
+    def test_no_tagging_for_unique_questionnaires(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example'},
+            {'name': 'B', 'path': 'questionnaire/survey'},
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assert assigned == []
+        assert pl.page_list[0]['path'] == 'questionnaire/example'
+        assert pl.page_list[1]['path'] == 'questionnaire/survey'
+
+    def test_explicit_tag_not_retagged(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example/before'},
+            {'name': 'B', 'path': 'questionnaire/example/after'},
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assert assigned == []
+        assert pl.page_list[0]['path'] == 'questionnaire/example/before'
+        assert pl.page_list[1]['path'] == 'questionnaire/example/after'
+
+    def test_explicit_tag_skipped_in_assignment(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example'},
+            {'name': 'B', 'path': 'questionnaire/example/before'},
+            {'name': 'C', 'path': 'questionnaire/example'},
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assert ('example', '2') in assigned
+        assert pl.page_list[2]['path'] == 'questionnaire/example/2'
+
+    def test_three_duplicates_get_sequential_tags(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example'},
+            {'name': 'B', 'path': 'questionnaire/example'},
+            {'name': 'C', 'path': 'questionnaire/example'},
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assert assigned == [('example', '2'), ('example', '3')]
+        assert pl.page_list[1]['path'] == 'questionnaire/example/2'
+        assert pl.page_list[2]['path'] == 'questionnaire/example/3'
+
+    def test_sibling_arms_not_duplicates(self):
+        pl = PageList([
+            {'conditional_routing': [
+                {'condition': 1, 'page_list': [{'name': 'A', 'path': 'questionnaire/example'}]},
+                {'condition': 2, 'page_list': [{'name': 'B', 'path': 'questionnaire/example'}]},
+            ]}
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=2)
+        assert assigned == []
+
+    def test_unconditional_plus_arm_collision(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example'},
+            {'conditional_routing': [
+                {'condition': 1, 'page_list': [{'name': 'B', 'path': 'questionnaire/example'}]},
+                {'condition': 2, 'page_list': [{'name': 'C', 'path': 'questionnaire/survey'}]},
+            ]}
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=2)
+        assert len(assigned) == 1
+        assert assigned[0] == ('example', '2')
+        flat_cond1 = pl.flat_page_list(condition=1, participant_id=None)
+        paths = [e['path'] for e in flat_cond1]
+        assert 'questionnaire/example/2' in paths
+
+    def test_idempotent(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example'},
+            {'name': 'B', 'path': 'questionnaire/example'},
+        ])
+        pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assigned2 = pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assert assigned2 == []
+        assert pl.page_list[1]['path'] == 'questionnaire/example/2'
+
+    def test_same_explicit_tag_not_autotagged(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'questionnaire/example/before'},
+            {'name': 'B', 'path': 'questionnaire/example/before'},
+        ])
+        assigned = pl.auto_tag_duplicate_questionnaires(condition_count=0)
+        assert assigned == []
+        assert pl.page_list[0]['path'] == 'questionnaire/example/before'
+        assert pl.page_list[1]['path'] == 'questionnaire/example/before'

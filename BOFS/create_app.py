@@ -212,18 +212,36 @@ def create_app(path, config_name, debug=False, reloader_off=False):
     app.load_blueprint('BOFS.default', 'default')
 
     with app.app_context():
+        condition_count = len(app.config.get('CONDITIONS', []) or [])
+        auto_tags = app.page_list.auto_tag_duplicate_questionnaires(condition_count)
+        if auto_tags:
+            tag_summary = ", ".join(
+                "'{}' -> tag '{}'".format(name, tag)
+                for name, tag in auto_tags
+            )
+            app.setup_diagnostics.add(
+                "warning", "page_list",
+                "Duplicate questionnaire(s) in PAGE_LIST were auto-tagged: "
+                + tag_summary
+                + ". The first occurrence is untagged; subsequent "
+                "occurrences use the auto-assigned tag.",
+                suggestion=(
+                    "Access tagged data via "
+                    "participant.questionnaire(name, tag). "
+                    "Export columns are named name/tag_*."
+                ),
+            )
+
         if not app.questionnaire_list_is_safe():
             app.setup_diagnostics.add(
                 "error", "page_list",
-                "The same questionnaire was specified twice in PAGE_LIST.",
+                "Two PAGE_LIST entries share the same questionnaire tag.",
                 suggestion=(
-                    "Add a `tag` to one of the entries if the duplication "
-                    "is intentional, so the two submissions can be stored "
-                    "and retrieved independently."
+                    "Give each occurrence a unique explicit tag "
+                    "(e.g., questionnaire/example/before and "
+                    "questionnaire/example/after)."
                 ),
             )
-            # Continue construction so the error surfaces on the
-            # fatal-error page instead of crashing the app silently.
 
         app.load_questionnaires()
         app.load_tables()

@@ -309,6 +309,79 @@ class PageList(object):
 
         return questionnaire
 
+    @staticmethod
+    def _parse_questionnaire_path(path):
+        """Extract (name, tag) from a questionnaire path like
+        'questionnaire/example' or 'questionnaire/example/before'."""
+        full = path.replace("questionnaire/", "", 1)
+        parts = full.split("/", 1)
+        name = parts[0]
+        tag = parts[1] if len(parts) > 1 else ""
+        return name, tag
+
+    def auto_tag_duplicate_questionnaires(self, condition_count=0):
+        """Detect questionnaire entries that collide on (name, tag) within any
+        single-condition traversal and auto-assign integer tags to untagged
+        duplicates.
+
+        For each condition's flat page list, walks the entries tracking
+        (name, tag) pairs. When an untagged duplicate (tag == "") is found,
+        assigns the lowest unused integer tag >= 2 and rewrites the entry's
+        path to questionnaire/<name>/<tag>.
+
+        Sibling arms of one conditional_routing block are never both visited
+        by the same participant, so the same questionnaire in different arms
+        is NOT a duplicate. Only collisions within a single traversal are
+        tagged.
+
+        Explicitly tagged duplicates (same name AND same explicit tag) are
+        left untouched — they surface as a fatal error via the existing
+        questionnaire_list_is_safe check.
+
+        Returns a list of (name, tag_string) tuples for the warning diagnostic.
+        """
+        conditions = list(range(1, condition_count + 1)) if condition_count > 0 else [0]
+        assigned = []
+
+        for condition in conditions:
+            flat = self.flat_page_list(condition=condition, participant_id=None)
+            seen = {}
+
+            for entry in flat:
+                path = entry.get('path', '')
+                if not path.startswith('questionnaire/'):
+                    continue
+
+                name, tag = PageList._parse_questionnaire_path(path)
+
+                if entry.get('_bofs_auto_tagged'):
+                    seen[(name, tag)] = entry
+                    continue
+
+                key = (name, tag)
+                if key not in seen:
+                    seen[key] = entry
+                elif tag == "":
+                    used = set()
+                    for e in flat:
+                        e_path = e.get('path', '')
+                        if e_path.startswith('questionnaire/'):
+                            e_name, e_tag = PageList._parse_questionnaire_path(e_path)
+                            if e_name == name:
+                                used.add(e_tag)
+
+                    n = 2
+                    while str(n) in used:
+                        n += 1
+                    new_tag = str(n)
+
+                    entry['path'] = f"questionnaire/{name}/{new_tag}"
+                    entry['_bofs_auto_tagged'] = True
+                    assigned.append((name, new_tag))
+                    seen[(name, new_tag)] = entry
+
+        return assigned
+
     def flat_page_list(self, condition=None,
                        participant_id=_RESOLVE_FROM_SESSION,
                        hide_unresolved=False) -> list[str]:
