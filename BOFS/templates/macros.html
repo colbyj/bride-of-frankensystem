@@ -24,9 +24,11 @@
 {% macro adminControls() -%}
     {% if (session.get('loggedIn', False) or debug) and request.blueprint != 'admin' %}
     {%- set current_path = request.path.lstrip('/') -%}
+    {%- set current_occ = current_occurrence|default(0) -%}
     {%- set ns = namespace(current_idx=0) -%}
     {%- for page in flat_page_list -%}
-        {%- if page['path'] == current_path -%}{% set ns.current_idx = loop.index %}{%- endif -%}
+        {%- set occ = flat_page_list[:loop.index0]|map(attribute='path')|select('equalto', page['path'])|list|length -%}
+        {%- if page['path'] == current_path and occ == current_occ -%}{% set ns.current_idx = loop.index %}{%- endif -%}
     {%- endfor -%}
     {%- set total_pages = flat_page_list|length -%}
     {%- set pid = session.get('participantID') -%}
@@ -80,7 +82,8 @@
                     {% if pid %}
                     <div class="dropdown-menu">
                         {% for page in flat_page_list %}
-                            {%- set is_current = (page['path'] == current_path) -%}
+                            {%- set occ = flat_page_list[:loop.index0]|map(attribute='path')|select('equalto', page['path'])|list|length -%}
+                            {%- set is_current = (page['path'] == current_path and occ == current_occ) -%}
                             <a class="dropdown-item{% if is_current %} bofs-active{% endif %}" href="/redirect_to_page/{{ page['path'] }}">
                                 {{ loop.index }}. {{ page.get('name') or page['path'] }}{% if is_current %} <i class="fas fa-check" style="margin-left: 4px;"></i>{% endif %}
                             </a>

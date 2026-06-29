@@ -561,6 +561,7 @@ def create(db):
 
         participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'), primary_key=True)
         path = db.Column(db.Text, nullable=False, primary_key=True)
+        occurrence = db.Column(db.Integer, nullable=False, default=0, primary_key=True)
         startedOn = db.Column(db.DateTime, nullable=False, default=utcnow_naive)
         submittedOn = db.Column(db.DateTime, nullable=True)
 

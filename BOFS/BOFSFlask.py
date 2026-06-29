@@ -316,6 +316,7 @@ class BOFSFlask(Flask):
             crumbs=util.create_breadcrumbs(),
             json_dumps=json.dumps,
             participant=self._current_participant(),
+            current_occurrence=session.get('currentOccurrence', 0) or 0,
         )
         return template_vars
 

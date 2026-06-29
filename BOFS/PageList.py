@@ -658,6 +658,23 @@ class PageList(object):
 
         return output_str
 
+    @staticmethod
+    def annotate_occurrences(flat_pages):
+        """Return ``[(entry, occurrence), ...]`` where *occurrence* is the
+        running 0-based count of ``entry['path']`` seen so far.
+
+        Pure function — no special cases for ``end``, ``consent``, or any
+        other path. Every entry receives an occurrence number.
+        """
+        seen = {}
+        result = []
+        for entry in flat_pages:
+            path = entry.get('path', '')
+            occ = seen.get(path, 0)
+            seen[path] = occ + 1
+            result.append((entry, occ))
+        return result
+
     def get_index(self, path):
         """
         This function determines which index a path is within the ``flat_page_list()`` list.

@@ -2,7 +2,7 @@ import os
 import sys
 from . import startup
 from .BOFSFlask import BOFSFlask
-from .admin.util import check_and_add_column, check_and_rename_column, make_columns_nullable
+from .admin.util import check_and_add_column, check_and_rename_column, make_columns_nullable, add_progress_occurrence_column
 from .validation import is_valid_header_color
 
 
@@ -320,6 +320,12 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         # its __bind_key__. Cross-bind questionnaires/tables land on their
         # bound engine; default-bind models stay on the default engine.
         app.db.create_all()
+
+        # Recompose the progress table PK to (participantID, path, occurrence)
+        # before any other migration or model interaction. On a fresh DB
+        # create_all() already created the table with the new PK and this is a
+        # no-op; on an existing DB the column is added and the PK recomposed.
+        add_progress_occurrence_column()
 
         # SECRET_KEY is now persisted in the app_meta table rather than the
         # project's TOML config. This avoids accidental commits of secrets and

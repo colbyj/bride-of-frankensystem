@@ -575,14 +575,15 @@ def route_participant_detail(pid):
         condition=participant.condition or 0,
         participant_id=None,
     )
+    annotated = current_app.page_list.annotate_occurrences(pages)
     progress_rows = db.session.query(db.Progress) \
         .filter(db.Progress.participantID == pid).all()
-    progress_by_path = {row.path: row for row in progress_rows}
+    progress_by_key = {(row.path, row.occurrence): row for row in progress_rows}
 
     timeline = []
-    for idx, page in enumerate(pages, start=1):
+    for idx, (page, occ) in enumerate(annotated, start=1):
         path = page['path']
-        progress = progress_by_path.get(path)
+        progress = progress_by_key.get((path, occ))
         started_on = progress.startedOn if progress else None
         submitted_on = progress.submittedOn if progress else None
 

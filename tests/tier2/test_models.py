@@ -229,6 +229,44 @@ class TestProgressDisplayDuration:
 
 
 # ===========================================================================
+# TestProgressOccurrencePK
+# ===========================================================================
+
+class TestProgressOccurrencePK:
+    def test_two_rows_same_path_different_occurrence(self, bofs_app):
+        p = _make_participant(bofs_app)
+
+        prog1 = bofs_app.db.Progress()
+        prog1.participantID = p.participantID
+        prog1.path = "instructions/intro"
+        prog1.occurrence = 0
+        prog1.startedOn = datetime(2024, 1, 1, 12, 0, 0)
+        bofs_app.db.session.add(prog1)
+        bofs_app.db.session.commit()
+
+        prog2 = bofs_app.db.Progress()
+        prog2.participantID = p.participantID
+        prog2.path = "instructions/intro"
+        prog2.occurrence = 1
+        prog2.startedOn = datetime(2024, 1, 1, 12, 5, 0)
+        bofs_app.db.session.add(prog2)
+        bofs_app.db.session.commit()
+
+        rows = bofs_app.db.session.query(bofs_app.db.Progress).filter_by(
+            participantID=p.participantID, path="instructions/intro"
+        ).all()
+        assert len(rows) == 2
+        assert sorted(r.occurrence for r in rows) == [0, 1]
+
+    def test_migration_idempotent(self, bofs_app):
+        """Running add_progress_occurrence_column on a fresh DB is a no-op
+        (create_all already created the column)."""
+        from BOFS.admin.util import add_progress_occurrence_column
+        assert add_progress_occurrence_column() is False
+        assert add_progress_occurrence_column() is False
+
+
+# ===========================================================================
 # TestCloseProgressSubmitted — close-out on forward navigation
 # ===========================================================================
 

@@ -341,3 +341,134 @@ class TestProgressTracking:
             participantID=p.participantID, path="consent"
         ).one()
         assert row.submittedOn == original
+
+
+# ===========================================================================
+# TestCursorOccurrence — Phase 3b cursor + occurrence mechanism
+# ===========================================================================
+
+class TestCursorOccurrence:
+    def test_current_entry_resolves_cursor(self, bofs_app_with_questionnaires, monkeypatch):
+        app = bofs_app_with_questionnaires
+        custom = [
+            {'name': 'Intro', 'path': 'instructions/intro'},
+            {'name': 'Task', 'path': 'task'},
+            {'name': 'Intro Again', 'path': 'instructions/intro'},
+            {'name': 'End', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'flat_page_list',
+                            lambda *a, **kw: list(custom))
+
+        with app.test_request_context("/instructions/intro"):
+            session["currentUrl"] = "instructions/intro"
+            session["currentOccurrence"] = 1
+            service = ParticipantRoutingService.from_app()
+            entry, occ, index = service.current_entry()
+            assert entry['name'] == 'Intro Again'
+            assert occ == 1
+            assert index == 2
+
+    def test_current_entry_end_reachable(self, bofs_app_with_questionnaires):
+        app = bofs_app_with_questionnaires
+        with app.test_request_context("/end"):
+            session["currentUrl"] = "end"
+            session["currentOccurrence"] = 0
+            service = ParticipantRoutingService.from_app()
+            entry, occ, index = service.current_entry()
+            assert entry['path'] == 'end'
+            assert occ == 0
+
+    def test_current_entry_stale_occurrence_falls_back(self, bofs_app_with_questionnaires, monkeypatch):
+        app = bofs_app_with_questionnaires
+        custom = [
+            {'name': 'Task', 'path': 'task'},
+            {'name': 'End', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'flat_page_list',
+                            lambda *a, **kw: list(custom))
+
+        with app.test_request_context("/task"):
+            session["currentUrl"] = "task"
+            session["currentOccurrence"] = 5
+            service = ParticipantRoutingService.from_app()
+            entry, occ, index = service.current_entry()
+            assert entry['path'] == 'task'
+            assert occ == 0
+
+    def test_current_occurrence_absent_defaults_to_zero(self, bofs_app_with_questionnaires):
+        app = bofs_app_with_questionnaires
+        with app.test_request_context("/consent"):
+            session["currentUrl"] = "consent"
+            session.pop("currentOccurrence", None)
+            service = ParticipantRoutingService.from_app()
+            entry, occ, index = service.current_entry()
+            assert occ == 0
+
+    def test_bootstrap_sets_occurrence(self, bofs_app_with_questionnaires):
+        app = bofs_app_with_questionnaires
+        with app.test_request_context("/"):
+            service = ParticipantRoutingService.from_app()
+            result = service.bootstrap_session_if_needed()
+            assert result is not None
+            assert session["currentOccurrence"] == 0
+
+    def test_track_progress_uses_occurrence(self, bofs_app_with_questionnaires, monkeypatch):
+        app = bofs_app_with_questionnaires
+        p = _make_participant(app)
+        custom = [
+            {'name': 'Intro', 'path': 'instructions/intro'},
+            {'name': 'Task', 'path': 'task'},
+            {'name': 'Intro Again', 'path': 'instructions/intro'},
+            {'name': 'End', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'flat_page_list',
+                            lambda *a, **kw: list(custom))
+
+        with app.test_request_context("/instructions/intro"):
+            session["participantID"] = p.participantID
+            session["currentUrl"] = "instructions/intro"
+            session["currentOccurrence"] = 1
+            service = ParticipantRoutingService.from_app()
+            service.track_progress("instructions/intro")
+
+        rows = app.db.session.query(app.db.Progress).filter_by(
+            participantID=p.participantID, path="instructions/intro"
+        ).all()
+        assert len(rows) == 1
+        assert rows[0].occurrence == 1
+
+    def test_advance_through_duplicates_creates_distinct_rows(self, bofs_app_with_questionnaires, monkeypatch):
+        app = bofs_app_with_questionnaires
+        p = _make_participant(app)
+        custom = [
+            {'name': 'Intro', 'path': 'instructions/intro'},
+            {'name': 'Task', 'path': 'task'},
+            {'name': 'Intro Again', 'path': 'instructions/intro'},
+            {'name': 'End', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'flat_page_list',
+                            lambda *a, **kw: list(custom))
+
+        with app.test_request_context("/instructions/intro"):
+            session["participantID"] = p.participantID
+            session["currentUrl"] = "instructions/intro"
+            session["currentOccurrence"] = 0
+
+            service = ParticipantRoutingService.from_app()
+            service.track_progress("instructions/intro")
+
+            service.advance_to_next()
+            assert session["currentUrl"] == "task"
+            assert session["currentOccurrence"] == 0
+
+            service.advance_to_next()
+            assert session["currentUrl"] == "instructions/intro"
+            assert session["currentOccurrence"] == 1
+
+            service.track_progress("instructions/intro")
+
+        rows = app.db.session.query(app.db.Progress).filter_by(
+            participantID=p.participantID, path="instructions/intro"
+        ).all()
+        assert len(rows) == 2
+        assert sorted(r.occurrence for r in rows) == [0, 1]

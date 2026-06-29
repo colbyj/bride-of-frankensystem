@@ -256,6 +256,8 @@ def create_breadcrumbs():
     if current_path.startswith("/"):
         current_path = current_path[1:]
 
+    current_occ = session.get('currentOccurrence', 0) or 0
+
     # End pages (``/end`` and ``/end/<reason>``) never show the breadcrumb.
     # They're terminal: the participant has finished or been screened out,
     # and a "you were on Survey → Demographics → ..." trail at the moment
@@ -265,10 +267,11 @@ def create_breadcrumbs():
         return []
 
     page_list = current_app.page_list.flat_page_list(hide_unresolved=True)
+    annotated = current_app.page_list.annotate_occurrences(page_list)
     crumbs = []
 
-    # Create breadcrumbs. Match the active page by path rather than by
-    # index, because ``hide_unresolved=True`` may have dropped earlier
+    # Create breadcrumbs. Match the active page by (path, occurrence) rather
+    # than by index, because ``hide_unresolved=True`` may have dropped earlier
     # entries that are still present in the unfiltered list ``get_index``
     # would consult.
     #
@@ -278,7 +281,7 @@ def create_breadcrumbs():
     # would be re-rendered, and the per-reason entries exist mostly as
     # redirect/template configuration that the participant never "passes
     # through" in the page-flow sense.
-    for page in page_list:
+    for page, occ in annotated:
         name = page.get('name', '')
         if not name:
             continue
@@ -288,7 +291,7 @@ def create_breadcrumbs():
 
         crumbs.append({
             'name': name,
-            'active': path == current_path,
+            'active': path == current_path and occ == current_occ,
         })
 
     # Check for and handle any groupings of pages with the same name.

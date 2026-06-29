@@ -115,7 +115,12 @@ class TestFetchProgress:
     def test_fetch_progress_duplicate_paths_do_not_crash(
         self, bofs_app_with_questionnaires, monkeypatch
     ):
-        """Duplicate paths in PAGE_LIST must not crash fetch_progress."""
+        """Duplicate paths in PAGE_LIST must not crash fetch_progress.
+
+        Phase 3b deduplicates by (path, occurrence), so the two
+        ``instructions/example`` entries — which have occurrences 0 and 1 —
+        appear as distinct columns.
+        """
         app = bofs_app_with_questionnaires
         custom = [
             {'name': 'Consent', 'path': 'consent'},
@@ -198,6 +203,58 @@ class TestFetchProgress:
             "Progress table dropped a show_if-gated page; "
             f"got: {page_paths}"
         )
+
+    def test_fetch_progress_includes_all_condition_arms(self, bofs_app_with_conditions):
+        pages, _ = AdminStatsService.fetch_progress()
+        paths = [p['path'] for p in pages]
+        assert 'questionnaire/control' in paths
+        assert 'questionnaire/treatment' in paths
+        assert 'questionnaire/post' in paths
+
+    def test_fetch_progress_duplicate_paths_distinct_data(
+        self, bofs_app_with_questionnaires, monkeypatch
+    ):
+        """Phase 3b: duplicate paths with distinct occurrences produce
+        separate columns joined to distinct Progress rows."""
+        app = bofs_app_with_questionnaires
+        custom = [
+            {'name': 'Consent', 'path': 'consent'},
+            {'name': 'Instructions', 'path': 'instructions/intro'},
+            {'name': 'Task', 'path': 'task'},
+            {'name': 'Instructions Again', 'path': 'instructions/intro'},
+            {'name': 'End', 'path': 'end'},
+        ]
+        monkeypatch.setattr(app.page_list, 'flat_page_list',
+                            lambda *a, **kw: list(custom))
+
+        p = _make_participant(app)
+        _make_progress(app, p, 'instructions/intro',
+                       started=datetime(2024, 1, 1, 12, 0, 0),
+                       submitted=datetime(2024, 1, 1, 12, 1, 0))
+        prog2 = app.db.Progress()
+        prog2.participantID = p.participantID
+        prog2.path = 'instructions/intro'
+        prog2.occurrence = 1
+        prog2.startedOn = datetime(2024, 1, 1, 12, 5, 0)
+        prog2.submittedOn = datetime(2024, 1, 1, 12, 10, 0)
+        app.db.session.add(prog2)
+        app.db.session.commit()
+
+        pages, progress = AdminStatsService.fetch_progress()
+
+        paths = [page["path"] for page in pages]
+        assert paths.count("instructions/intro") == 2
+
+        assert len(progress) == 1
+        row = progress[0]
+        intro_indices = [i for i, pg in enumerate(pages) if pg["path"] == "instructions/intro"]
+        assert len(intro_indices) == 2
+
+        prog0 = row[intro_indices[0] + 1]
+        prog1 = row[intro_indices[1] + 1]
+        assert prog0 is not None and prog0.occurrence == 0
+        assert prog1 is not None and prog1.occurrence == 1
+        assert prog0.startedOn != prog1.startedOn
 
 
 # ===========================================================================

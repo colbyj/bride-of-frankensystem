@@ -16,25 +16,43 @@ class AdminStatsService:
             each row contains the Participant entity plus one Progress entity
             (or None) per page, in the order of `pages`.
 
-        The page list is built with ``condition=0`` and ``participant_id=None``
-        so that every column that any participant could possibly have visited
-        appears in the table — including pages behind a ``conditional_routing``
-        block or a ``show_if`` predicate. Per-participant filtering happens in
-        the join: a participant who never visited a given page simply has a
-        NULL Progress row in that column.
+        The page list is built by iterating all conditions (or ``condition=0``
+        when no conditions are configured) with ``participant_id=None`` so that
+        every column that any participant could possibly have visited appears
+        in the table - including pages behind a ``conditional_routing`` block
+        or a ``show_if`` expression. Columns are deduplicated by
+        ``(path, occurrence)`` across all conditions so that a page visited
+        twice (e.g. duplicate instructions) shows distinct timing columns.
+        Per-participant filtering happens in the join: a participant who never
+        visited a given page simply has a NULL Progress row in that column.
         """
-        pages = [p for p in current_app.page_list.flat_page_list(
-                    condition=0, participant_id=None)
-                 if p['path'] != "consent"
-                 and p['path'] != "end"
-                 and not p['path'].startswith("end/")]
+        condition_count = len(current_app.config.get('CONDITIONS', []) or [])
+        conditions = list(range(1, condition_count + 1)) if condition_count > 0 else [0]
+
+        columns = []
+        seen_keys = set()
+        for condition in conditions:
+            flat = current_app.page_list.flat_page_list(
+                condition=condition, participant_id=None
+            )
+            for page, occ in current_app.page_list.annotate_occurrences(flat):
+                path = page['path']
+                if path == "consent" or path == "end" or path.startswith("end/"):
+                    continue
+                key = (path, occ)
+                if key not in seen_keys:
+                    columns.append((page, occ))
+                    seen_keys.add(key)
+
+        pages = [page for page, _ in columns]
         progress = db.session.query(db.Participant).filter(db.Participant.isCrawler == False)
 
-        for idx, page in enumerate(pages):
+        for idx, (page, occ) in enumerate(columns):
             pp = db.aliased(db.Progress, name=f"_pp_{idx}")
             progress = progress.outerjoin(pp, db.and_(
                 pp.participantID == db.Participant.participantID,
-                pp.path == page['path']
+                pp.path == page['path'],
+                pp.occurrence == occ,
             )).add_entity(
                 pp
             )

@@ -1291,3 +1291,77 @@ class TestAutoTagDuplicateQuestionnaires:
         assert assigned == []
         assert pl.page_list[0]['path'] == 'questionnaire/example/before'
         assert pl.page_list[1]['path'] == 'questionnaire/example/before'
+
+
+# ===========================================================================
+# TestAnnotateOccurrences
+# ===========================================================================
+
+class TestAnnotateOccurrences:
+    def test_linear_list_all_occurrence_zero(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'consent'},
+            {'name': 'B', 'path': 'questionnaire/survey'},
+            {'name': 'C', 'path': 'end'},
+        ])
+        annotated = PageList.annotate_occurrences(pl.flat_page_list())
+        assert [(e['path'], o) for e, o in annotated] == [
+            ('consent', 0),
+            ('questionnaire/survey', 0),
+            ('end', 0),
+        ]
+
+    def test_duplicate_paths_get_sequential_occurrences(self):
+        pl = PageList([
+            {'name': 'Intro', 'path': 'instructions/intro'},
+            {'name': 'Task', 'path': 'task'},
+            {'name': 'Intro Again', 'path': 'instructions/intro'},
+        ])
+        annotated = PageList.annotate_occurrences(pl.flat_page_list())
+        assert [(e['path'], o) for e, o in annotated] == [
+            ('instructions/intro', 0),
+            ('task', 0),
+            ('instructions/intro', 1),
+        ]
+
+    def test_end_path_gets_occurrence_zero(self):
+        pl = PageList([
+            {'name': 'Page', 'path': 'simple/page'},
+            {'name': 'End', 'path': 'end'},
+        ])
+        annotated = PageList.annotate_occurrences(pl.flat_page_list())
+        end_entry = [(e['path'], o) for e, o in annotated if e['path'] == 'end']
+        assert end_entry == [('end', 0)]
+
+    def test_three_duplicates(self):
+        pl = PageList([
+            {'name': 'A', 'path': 'task'},
+            {'name': 'B', 'path': 'task'},
+            {'name': 'C', 'path': 'task'},
+        ])
+        annotated = PageList.annotate_occurrences(pl.flat_page_list())
+        occurrences = [o for e, o in annotated]
+        assert occurrences == [0, 1, 2]
+
+    def test_empty_list(self):
+        annotated = PageList.annotate_occurrences([])
+        assert annotated == []
+
+    def test_occurrence_in_conditional_arm(self):
+        pl = PageList([
+            {'name': 'Shared', 'path': 'instructions/intro'},
+            {'conditional_routing': [
+                {'condition': 1, 'page_list': [
+                    {'name': 'Arm', 'path': 'instructions/intro'},
+                ]},
+            ]},
+            {'name': 'End', 'path': 'end'},
+        ])
+        flat = pl.flat_page_list(condition=1)
+        annotated = PageList.annotate_occurrences(flat)
+        paths_occs = [(e['path'], o) for e, o in annotated]
+        assert paths_occs == [
+            ('instructions/intro', 0),
+            ('instructions/intro', 1),
+            ('end', 0),
+        ]

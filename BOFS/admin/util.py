@@ -395,3 +395,127 @@ def make_columns_nullable(table_name: str, column_names: list, bind_key=None) ->
     print(f"  Made column(s) nullable in {table_name}: {changed_names}")
     return True
 
+
+def add_progress_occurrence_column(bind_key=None) -> bool:
+    """Add the ``occurrence`` column to the ``progress`` table and recompose
+    its primary key to ``(participantID, path, occurrence)``.
+
+    Idempotent: no-op when ``occurrence`` already exists. Existing rows
+    backfill to ``occurrence = 0`` — safe because no existing study could
+    have had two Progress rows for one ``(participantID, path)`` pair.
+
+    On SQLite the table is rebuilt (SQLite cannot alter a primary key in
+    place); on PostgreSQL/MySQL/MariaDB the column is added with
+    ``ALTER TABLE`` and the PK constraint is dropped and recreated.
+
+    :param bind_key: Name of a SQLALCHEMY_BINDS entry. ``None`` (default)
+        targets the default-bind engine.
+    :return: True if the migration ran, False if it was a no-op (already
+        migrated, table missing, or unsupported dialect).
+    """
+    if not _check_migration_dialect_supported(
+        "add_progress_occurrence_column", bind_key=bind_key,
+    ):
+        return False
+
+    engine = _engine_for(bind_key)
+    inspector = sa_inspect(engine)
+
+    if 'progress' not in inspector.get_table_names():
+        return False
+
+    existing_cols = {col['name'] for col in inspector.get_columns('progress')}
+    if 'occurrence' in existing_cols:
+        return False
+
+    dialect = engine.dialect.name
+    from sqlalchemy import text
+
+    if dialect == 'sqlite':
+        _rebuild_progress_table_sqlite(engine, inspector)
+    else:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "ALTER TABLE progress ADD COLUMN occurrence INTEGER NOT NULL DEFAULT 0"
+            ))
+            pk_constraint = inspector.get_pk_constraint('progress')
+            pk_name = pk_constraint.get('name')
+            if pk_name and dialect == 'postgresql':
+                conn.execute(text(
+                    f"ALTER TABLE progress DROP CONSTRAINT {pk_name}"
+                ))
+            else:
+                conn.execute(text("ALTER TABLE progress DROP PRIMARY KEY"))
+            conn.execute(text(
+                "ALTER TABLE progress ADD PRIMARY KEY (participantID, path, occurrence)"
+            ))
+            conn.commit()
+
+    print("  Added 'occurrence' column to progress table and recomposed PK.")
+    return True
+
+
+def _rebuild_progress_table_sqlite(engine, inspector):
+    """Rebuild the ``progress`` table on SQLite to add ``occurrence`` and
+    recompose the primary key.
+
+    Follows the same rename → create → copy → drop → reindex pattern as
+    :func:`make_columns_nullable`.
+    """
+    from sqlalchemy import text
+
+    columns = inspector.get_columns('progress')
+    fks = inspector.get_foreign_keys('progress')
+    indexes = inspector.get_indexes('progress')
+
+    new_pk_cols = {'participantID', 'path', 'occurrence'}
+
+    col_defs = []
+    old_col_names = []
+    for col in columns:
+        name = col['name']
+        type_str = str(col['type'])
+        parts = [f'"{name}"', type_str]
+
+        if name in new_pk_cols:
+            parts.append('PRIMARY KEY')
+
+        if not col['nullable']:
+            parts.append('NOT NULL')
+
+        col_defs.append(' '.join(parts))
+        old_col_names.append(f'"{name}"')
+
+    col_defs.append('"occurrence" INTEGER NOT NULL DEFAULT 0 PRIMARY KEY')
+
+    for fk in fks:
+        for i in range(len(fk['constrained_columns'])):
+            col_defs.append(
+                f'FOREIGN KEY("{fk["constrained_columns"][i]}") '
+                f'REFERENCES "{fk["referred_table"]}"("{fk["referred_columns"][i]}")'
+            )
+
+    all_col_names = ', '.join(old_col_names) + ', "occurrence"'
+    backup_name = "progress__rebuild_backup"
+    new_create = f'CREATE TABLE "progress" ({", ".join(col_defs)})'
+
+    with engine.connect() as conn:
+        conn.execute(text("PRAGMA foreign_keys=OFF"))
+        conn.execute(text(f'ALTER TABLE "progress" RENAME TO "{backup_name}"'))
+        conn.execute(text(new_create))
+        conn.execute(text(
+            f'INSERT INTO "progress" ({all_col_names}) '
+            f'SELECT {", ".join(old_col_names)}, 0 FROM "{backup_name}"'
+        ))
+        conn.execute(text(f'DROP TABLE "{backup_name}"'))
+
+        for idx in indexes:
+            idx_cols = ', '.join(f'"{c}"' for c in idx['column_names'])
+            unique = 'UNIQUE ' if idx.get('unique') else ''
+            conn.execute(text(
+                f'CREATE {unique}INDEX "{idx["name"]}" ON "progress" ({idx_cols})'
+            ))
+
+        conn.execute(text("PRAGMA foreign_keys=ON"))
+        conn.commit()
+
