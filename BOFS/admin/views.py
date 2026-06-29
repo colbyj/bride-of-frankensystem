@@ -44,7 +44,7 @@ _TABLE_VIEW_BLOCKED = frozenset({'app_meta'})
 # These tables are defined in ``BOFS/default/models.py``.
 _SYSTEM_TABLE_NAMES = frozenset({
     'participant', 'progress', 'display', 'banned_ip',
-    'admin_trusted_ip', 'login_attempt', 'questionnaire_interaction',
+    'admin_trusted_ip', 'login_attempt', 'bofs_interaction_log',
     'response_log', 'session_store',
 })
 

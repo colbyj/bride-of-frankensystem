@@ -1100,3 +1100,80 @@ class TestFetchMethods:
         results = q.fetch_column_data("rating", condition=0)
         assert len(results) == 1
         assert results[0][0] == 2
+
+
+# ===========================================================================
+# TestQuestionnaireInteractionNoCollision
+# ===========================================================================
+
+class TestQuestionnaireInteractionNoCollision:
+    """A questionnaire named 'interaction' must load successfully now that the
+    system table uses the 'bofs_' prefix."""
+
+    def write_interaction_q(self, app, data):
+        import json, os
+        q_dir = os.path.join(app.root_path, "questionnaires")
+        os.makedirs(q_dir, exist_ok=True)
+        filepath = os.path.join(q_dir, "interaction.json")
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+
+    def test_interaction_questionnaire_loads(self, bofs_app):
+        """Previously 'interaction' silently failed because it collided with
+        'questionnaire_interaction'. After the rename, it should load."""
+        self.write_interaction_q(bofs_app, {
+            "title": "Interaction Test",
+            "instructions": "",
+            "questions": [
+                {"questiontype": "field", "id": "answer"},
+            ]
+        })
+        from BOFS.startup import load_questionnaire
+        q_dir = bofs_app.root_path + "/questionnaires"
+        q = load_questionnaire(bofs_app, q_dir, "interaction")
+        assert q is not None
+        assert q.file_name == "interaction"
+        assert q.db_class.__tablename__ == "questionnaire_interaction"
+
+
+# ===========================================================================
+# TestQuestionnaireCollisionLoudGuard
+# ===========================================================================
+
+class TestQuestionnaireCollisionLoudGuard:
+    """A questionnaire whose table name collides with an existing metadata
+    entry should produce an error diagnostic, not a silent skip."""
+
+    def test_collision_emits_error_diagnostic(self, bofs_app):
+        from BOFS.setup_diagnostics import DiagnosticCollector
+        bofs_app.setup_diagnostics = DiagnosticCollector()
+        bofs_app.setup_diagnostics.bind(bofs_app)
+
+        # Add a raw table to metadata whose name will collide with
+        # the questionnaire table name "questionnaire_collide_target".
+        from sqlalchemy import Table, Column, Integer
+        t = Table("questionnaire_collide_target", bofs_app.db.metadata,
+                   Column("id", Integer, primary_key=True))
+
+        from BOFS.startup import load_questionnaire
+        import json, os
+        q_dir = os.path.join(bofs_app.root_path, "questionnaires")
+        os.makedirs(q_dir, exist_ok=True)
+        filepath = os.path.join(q_dir, "collide_target.json")
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump({
+                "title": "Collision",
+                "instructions": "",
+                "questions": [{"questiontype": "field", "id": "x"}],
+            }, f)
+
+        q = load_questionnaire(bofs_app, q_dir, "collide_target")
+        assert q is None
+
+        errors = bofs_app.setup_diagnostics.by_severity("error")
+        assert any(
+            "collide_target" in e.message and "collides" in e.message
+            for e in errors
+        )
+
+        bofs_app.db.metadata.remove(t)

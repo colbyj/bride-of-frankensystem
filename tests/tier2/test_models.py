@@ -734,3 +734,87 @@ class TestQuestionnaireInteractions:
         tagged = p.questionnaire_interactions("survey", tag="v2")
         assert len(tagged) == 1
         assert tagged[0].value == "tagged"
+
+    def test_tablename_is_bofs_interaction_log(self, bofs_app):
+        assert bofs_app.db.QuestionnaireInteraction.__tablename__ == "bofs_interaction_log"
+
+
+# ===========================================================================
+# TestInteractionLogRenameMigration
+# ===========================================================================
+
+class TestInteractionLogRenameMigration:
+    def test_rename_table_preserves_data(self, bofs_app):
+        from sqlalchemy import text, inspect as sa_inspect
+        from BOFS.admin.util import check_and_rename_table
+
+        engine = bofs_app.db.engine
+
+        # create_all already created bofs_interaction_log. Remove it so the
+        # rename has a clean target and we can test the migration path.
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS bofs_interaction_log"))
+
+        # Manually create the legacy table with a row, then rename
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CREATE TABLE questionnaire_interaction ("
+                "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                "  participantID INTEGER,"
+                "  questionnaire TEXT,"
+                "  tag TEXT,"
+                "  questionID TEXT,"
+                "  eventType TEXT,"
+                "  timestamp DATETIME,"
+                "  value TEXT"
+                ")"
+            ))
+            conn.execute(text(
+                "INSERT INTO questionnaire_interaction "
+                "(participantID, questionnaire, tag, questionID, eventType, timestamp, value) "
+                "VALUES (1, 'demo', '0', 'q1', 'change', '2024-01-01 12:00:00', 'test_value')"
+            ))
+
+        # Verify old table exists with the row
+        inspector = sa_inspect(engine)
+        assert "questionnaire_interaction" in set(inspector.get_table_names())
+
+        # Run the rename migration
+        result = check_and_rename_table("questionnaire_interaction", "bofs_interaction_log")
+        assert result is True, "check_and_rename_table returned False"
+
+        # Use a fresh inspector to verify state
+        from sqlalchemy import inspect as sa_inspect2
+        inspector2 = sa_inspect2(engine)
+        tables2 = set(inspector2.get_table_names())
+        assert "questionnaire_interaction" not in tables2, (
+            f"Table 'questionnaire_interaction' was not renamed. Got tables: {sorted(tables2)}"
+        )
+        assert "bofs_interaction_log" in tables2, (
+            f"Table 'bofs_interaction_log' not found after rename. Got tables: {sorted(tables2)}"
+        )
+
+        # Data should have survived
+        with engine.begin() as conn:
+            row = conn.execute(text(
+                "SELECT participantID, questionnaire, value FROM bofs_interaction_log"
+            )).first()
+        assert row is not None
+        assert row[0] == 1
+        assert row[1] == "demo"
+        assert row[2] == "test_value"
+
+    def test_rename_noop_when_new_table_exists(self, bofs_app):
+        from BOFS.admin.util import check_and_rename_table
+
+        # New table already exists (e.g. fresh schema), old does not
+        result = check_and_rename_table("questionnaire_interaction", "bofs_interaction_log")
+        # bofs_interaction_log already exists (create_all created it), old does not
+        assert result is False
+
+    def test_rename_noop_when_old_missing(self, bofs_app):
+        from BOFS.admin.util import check_and_rename_table
+
+        # Neither table exists (unusual but safe)
+        result = check_and_rename_table("nonexistent_old", "nonexistent_new")
+        assert result is False

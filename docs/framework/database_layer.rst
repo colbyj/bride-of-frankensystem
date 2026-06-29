@@ -259,6 +259,8 @@ Three sources contribute models to the same ``db`` namespace and the same databa
 
 Pick custom-model names that don't shadow a questionnaire or a JSONTable. ``class Demographics(db.Model)`` while ``questionnaires/demographics.json`` exists will collide on ``db.Demographics``/``db.demographics`` — case differs but the underlying database table name (set by ``__tablename__`` for custom models, or the filename for questionnaires/JSONTable) needs to be unique across all three.
 
+System tables use the ``bofs_`` prefix, questionnaires use ``questionnaire_``, and JSONTables use ``table_``. Custom models should avoid all three prefixes. A name clash (between a JSON file and a system table or an existing model) now produces a startup error with a diagnostic message rather than failing silently.
+
 A typical split: JSONTable for participant-generated data (trial responses, event logs), ``models.py`` for shared study-level data (stimulus pools, condition manifests, scoring rubrics) that participant data joins against. The two reference each other via foreign keys.
 
 Limitations

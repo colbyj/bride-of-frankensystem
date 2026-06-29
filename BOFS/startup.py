@@ -223,7 +223,15 @@ def find_files_in_app_and_blueprints(app, folder_name: str,
 # ---------------------------------------------------------------------------
 
 def load_table(app, directory: str, filename: str) -> Union[JSONTable, None]:
-    if filename in app.db.metadata.tables:
+    if ("table_" + filename) in app.db.metadata.tables:
+        app.setup_diagnostics.add(
+            "error", "table",
+            f"Table filename '{filename}' collides with an existing table "
+            f"'table_{filename}'. The table name is already registered, "
+            f"either by a system model or by another JSONTable.",
+            suggestion=f"Rename '{filename}.json' to resolve the conflict.",
+            questionnaire=filename + ".json",
+        )
         return None
 
     if filename in app.tables:
@@ -289,6 +297,14 @@ def load_questionnaire(app, directory: str, filename: str, add_to_db: bool = Fal
     from .validation import validate_questionnaire, RESERVED_EXPRESSION_NAMES
 
     if "questionnaire_" + filename in app.db.metadata.tables:
+        app.setup_diagnostics.add(
+            "error", "questionnaire",
+            f"Questionnaire filename '{filename}' collides with an existing "
+            f"table 'questionnaire_{filename}'. The table name is already "
+            f"registered, either by a system model or by another questionnaire.",
+            suggestion=f"Rename '{filename}.json' to resolve the conflict.",
+            questionnaire=filename + ".json",
+        )
         return None
 
     if filename in app.questionnaires:

@@ -517,3 +517,46 @@ class TestBoolCoercion:
         assert exc_info.value.code == 400
         rows = bofs_app.db.session.query(t.db_class).all()
         assert len(rows) == 0
+
+
+# ===========================================================================
+# TestTableCollisionLoudGuard
+# ===========================================================================
+
+class TestTableCollisionLoudGuard:
+    """A table whose name collides with an existing metadata entry should
+    produce an error diagnostic, not a silent skip."""
+
+    def test_collision_emits_error_diagnostic(self, bofs_app):
+        from BOFS.setup_diagnostics import DiagnosticCollector
+        bofs_app.setup_diagnostics = DiagnosticCollector()
+        bofs_app.setup_diagnostics.bind(bofs_app)
+
+        # The load_table guard checks ``"table_" + filename`` against
+        # metadata.tables — the real table name a JSONTable would claim.
+        # Register a table with that exact key so the guard catches it.
+        from sqlalchemy import Table, Column, Integer
+        t = Table("table_collide_t", bofs_app.db.metadata,
+                   Column("id", Integer, primary_key=True))
+
+        from BOFS.startup import load_table
+        import json, os
+
+        tables_dir = os.path.join(bofs_app.root_path, "tables")
+        os.makedirs(tables_dir, exist_ok=True)
+        filepath = os.path.join(tables_dir, "collide_t.json")
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump({
+                "columns": {"x": {"type": "integer"}},
+            }, f)
+
+        result = load_table(bofs_app, tables_dir, "collide_t")
+        assert result is None  # should be rejected
+
+        errors = bofs_app.setup_diagnostics.by_severity("error")
+        assert any(
+            "collide_t" in e.message and "collides" in e.message
+            for e in errors
+        )
+
+        bofs_app.db.metadata.remove(t)

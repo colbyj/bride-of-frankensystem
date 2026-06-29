@@ -576,7 +576,7 @@ def create(db):
 
 
     class QuestionnaireInteraction(db.Model):
-        __tablename__ = "questionnaire_interaction"
+        __tablename__ = "bofs_interaction_log"
 
         id = db.Column(db.Integer, primary_key=True, autoincrement=True)
         participantID = db.Column(db.Integer, db.ForeignKey('participant.participantID'))

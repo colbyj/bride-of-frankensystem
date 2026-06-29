@@ -289,6 +289,49 @@ def check_and_rename_column(table_name: str, old_name: str, new_name: str, bind_
     return True
 
 
+def check_and_rename_table(old_name: str, new_name: str, bind_key=None) -> bool:
+    """Rename a table if the old name exists and the new name does not.
+
+    Works on SQLite >= 3.25, PostgreSQL >= 9.2, MySQL >= 8.0, MariaDB >= 10.5 —
+    all accept the identical ``ALTER TABLE ... RENAME TO ...`` syntax.
+    Older versions of Postgres/MySQL are out of support; the ALTER will raise
+    and surface the version mismatch clearly. Other dialects are skipped with
+    a warning so an admin can run the rename manually.
+
+    Backward-compatibility note: this helper exists because BOFS treats
+    pre-existing study databases as part of the public contract (see CLAUDE.md
+    "Backward Compatibility"). A framework table that was renamed (e.g.
+    ``questionnaire_interaction`` to ``bofs_interaction_log``) must be
+    migrated in place so existing deployments retain their data.
+
+    :param bind_key: Name of a SQLALCHEMY_BINDS entry. ``None`` (default) targets
+        the default-bind engine.
+    :return: True if the rename happened, False if it was a no-op (already
+        renamed, nothing to rename) or skipped (unsupported dialect).
+    """
+    if not _check_migration_dialect_supported(
+        f"check_and_rename_table({old_name!r} -> {new_name!r})",
+        bind_key=bind_key,
+    ):
+        return False
+
+    engine = _engine_for(bind_key)
+    inspector = sa_inspect(engine)
+    existing = set(inspector.get_table_names())
+
+    if new_name in existing:
+        return False  # already renamed (or new schema all along)
+    if old_name not in existing:
+        return False  # nothing to rename
+
+    ddl = f"ALTER TABLE {old_name} RENAME TO {new_name}"
+    with engine.connect() as conn:
+        conn.execute(db.DDL(ddl))
+        db.session.commit()
+
+    return True
+
+
 def make_columns_nullable(table_name: str, column_names: list, bind_key=None) -> bool:
     """
     Make specified columns nullable in a SQLite table via table reconstruction.

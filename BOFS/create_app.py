@@ -2,7 +2,7 @@ import os
 import sys
 from . import startup
 from .BOFSFlask import BOFSFlask
-from .admin.util import check_and_add_column, check_and_rename_column, make_columns_nullable, add_progress_occurrence_column
+from .admin.util import check_and_add_column, check_and_rename_column, check_and_rename_table, make_columns_nullable, add_progress_occurrence_column
 from .validation import is_valid_header_color
 
 
@@ -298,6 +298,17 @@ def create_app(path, config_name, debug=False, reloader_off=False):
                 orphaned_names = [col['name'] for col in orphaned]
                 make_columns_nullable(q.db_class.__tablename__, orphaned_names,
                                       bind_key=getattr(q, 'bind_key', None))
+
+        # Rename legacy questionnaire_interaction to bofs_interaction_log
+        # This must run before db.create_all so an existing DB with the old
+        # table name gets migrated before the ORM expects the new one.
+        if check_and_rename_table("questionnaire_interaction", "bofs_interaction_log"):
+            app.setup_diagnostics.add(
+                "info", "schema",
+                f"Renamed legacy table 'questionnaire_interaction' to "
+                f"'bofs_interaction_log'.",
+                source="bofs_interaction_log",
+            )
 
         # Print a startup summary banner so the researcher sees totals in
         # the terminal even when running headless. Individual diagnostics
