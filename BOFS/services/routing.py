@@ -244,8 +244,17 @@ class ParticipantRoutingService:
             ParticipantService.provide_quota_full()
             return redirect(self.application_root + "/end/quota_full")
 
+        # ``assign_condition`` is the one content route that runs the balancer
+        # itself. When it's the first page, create the participant *without* a
+        # condition — its own handler assigns one — so we don't run the
+        # balancer twice (which double-counts the participant and can skew the
+        # next pick). This mirrors the documented
+        # ``create_participant_nc`` -> ``assign_condition`` composition. In
+        # debug mode the route defers to ``/debug_pick_condition`` either way,
+        # so leaving the condition unassigned here is also correct there.
+        assign_condition = first_path != "assign_condition"
         try:
-            p = ParticipantService.provide_consent(assign_condition=True)
+            p = ParticipantService.provide_consent(assign_condition=assign_condition)
         except ConditionLookupMiss as miss:
             return render_template(
                 "condition_lookup_miss.html",

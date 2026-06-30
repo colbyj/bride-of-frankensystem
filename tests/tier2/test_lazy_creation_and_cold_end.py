@@ -118,6 +118,27 @@ def app_end_first(tmp_path):
 
 
 @pytest.fixture
+def app_assign_condition_first(tmp_path):
+    """PAGE_LIST starts with the explicit ``assign_condition`` route. Lazy
+    creation must make the participant *unassigned* and leave the single
+    assignment to the route's own handler — running the balancer once, not
+    twice."""
+    _write_common_files(tmp_path)
+    app, ctx, cwd = _make_app(tmp_path, {
+        "CONDITIONS": [
+            {"label": "Control", "enabled": True},
+            {"label": "Treatment", "enabled": True},
+        ],
+        "PAGE_LIST": [
+            {"name": "Assign", "path": "assign_condition"},
+            {"name": "End", "path": "end"},
+        ],
+    })
+    yield app
+    _teardown(app, ctx, cwd)
+
+
+@pytest.fixture
 def app_questionnaire_first_debug(tmp_path):
     """Same as app_questionnaire_first but with debug=True so the
     use_debug_picker branch fires."""
@@ -239,6 +260,41 @@ class TestLazyParticipantCreation:
         participants = app.db.session.query(app.db.Participant).all()
         assert len(participants) == 1
         assert participants[0].condition == 0
+
+    def test_assign_condition_first_assigns_exactly_once(
+            self, app_assign_condition_first):
+        """When ``assign_condition`` is the first PAGE_LIST entry, the balancer
+        must run exactly once. Lazy creation makes the participant unassigned
+        (condition 0) and the route's own handler performs the single
+        assignment — previously both fired, double-running the balancer."""
+        app = app_assign_condition_first
+
+        # Spy on the balancer entry point. Both provide_consent (lazy
+        # creation) and assign_condition_organic (the route body) reach the
+        # balancer through Participant.assign_condition, so counting its
+        # invocations across the request directly measures double-assignment.
+        calls = {"n": 0}
+        original = app.db.Participant.assign_condition
+
+        def counting(self):
+            calls["n"] += 1
+            return original(self)
+
+        app.db.Participant.assign_condition = counting
+        try:
+            client = app.test_client()
+            response = client.get("/assign_condition", follow_redirects=True)
+            assert response.status_code == 200
+        finally:
+            app.db.Participant.assign_condition = original
+
+        # The balancer ran once, not twice.
+        assert calls["n"] == 1
+
+        # Exactly one participant, ending with a real assigned condition.
+        participants = app.db.session.query(app.db.Participant).all()
+        assert len(participants) == 1
+        assert participants[0].condition in (1, 2)
 
     def test_condition_lookup_miss_returns_404(self, tmp_path):
         """Lazy creation must surface CONDITIONS_FROM_CSV lookup misses the
