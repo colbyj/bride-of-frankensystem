@@ -744,7 +744,7 @@ class TestRestoredOrphanLabel:
 class TestReservedBareNames:
 
     def test_source_and_end_reason_resolve_to_participant_columns(self, tmp_path):
-        """show_if predicates referencing `source` and `end_reason` resolve
+        """show_if expressions referencing `source` and `end_reason` resolve
         against the Participant row, not questionnaires. Use show_if-gated
         outgoing_url entries to exercise the resolution path through the
         real PageList machinery."""

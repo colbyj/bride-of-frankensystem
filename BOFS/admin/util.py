@@ -511,7 +511,7 @@ def _rebuild_progress_table_sqlite(engine, inspector):
     fks = inspector.get_foreign_keys('progress')
     indexes = inspector.get_indexes('progress')
 
-    new_pk_cols = {'participantID', 'path', 'occurrence'}
+    new_pk_cols = ['participantID', 'path', 'occurrence']
 
     col_defs = []
     old_col_names = []
@@ -520,16 +520,14 @@ def _rebuild_progress_table_sqlite(engine, inspector):
         type_str = str(col['type'])
         parts = [f'"{name}"', type_str]
 
-        if name in new_pk_cols:
-            parts.append('PRIMARY KEY')
-
         if not col['nullable']:
             parts.append('NOT NULL')
 
         col_defs.append(' '.join(parts))
         old_col_names.append(f'"{name}"')
 
-    col_defs.append('"occurrence" INTEGER NOT NULL DEFAULT 0 PRIMARY KEY')
+    col_defs.append('"occurrence" INTEGER NOT NULL DEFAULT 0')
+    old_col_names_with_occ = old_col_names + ['"occurrence"']
 
     for fk in fks:
         for i in range(len(fk['constrained_columns'])):
@@ -538,7 +536,10 @@ def _rebuild_progress_table_sqlite(engine, inspector):
                 f'REFERENCES "{fk["referred_table"]}"("{fk["referred_columns"][i]}")'
             )
 
-    all_col_names = ', '.join(old_col_names) + ', "occurrence"'
+    pk_col_str = ', '.join(f'"{c}"' for c in new_pk_cols)
+    col_defs.append(f'PRIMARY KEY ({pk_col_str})')
+
+    all_col_names = ', '.join(old_col_names_with_occ)
     backup_name = "progress__rebuild_backup"
     new_create = f'CREATE TABLE "progress" ({", ".join(col_defs)})'
 

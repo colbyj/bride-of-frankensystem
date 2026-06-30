@@ -265,6 +265,50 @@ class TestProgressOccurrencePK:
         assert add_progress_occurrence_column() is False
         assert add_progress_occurrence_column() is False
 
+    def test_migration_rebuilds_table_with_data(self, bofs_app):
+        """The SQLite table rebuild preserves existing data and adds the
+        occurrence column with a composite PK."""
+        from BOFS.admin.util import add_progress_occurrence_column
+        from sqlalchemy import inspect as sa_inspect, text
+
+        p = _make_participant(bofs_app)
+
+        with bofs_app.db.engine.connect() as conn:
+            conn.execute(text("DROP TABLE progress"))
+            conn.execute(text(
+                'CREATE TABLE "progress" ('
+                '"participantID" INTEGER NOT NULL, '
+                '"path" TEXT NOT NULL, '
+                '"startedOn" DATETIME NOT NULL, '
+                '"submittedOn" DATETIME, '
+                'FOREIGN KEY("participantID") REFERENCES "participant"("participantID"), '
+                'PRIMARY KEY ("participantID", "path"))'
+            ))
+            conn.execute(text(
+                'INSERT INTO "progress" ("participantID", "path", "startedOn") '
+                'VALUES (:pid, :path, :started)'
+            ), {"pid": p.participantID, "path": "test_page",
+                "started": "2024-01-01 12:00:00"})
+            conn.commit()
+
+        result = add_progress_occurrence_column()
+        assert result is True
+
+        with bofs_app.db.engine.connect() as conn:
+            rows = conn.execute(text(
+                'SELECT "participantID", "path", "occurrence" FROM "progress"'
+            )).fetchall()
+            assert len(rows) == 1
+            assert rows[0][0] == p.participantID
+            assert rows[0][1] == "test_page"
+            assert rows[0][2] == 0
+
+        inspector = sa_inspect(bofs_app.db.engine)
+        pk = inspector.get_pk_constraint('progress')
+        assert 'occurrence' in pk['constrained_columns']
+
+        assert add_progress_occurrence_column() is False
+
 
 # ===========================================================================
 # TestCloseProgressSubmitted — close-out on forward navigation

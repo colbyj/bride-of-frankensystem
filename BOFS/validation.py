@@ -1247,7 +1247,7 @@ def _collect_subscripted_var_names(ast_node) -> set:
 
 
 def validate_page_show_if_table_refs(page_list, tables) -> list[ValidationResult]:
-    """Walk a PageList's compiled show_if predicates and warn about any
+    """Walk a PageList's compiled show_if expressions and warn about any
     ``tables.<name>.<column>`` reference that doesn't resolve to a known
     table export.
 

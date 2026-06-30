@@ -252,7 +252,7 @@ def create_app(path, config_name, debug=False, reloader_off=False):
             app.setup_diagnostics.add(
                 "info", "page_list",
                 "USE_BREADCRUMBS is enabled and PAGE_LIST contains "
-                "conditional_routing or show_if predicates. The breadcrumb "
+                "conditional_routing or show_if expressions. The breadcrumb "
                 "only shows pages BOFS knows the participant will visit, "
                 "so it will grow as participants answer gating questions.",
                 suggestion=(

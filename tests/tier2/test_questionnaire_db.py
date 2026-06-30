@@ -423,7 +423,7 @@ class TestRadiogridSubmission:
 
 
 # ===========================================================================
-# TestShowIfCompilation — show_if predicates parse at create_db_class time
+# TestShowIfCompilation — show_if expressions parse at create_db_class time
 # ===========================================================================
 
 SHOW_IF_QUESTIONNAIRE = {
