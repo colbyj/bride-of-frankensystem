@@ -23,3 +23,11 @@
     input[type=range] { width: 90vw !important; }
     input, select, textarea, .bofs-slider-labels { max-width: 90vw !important; }
 }
+
+/* Navbar dropdowns (Database, Export, Preview Questionnaires, Custom
+   Pages) can hold dozens of items. Constrain them to the viewport and
+   scroll so the tail of the list is always reachable. */
+.navbar .dropdown-menu {
+    max-height: calc(100vh - 5rem);
+    overflow-y: auto;
+}
