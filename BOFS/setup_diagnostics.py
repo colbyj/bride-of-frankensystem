@@ -60,6 +60,7 @@ CATEGORY_TO_SECTION = {
     "bind":             SECTION_CONFIG,
     "condition_lookup": SECTION_CONFIG,
     "security":         SECTION_CONFIG,
+    "update":           SECTION_CONFIG,
     "questionnaire":    SECTION_QUESTIONNAIRES,
     "asset":            SECTION_QUESTIONNAIRES,
     "table":            SECTION_TABLES,
@@ -78,6 +79,7 @@ CATEGORY_SUBHEADING = {
     "bind":             "Database bindings",
     "condition_lookup": "Condition lookup",
     "security":         "Security",
+    "update":           "Framework update",
     "schema":           "Schema mismatches",
     "route":            "Routes",
     "asset":            "Missing assets",
@@ -274,6 +276,10 @@ class DiagnosticCollector:
 
     def by_category(self, category: str) -> list[Diagnostic]:
         return [d for d in self._items if d.category == category]
+
+    def remove_by_category(self, category: str) -> None:
+        """Remove all diagnostics whose ``.category`` equals *category*."""
+        self._items = [d for d in self._items if d.category != category]
 
     def by_section(self, section: str) -> list[Diagnostic]:
         return [d for d in self._items if d.section == section]

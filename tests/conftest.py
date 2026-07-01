@@ -6,6 +6,23 @@ import toml
 
 
 # ===========================================================================
+# Global: suppress real PyPI calls during the test suite
+# ===========================================================================
+
+@pytest.fixture(autouse=True)
+def _disable_pypi_update_check(monkeypatch):
+    """Patch out the PyPI update check for every test.
+
+    ``create_app()`` imports ``check_for_update`` lazily (inside the
+    function body), so patching the module attribute is picked up at call
+    time.  ``tests/unit/test_update_check.py`` imports the function
+    directly at module load (eager binding) and is therefore unaffected —
+    it still exercises the real logic with its own mocks.
+    """
+    monkeypatch.setattr("BOFS.update_check.check_for_update", lambda: None)
+
+
+# ===========================================================================
 # Tier 2 fixtures — minimal BOFS app with in-memory SQLite
 # ===========================================================================
 
@@ -25,6 +42,7 @@ def bofs_app(tmp_path):
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": False,
         "BRUTE_FORCE_PROTECTION": False,
+        "CHECK_FOR_UPDATES": False,
         "PAGE_LIST": [
             {"name": "Consent", "path": "consent"},
             {"name": "End", "path": "end"},
@@ -75,6 +93,7 @@ def bofs_app_with_binds(tmp_path):
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": False,
         "BRUTE_FORCE_PROTECTION": False,
+        "CHECK_FOR_UPDATES": False,
         "PAGE_LIST": [
             {"name": "Consent", "path": "consent"},
             {"name": "End", "path": "end"},
@@ -359,6 +378,7 @@ def bofs_app_with_questionnaires(tmp_path):
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": False,
         "BRUTE_FORCE_PROTECTION": False,
+        "CHECK_FOR_UPDATES": False,
         "GENERATE_COMPLETION_CODE": True,
         "CONDITIONS": [
             {"label": "Control", "enabled": True},
@@ -417,6 +437,7 @@ def bofs_app_for_export_with_binds(tmp_path):
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": True,
         "BRUTE_FORCE_PROTECTION": False,
+        "CHECK_FOR_UPDATES": False,
         "PAGE_LIST": [
             {"name": "Consent", "path": "consent"},
             {"name": "Experiment", "path": "questionnaire/experiment"},
@@ -473,6 +494,7 @@ def bofs_app_with_file_binds(tmp_path):
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": True,
         "BRUTE_FORCE_PROTECTION": False,
+        "CHECK_FOR_UPDATES": False,
         # /admin/database_delete is a POST through the admin CSRF gate.
         # Disable here so tests can exercise the route without manually
         # threading a token through every request.
@@ -528,6 +550,7 @@ def bofs_app_for_export_no_binds(tmp_path):
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": True,
         "BRUTE_FORCE_PROTECTION": False,
+        "CHECK_FOR_UPDATES": False,
         "PAGE_LIST": [
             {"name": "Consent", "path": "consent"},
             {"name": "Experiment", "path": "questionnaire/experiment"},
@@ -581,6 +604,7 @@ def bofs_app_with_conditions(tmp_path):
         "ADMIN_PASSWORD": "test",
         "USE_ADMIN": False,
         "BRUTE_FORCE_PROTECTION": False,
+        "CHECK_FOR_UPDATES": False,
         "CONDITIONS": [
             {"label": "Control", "enabled": True},
             {"label": "Treatment", "enabled": True},

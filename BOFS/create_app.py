@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from . import startup
 from .BOFSFlask import BOFSFlask
 from .admin.util import check_and_add_column, check_and_rename_column, check_and_rename_table, make_columns_nullable, add_progress_occurrence_column
@@ -67,6 +68,14 @@ def create_app(path, config_name, debug=False, reloader_off=False):
 
     if 'ALLOW_RETAKES' not in app.config:
         app.config['ALLOW_RETAKES'] = False
+
+    if 'CHECK_FOR_UPDATES' not in app.config:
+        app.config['CHECK_FOR_UPDATES'] = True
+
+    # Default the update-check attributes so the context processor never
+    # hits AttributeError, even when CHECK_FOR_UPDATES is False.
+    app.bofs_update_info = None
+    app.bofs_update_last_checked = 0
 
     if 'RETRIEVE_SESSIONS' not in app.config:
         app.config['RETRIEVE_SESSIONS'] = True
@@ -450,5 +459,26 @@ def create_app(path, config_name, debug=False, reloader_off=False):
         # partial restore or out-of-band DB editing).
         app.warn_about_unused_binds()
         app.warn_about_orphan_participants()
+
+    # -- PyPI update notification -----------------------------------------
+    if app.config.get('CHECK_FOR_UPDATES', True):
+        from .update_check import check_for_update
+        result = check_for_update()
+        if result is not None:
+            app.bofs_update_info = result
+            app.bofs_update_last_checked = time.time()
+            if result.available:
+                msg = (
+                    f"A BOFS update is available: {result.current} \u2192 "
+                    f"{result.latest}"
+                )
+                pip_cmd = f"pip install --upgrade {result.dist_name}"
+                app.setup_diagnostics.add(
+                    "info", "update", msg,
+                    suggestion=pip_cmd,
+                    source="PyPI",
+                )
+                print(f"\n{msg}")
+                print(f"  {pip_cmd}\n")
 
     return app

@@ -56,9 +56,13 @@ Application Settings
      - ``true``
      - Display the BOFS logo in the page header.
    * - ``HEADER_COLOR``
-     - string
-     - *(unset)*
-     - Background color of the title bar. Accepts a CSS hex color (e.g., ``"#8CB737"``), a named color (e.g., ``"navy"``), or ``rgb()``/``rgba()``/``hsl()``/``hsla()`` notation. When unset, the default green from the stylesheet is used.
+      - string
+      - *(unset)*
+      - Background color of the title bar. Accepts a CSS hex color (e.g., ``"#8CB737"``), a named color (e.g., ``"navy"``), or ``rgb()``/``rgba()``/``hsl()``/``hsla()`` notation. When unset, the default green from the stylesheet is used.
+   * - ``CHECK_FOR_UPDATES``
+      - boolean
+      - ``true``
+      - When ``true``, BOFS checks PyPI for a newer version at startup and periodically while the admin panel is open. Set to ``false`` to disable (e.g., on air-gapped servers).
    * - ``WAITRESS_THREADS``
      - integer
      - ``16``

@@ -1,27 +1,34 @@
 import hmac
+import json
 import os
 import re
+import threading
+import time
+from datetime import datetime
+from os import path, listdir
+from shutil import copyfile
+
 from flask import Blueprint, render_template, current_app, redirect, g, request, session, url_for, Response, send_file, abort
 from flask_wtf.csrf import generate_csrf, validate_csrf
 from werkzeug.routing import BuildError
 from wtforms.validators import ValidationError
 from .. import BOFSFlask
 from ..globals import db, questionnaires, page_list
+from ..update_check import check_for_update, UPDATE_CHECK_INTERVAL
 from ..util import fetch_condition_count, display_time, provide_consent, int_or_0, utcnow_naive
 from .util import sqlalchemy_to_json, verify_admin, csv_string, questionnaire_name_and_tag, condition_num_to_label
 from ..services.participant_questionnaire import ParticipantQuestionnaireService
 from ..services.data_export import Results
-import json
 from ..services.admin_stats import AdminStatsService
 from ..services.participant import ParticipantService
-from datetime import datetime
-from os import path, listdir
-from shutil import copyfile
 
 
 current_app: "BOFSFlask"
 admin = Blueprint('admin', __name__, template_folder='templates', static_folder='static', url_prefix="/admin")
 
+# Guards the throttled PyPI update check in the context processor so
+# concurrent waitress threads don't hammer PyPI simultaneously.
+_update_check_lock = threading.Lock()
 
 _CSRF_PROTECTED_METHODS = frozenset({'POST', 'PUT', 'PATCH', 'DELETE'})
 
@@ -171,11 +178,48 @@ def inject_template_vars():
     configured_binds = current_app.config.get('SQLALCHEMY_BINDS', {}) or {}
     used_binds_in_export = sorted(bind_tables.keys() & set(configured_binds))
 
-    # Setup diagnostics widget (warnings + notices pill, plus modal).
-    # The grouped structure mirrors error.html: section -> subgroup ->
-    # diagnostics. We pass warning+info+error together; the template
-    # decides what to render in the modal.
     diagnostics = current_app.setup_diagnostics
+
+    # -- Throttled PyPI update re-check -----------------------------------
+    bofs_update_info = getattr(current_app, 'bofs_update_info', None)
+    if current_app.config.get('CHECK_FOR_UPDATES', True):
+        last_checked = getattr(current_app, 'bofs_update_last_checked', 0)
+        if time.time() - last_checked > UPDATE_CHECK_INTERVAL:
+            with _update_check_lock:
+                # Re-check inside the lock so the first thread through
+                # does the work while subsequent threads skip.
+                last_checked = getattr(current_app, 'bofs_update_last_checked', 0)
+                if time.time() - last_checked > UPDATE_CHECK_INTERVAL:
+                    result = check_for_update()
+                    if result is not None:
+                        old_info = getattr(current_app, 'bofs_update_info', None)
+                        changed = (
+                            old_info is None
+                            or old_info.available != result.available
+                            or old_info.latest != result.latest
+                            or old_info.current != result.current
+                        )
+                        current_app.bofs_update_info = result
+                        if changed:
+                            diagnostics.remove_by_category("update")
+                            if result.available:
+                                diagnostics.add(
+                                    "info", "update",
+                                    f"A BOFS update is available: "
+                                    f"{result.current} \u2192 {result.latest}",
+                                    suggestion=(
+                                        f"pip install --upgrade "
+                                        f"{result.dist_name}"
+                                    ),
+                                    source="PyPI",
+                                )
+                    current_app.bofs_update_last_checked = time.time()
+                    bofs_update_info = getattr(current_app,
+                                               'bofs_update_info', None)
+
+    # Setup diagnostics widget (warnings + notices pill, plus modal).
+    # Computed AFTER the update re-check so the counts and grouping
+    # reflect any diagnostic just added or removed during the refresh.
     diag_warning_count = len(diagnostics.by_severity("warning"))
     diag_info_count = len(diagnostics.by_severity("info"))
     diag_grouped = diagnostics.grouped(severities=("error", "warning", "info"))
@@ -196,6 +240,7 @@ def inject_template_vars():
         diagWarningCount=diag_warning_count,
         diagInfoCount=diag_info_count,
         diagGrouped=diag_grouped,
+        bofsUpdateInfo=bofs_update_info,
     )
 
 
