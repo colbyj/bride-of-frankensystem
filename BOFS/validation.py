@@ -74,6 +74,27 @@ def discover_question_types(app) -> frozenset:
 
     return frozenset(types)
 
+# Framework-internal routes that must never appear in PAGE_LIST entries.
+# These are BOFS's own control/data endpoints, not user-facing content pages.
+_INTERNAL_ROUTE_EXACT = frozenset({
+    "redirect_next_page",
+    "redirect_previous_page",
+    "submit",
+    "user_active",
+    "current_url",
+    "restart",
+    "debug_pick_condition",
+})
+
+# Route prefixes where the bare segment or anything under it is reserved for
+# framework use (e.g. ``table/foo`` and ``table`` both match ``table``).
+_INTERNAL_ROUTE_PREFIXES = (
+    "redirect_from_page",
+    "redirect_to_page",
+    "questionnaire_question",
+    "table",
+)
+
 # Column names reserved by BOFS's create_db_class()
 RESERVED_COLUMNS = frozenset({
     "participantID", "participant", "tag",
@@ -1392,6 +1413,60 @@ def validate_page_list_references(page_list_data: list,
                 f"'{q_name}.json' file in your questionnaires/ folder."
             ))
 
+    return results
+
+
+def validate_page_list_internal_routes(page_list_data: list) -> list[ValidationResult]:
+    """Check that no PAGE_LIST entry uses a framework-internal route path.
+
+    Internal routes are BOFS control/data endpoints, not content pages,
+    and must not appear in PAGE_LIST.
+
+    :param page_list_data: the raw PAGE_LIST from config (list of dicts)
+    """
+    results = []
+
+    def check_path(path):
+        if not isinstance(path, str):
+            return
+        clean_path = path.lstrip("/")
+        if clean_path in _INTERNAL_ROUTE_EXACT:
+            results.append(ValidationResult(
+                "error", "PAGE_LIST",
+                f"PAGE_LIST entry '{path}' is a framework-internal route "
+                f"and cannot be used as a page.",
+                "Remove it from PAGE_LIST or replace it with a content "
+                "route (e.g. 'consent', 'questionnaire/<name>', "
+                "'instructions/<page>', 'simple/<page>', "
+                "'custom/<page>', 'end').",
+            ))
+            return
+        first_segment = clean_path.split("/")[0]
+        if first_segment in _INTERNAL_ROUTE_PREFIXES:
+            results.append(ValidationResult(
+                "error", "PAGE_LIST",
+                f"PAGE_LIST entry '{path}' is or starts with a "
+                f"framework-internal route and cannot be used as a page.",
+                "Remove it from PAGE_LIST or replace it with a content "
+                "route (e.g. 'consent', 'questionnaire/<name>', "
+                "'instructions/<page>', 'simple/<page>', "
+                "'custom/<page>', 'end').",
+            ))
+
+    # Walk every entry's path (including conditional_routing entries, which
+    # carry their own renderable path) and recurse into each arm's page_list.
+    # Mirrors validate_page_list_references' traversal.
+    def visit(entries):
+        for page in entries:
+            if not isinstance(page, dict):
+                continue
+            check_path(page.get("path"))
+            if "conditional_routing" in page:
+                for route in page.get("conditional_routing", []):
+                    if isinstance(route, dict) and "page_list" in route:
+                        visit(route["page_list"])
+
+    visit(page_list_data)
     return results
 
 

@@ -372,7 +372,11 @@ def questionnaire_list_is_safe(app) -> bool:
 
 
 def load_questionnaires(app) -> None:
-    from .validation import validate_page_list_references, discover_question_types
+    from .validation import (
+        validate_page_list_internal_routes,
+        validate_page_list_references,
+        discover_question_types,
+    )
 
     app.questionnaire_paths = find_files_in_app_and_blueprints(app, "questionnaires")
     questionnaires_in_use = app.page_list.get_questionnaire_list()
@@ -387,6 +391,10 @@ def load_questionnaires(app) -> None:
 
     # Check that all PAGE_LIST questionnaire references have matching files
     for err in validate_page_list_references(app.config['PAGE_LIST'], app.questionnaire_paths):
+        app.setup_diagnostics.append(err, category="page_list")
+
+    # Check that no PAGE_LIST entries are framework-internal routes
+    for err in validate_page_list_internal_routes(app.config['PAGE_LIST']):
         app.setup_diagnostics.append(err, category="page_list")
 
 

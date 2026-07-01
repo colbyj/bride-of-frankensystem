@@ -21,6 +21,7 @@ from BOFS.PageList import PageList
 from BOFS.validation import (
     validate_calculations,
     validate_image_assets,
+    validate_page_list_internal_routes,
     validate_page_list_show_if_refs,
     validate_table_not_empty,
 )
@@ -299,3 +300,164 @@ class TestCalculationsCrossRef:
         results = validate_calculations(json_data, "calc_q")
         warnings = [r for r in results if r.severity == "warning"]
         assert warnings == []
+
+
+# ---------------------------------------------------------------------------
+# PAGE_LIST internal-route check
+# ---------------------------------------------------------------------------
+
+
+class TestPageListInternalRoutes:
+    """validate_page_list_internal_routes rejects framework-internal routes
+    in PAGE_LIST entries, including nested conditional_routing arms."""
+
+    # -- exact-match internal routes --------------------------------------
+
+    def test_exact_internal_route_redirect_next_page(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "redirect_next_page"},
+        ])
+        assert len(results) == 1
+        assert results[0].severity == "error"
+        assert "redirect_next_page" in results[0].message
+        assert "PAGE_LIST" in results[0].questionnaire
+
+    def test_exact_internal_route_debug_pick_condition(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "debug_pick_condition"},
+        ])
+        assert len(results) == 1
+        assert "debug_pick_condition" in results[0].message
+
+    def test_exact_internal_route_redirect_previous_page(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "redirect_previous_page"},
+        ])
+        assert len(results) == 1
+        assert "redirect_previous_page" in results[0].message
+
+    def test_exact_internal_route_submit(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "submit"},
+        ])
+        assert len(results) == 1
+        assert "submit" in results[0].message
+
+    def test_exact_internal_route_user_active(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "user_active"},
+        ])
+        assert len(results) == 1
+        assert "user_active" in results[0].message
+
+    def test_exact_internal_route_current_url(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "current_url"},
+        ])
+        assert len(results) == 1
+        assert "current_url" in results[0].message
+
+    def test_exact_internal_route_restart(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "restart"},
+        ])
+        assert len(results) == 1
+        assert "restart" in results[0].message
+
+    # -- prefix-match internal routes -------------------------------------
+
+    def test_prefix_table_bare_segment(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "table"},
+        ])
+        assert len(results) == 1
+        assert "table" in results[0].message
+
+    def test_prefix_table_with_subpath(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "table/foo"},
+        ])
+        assert len(results) == 1
+        assert "table/foo" in results[0].message
+
+    def test_prefix_redirect_from_page(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "redirect_from_page/consent"},
+        ])
+        assert len(results) == 1
+        assert "redirect_from_page/consent" in results[0].message
+
+    def test_prefix_redirect_to_page(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "redirect_to_page/end"},
+        ])
+        assert len(results) == 1
+        assert "redirect_to_page/end" in results[0].message
+
+    def test_prefix_questionnaire_question(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "questionnaire_question/field"},
+        ])
+        assert len(results) == 1
+        assert "questionnaire_question/field" in results[0].message
+
+    # -- leading slash handling -------------------------------------------
+
+    def test_leading_slash_stripped(self):
+        results = validate_page_list_internal_routes([
+            {"name": "X", "path": "/redirect_next_page"},
+        ])
+        assert len(results) == 1
+        assert "redirect_next_page" in results[0].message or \
+               "/redirect_next_page" in results[0].message
+
+    # -- nested in conditional_routing ------------------------------------
+
+    def test_nested_in_conditional_routing_arm(self):
+        results = validate_page_list_internal_routes([
+            {"name": "Branch", "path": "questionnaire/branch",
+             "conditional_routing": [
+                 {"condition": 1, "page_list": [
+                     {"name": "Bad", "path": "debug_pick_condition"},
+                 ]},
+             ]},
+        ])
+        assert len(results) == 1
+        assert "debug_pick_condition" in results[0].message
+
+    def test_internal_route_on_conditional_routing_entry_path(self):
+        # A conditional_routing entry still carries its own renderable path;
+        # that path must be checked too (mirrors validate_page_list_references,
+        # which checks every entry's path).
+        results = validate_page_list_internal_routes([
+            {"name": "Branch", "path": "submit",
+             "conditional_routing": [
+                 {"condition": 1, "page_list": [
+                     {"name": "End", "path": "end"},
+                 ]},
+             ]},
+        ])
+        assert len(results) == 1
+        assert "submit" in results[0].message
+
+    # -- clean PAGE_LIST raises no errors ---------------------------------
+
+    def test_clean_page_list_no_results(self):
+        results = validate_page_list_internal_routes([
+            {"name": "Consent", "path": "consent"},
+            {"name": "Demographics", "path": "questionnaire/demographics"},
+            {"name": "Post", "path": "questionnaire/x/after"},
+            {"name": "Intro", "path": "instructions/intro"},
+            {"name": "Task", "path": "simple/p"},
+            {"name": "Custom", "path": "custom/task"},
+            {"name": "External ID", "path": "external_id"},
+            {"name": "Assign", "path": "assign_condition"},
+            {"name": "End", "path": "end"},
+            {"name": "Screened", "path": "end/screened"},
+            {"name": "My Blueprint", "path": "my_blueprint_page"},
+        ])
+        assert results == []
+
+    def test_empty_page_list_no_results(self):
+        results = validate_page_list_internal_routes([])
+        assert results == []

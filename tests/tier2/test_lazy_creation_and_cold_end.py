@@ -478,3 +478,28 @@ class TestEndColdHit:
             assert refreshed.timeEnded is not None
         finally:
             _teardown(app, ctx, cwd)
+
+
+# ---------------------------------------------------------------------------
+# Part 3 — Startup validation: internal routes blocked
+# ---------------------------------------------------------------------------
+
+
+class TestInternalRouteDetection:
+    """App with a framework-internal route in PAGE_LIST gets a fatal
+    setup diagnostic, blocking all non-static requests."""
+
+    def test_debug_pick_condition_in_page_list_is_fatal(self, tmp_path):
+        _write_common_files(tmp_path)
+        app, ctx, cwd = _make_app(tmp_path, {
+            "PAGE_LIST": [
+                {"name": "Debug", "path": "debug_pick_condition"},
+                {"name": "End", "path": "end"},
+            ],
+        })
+        try:
+            assert app.setup_diagnostics.has_fatal() is True
+            fatal = app.setup_diagnostics.by_severity("error")
+            assert any("debug_pick_condition" in d.message for d in fatal)
+        finally:
+            _teardown(app, ctx, cwd)
